@@ -1,0 +1,151 @@
+/*
+ * Event Forecast — Global Styles
+ *
+ * All values reference CSS custom properties from tokens.js.
+ * Never hardcode colors, spacing, sizing, typography, radii, shadows,
+ * opacity, or transitions. If a value doesn't have a token yet, add
+ * one to tokens.js before using it.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-body);
+  line-height: var(--typography-lineHeight-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+a {
+  color: var(--color-link-base);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-link-hover);
+}
+
+a:visited {
+  color: var(--color-link-visited);
+}
+
+/* ────────────── Layout ────────────── */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.app-header__mark {
+  display: inline-block;
+  width: var(--spacing-md);
+  height: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-action-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.app-header__name {
+  font-family: var(--typography-font-display);
+  font-size: var(--typography-title);
+  font-weight: var(--typography-weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.forecast-strip,
+.forecast-detail {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  min-height: var(--spacing-xxxl);
+  box-shadow: var(--shadow-md);
+}
+
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-tertiary);
+  font-size: var(--typography-micro);
+}
+
+.app-footer__disclaimer {
+  font-family: var(--typography-font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ────────────── Placeholder shell state ────────────── */
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--spacing-xxxl);
+  color: var(--color-text-tertiary);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-caption);
+  letter-spacing: 0.04em;
+}
+
+.placeholder__dot {
+  display: inline-block;
+  width: var(--spacing-sm);
+  height: var(--spacing-sm);
+  margin-right: var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  background: var(--color-action-primary);
+  opacity: var(--opacity-75);
+  animation: pulse var(--duration-slower) ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: var(--opacity-25); }
+  to   { opacity: var(--opacity-90); }
+}

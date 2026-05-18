@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A weather-style forecast for crowd impact from major live events.">
+  <title>Event Forecast</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__brand">
+      <span class="app-header__mark" aria-hidden="true"></span>
+      <span class="app-header__name">Event Forecast</span>
+    </div>
+    <div class="app-header__city" id="city-selector" hidden>
+      <!-- M1: city selector renders here, hidden when only one city configured -->
+    </div>
+  </header>
+
+  <main class="app-main" id="app-main">
+    <section class="forecast-strip" id="forecast-strip" aria-label="Multi-day forecast">
+      <!-- M1: multi-day forecast strip renders here -->
+    </section>
+    <section class="forecast-detail" id="forecast-detail" aria-label="Selected day detail">
+      <!-- M2/M3: map + heatmap + busyness timeline render here -->
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <small class="app-footer__attribution" id="ticketmaster-attribution">
+      <!-- M0+: Ticketmaster attribution rendered here once event data lands. Required wherever events are shown. -->
+    </small>
+    <small class="app-footer__disclaimer">
+      Modeled estimate, not measured.
+    </small>
+  </footer>
+
+  <script src="tokens.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

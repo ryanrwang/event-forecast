@@ -1,0 +1,36 @@
+# Server-generated (Python cron writes JSON artifacts here in M0+)
+cache/
+data/cache/
+error_log
+
+# Secrets (PHP-side config with Ticketmaster API key — server only)
+api/config.php
+includes/config.php
+
+# Python (cron added in M0)
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Claude Code local config
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+vendor/

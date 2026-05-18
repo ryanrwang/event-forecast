@@ -1,0 +1,32 @@
+name: Deploy to Bluehost
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: ./apps/eventforecast/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.venv/**
+            **/__pycache__/**
+            .claude/**
+            cache/**
+            data/cache/**
+            CLAUDE.md
+            **/*.md
+            api/config.example.php
