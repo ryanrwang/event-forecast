@@ -1,0 +1,10 @@
+{
+  "id": "toronto",
+  "name": "Toronto",
+  "country_code": "CA",
+  "state_code": "ON",
+  "timezone": "America/Toronto",
+  "ticketmaster": {
+    "city_query": "Toronto"
+  }
+}

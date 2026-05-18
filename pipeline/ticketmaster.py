@@ -1,0 +1,197 @@
+"""Ticketmaster Discovery API client.
+
+- Pages through events for a city in a date window.
+- Honors a 250 ms inter-request delay and exponential backoff on 429/5xx.
+- Falls back to per-day queries if a single window query exceeds the
+  Discovery API's 1000-item deep-paging cap.
+- Exports the required attribution string.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from datetime import date, datetime, time as dtime, timedelta, timezone
+from typing import Iterable
+from zoneinfo import ZoneInfo
+
+import requests
+
+from . import cache
+
+# Free-tier ToS requires this string be rendered wherever events appear.
+ATTRIBUTION = "Event discovery powered by Ticketmaster."
+
+BASE_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
+PAGE_SIZE = 200
+DEEP_PAGING_CAP = 1000  # Discovery API hard cap on items per query
+INTER_REQUEST_SLEEP = 0.25  # seconds
+MAX_RETRIES = 5
+
+log = logging.getLogger("pipeline.ticketmaster")
+
+
+def _iso_utc(dt: datetime) -> str:
+    """Ticketmaster wants 'YYYY-MM-DDTHH:MM:SSZ' (no offset, literal Z)."""
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _window_for(city_tz: ZoneInfo, days: int) -> tuple[datetime, datetime, list[date]]:
+    """Return (start_local, end_local, list_of_local_calendar_days).
+
+    Rounded to start-of-day in the city's timezone so the cache key is stable
+    across runs within a calendar day. Slightly extends the window to cover
+    earlier events on "today" — desirable for the forecast.
+    """
+    now_local = datetime.now(city_tz)
+    today = now_local.date()
+    start_local = datetime.combine(today, dtime.min, tzinfo=city_tz)
+    end_local = start_local + timedelta(days=days)
+    day_keys = [today + timedelta(days=i) for i in range(days)]
+    return start_local, end_local, day_keys
+
+
+def _request_with_backoff(params: dict) -> dict:
+    """GET BASE_URL with exponential backoff on 429/5xx. Returns parsed JSON."""
+    for attempt in range(MAX_RETRIES):
+        resp = requests.get(BASE_URL, params=params, timeout=30)
+        if resp.status_code == 200:
+            return resp.json()
+        if resp.status_code == 429 or resp.status_code >= 500:
+            retry_after = resp.headers.get("Retry-After")
+            if retry_after:
+                try:
+                    sleep_s = float(retry_after)
+                except ValueError:
+                    sleep_s = min(2 ** attempt, 30)
+            else:
+                sleep_s = min(2 ** attempt, 30)
+            log.warning(
+                "[rate-limit] HTTP %s, sleeping %.1fs (retry %d/%d)",
+                resp.status_code,
+                sleep_s,
+                attempt + 1,
+                MAX_RETRIES,
+            )
+            time.sleep(sleep_s)
+            continue
+        # 4xx (other than 429): unrecoverable
+        log.error(
+            "[api-error] HTTP %s: %s", resp.status_code, resp.text[:500]
+        )
+        resp.raise_for_status()
+    raise RuntimeError(f"Ticketmaster API exhausted retries ({MAX_RETRIES})")
+
+
+def _fetch_paged(base_params: dict, force_refresh: bool) -> tuple[list[dict], int]:
+    """Fetch all pages for one query. Returns (events, total_elements_reported)."""
+    events: list[dict] = []
+    total_elements = 0
+    page = 0
+    total_pages = 1  # placeholder until first response
+
+    while page < total_pages:
+        params = {**base_params, "page": page, "size": PAGE_SIZE}
+        cached, key = cache.get(BASE_URL, params)
+        if cached is not None and not force_refresh:
+            age = cache.age_minutes(BASE_URL, params) or 0
+            log.info("[cache hit] %s page=%d age=%.0fm", key[:8], page, age)
+            body = cached
+        else:
+            log.info("[cache miss] %s page=%d fetching...", key[:8], page)
+            time.sleep(INTER_REQUEST_SLEEP)
+            body = _request_with_backoff(params)
+            cache.set_(BASE_URL, params, body)
+
+        page_info = body.get("page", {}) or {}
+        total_elements = page_info.get("totalElements", 0)
+        total_pages = page_info.get("totalPages", 0)
+        embedded = body.get("_embedded") or {}
+        page_events = embedded.get("events") or []
+        events.extend(page_events)
+        log.info(
+            "  page %d/%d: +%d events (running total %d, totalElements=%d)",
+            page,
+            max(total_pages, 1),
+            len(page_events),
+            len(events),
+            total_elements,
+        )
+        page += 1
+
+        # Discovery API hard cap: page*size must stay under DEEP_PAGING_CAP.
+        if page * PAGE_SIZE >= DEEP_PAGING_CAP:
+            break
+
+    return events, total_elements
+
+
+def fetch_events(city_cfg: dict, api_key: str, window_days: int, force_refresh: bool) -> tuple[list[dict], dict]:
+    """Fetch all events for the configured city in a rolling window.
+
+    Returns (events, meta) where meta describes the window for downstream
+    output writers. The list is deduped by event.id.
+    """
+    city_tz = ZoneInfo(city_cfg["timezone"])
+    start_local, end_local, day_keys = _window_for(city_tz, window_days)
+
+    base_params = {
+        "apikey": api_key,
+        "city": city_cfg["ticketmaster"]["city_query"],
+        "stateCode": city_cfg["state_code"],
+        "countryCode": city_cfg["country_code"],
+        "startDateTime": _iso_utc(start_local),
+        "endDateTime": _iso_utc(end_local),
+        "locale": "*",
+        "sort": "date,asc",
+    }
+    log.info(
+        "[fetch] city=%s window=%s..%s (%s)",
+        city_cfg["id"],
+        start_local.date().isoformat(),
+        end_local.date().isoformat(),
+        city_cfg["timezone"],
+    )
+
+    events, total_elements = _fetch_paged(base_params, force_refresh)
+
+    if total_elements > DEEP_PAGING_CAP:
+        log.warning(
+            "[deep-paging] totalElements=%d exceeds %d cap; narrowing to per-day queries",
+            total_elements,
+            DEEP_PAGING_CAP,
+        )
+        events = []
+        for day in day_keys:
+            day_start = datetime.combine(day, dtime.min, tzinfo=city_tz)
+            day_end = datetime.combine(day, dtime.max, tzinfo=city_tz)
+            day_params = {
+                **base_params,
+                "startDateTime": _iso_utc(day_start),
+                "endDateTime": _iso_utc(day_end),
+            }
+            day_events, _ = _fetch_paged(day_params, force_refresh)
+            events.extend(day_events)
+
+    deduped = _dedupe_by_id(events)
+    meta = {
+        "window_start": start_local.date().isoformat(),
+        "window_end": end_local.date().isoformat(),
+        "timezone": city_cfg["timezone"],
+        "day_keys": [d.isoformat() for d in day_keys],
+        "fetched_at": datetime.now(city_tz).isoformat(timespec="seconds"),
+    }
+    log.info("[fetch] complete: %d events returned (%d after dedupe)", len(events), len(deduped))
+    return deduped, meta
+
+
+def _dedupe_by_id(events: Iterable[dict]) -> list[dict]:
+    seen: set[str] = set()
+    out: list[dict] = []
+    for ev in events:
+        eid = ev.get("id")
+        if not eid or eid in seen:
+            continue
+        seen.add(eid)
+        out.append(ev)
+    return out

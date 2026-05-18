@@ -26,7 +26,8 @@ jobs:
             **/__pycache__/**
             .claude/**
             cache/**
-            data/cache/**
+            data/**
+            secrets/**
             CLAUDE.md
             **/*.md
             api/config.example.php
