@@ -1,0 +1,38 @@
+[
+  {
+    "id": "scotiabank-arena",
+    "name": "Scotiabank Arena",
+    "lat": 43.6435,
+    "lon": -79.3791,
+    "capacity": 19800,
+    "category": "arena",
+    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+  },
+  {
+    "id": "rogers-centre",
+    "name": "Rogers Centre",
+    "lat": 43.6414,
+    "lon": -79.3894,
+    "capacity": 50000,
+    "category": "stadium",
+    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+  },
+  {
+    "id": "bmo-field",
+    "name": "BMO Field",
+    "lat": 43.6332,
+    "lon": -79.4185,
+    "capacity": 30000,
+    "category": "stadium",
+    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+  },
+  {
+    "id": "budweiser-stage",
+    "name": "Budweiser Stage",
+    "lat": 43.6294,
+    "lon": -79.4154,
+    "capacity": 16000,
+    "category": "amphitheatre",
+    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+  }
+]

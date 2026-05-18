@@ -1,6 +1,6 @@
 # Server-generated (Python cron writes JSON artifacts here in M0+)
 cache/
-data/cache/
+data/
 error_log
 
 # Secrets (PHP-side config with Ticketmaster API key — server only)
