@@ -10,6 +10,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SECRETS_ENV_PATH = REPO_ROOT / "secrets" / "ticketmaster.env"
 CONFIG_DIR = REPO_ROOT / "config"
+CITIES_INDEX_PATH = CONFIG_DIR / "cities.json"
 
 ENV_VAR = "TICKETMASTER_API_KEY"
 
@@ -51,6 +52,22 @@ def load_api_key() -> str:
         f"  in {SECRETS_ENV_PATH}\n"
     )
     sys.exit(1)
+
+
+def load_cities_list() -> list[str]:
+    """Return the configured city ids from config/cities.json.
+
+    The pipeline iterates this list. Adding a city later is a config-add:
+    append the id here and create config/<id>/city.json + venues.json.
+    """
+    if not CITIES_INDEX_PATH.exists():
+        sys.stderr.write(f"ERROR: cities index not found at {CITIES_INDEX_PATH}\n")
+        sys.exit(1)
+    cities = json.loads(CITIES_INDEX_PATH.read_text(encoding="utf-8-sig"))
+    if not isinstance(cities, list) or not all(isinstance(c, str) for c in cities):
+        sys.stderr.write(f"ERROR: {CITIES_INDEX_PATH} must be a JSON array of city ids\n")
+        sys.exit(1)
+    return cities
 
 
 def load_city_config(city: str) -> dict:

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A weather-style forecast for crowd impact from major live events.">
   <title>Event Forecast</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,22 +18,31 @@
       <span class="app-header__name">Event Forecast</span>
     </div>
     <div class="app-header__city" id="city-selector" hidden>
-      <!-- M1: city selector renders here, hidden when only one city configured -->
+      <!-- Multi-day forecast city selector. Hidden when only one city is configured. -->
     </div>
   </header>
 
   <main class="app-main" id="app-main">
     <section class="forecast-strip" id="forecast-strip" aria-label="Multi-day forecast">
-      <!-- M1: multi-day forecast strip renders here -->
+      <div class="placeholder" role="status">
+        <span class="placeholder__dot" aria-hidden="true"></span>
+        Loading forecast&hellip;
+      </div>
     </section>
     <section class="forecast-detail" id="forecast-detail" aria-label="Selected day detail">
-      <!-- M2/M3: map + heatmap + busyness timeline render here -->
+      <div class="forecast-detail__placeholder">
+        <span class="forecast-detail__placeholder-eyebrow">Coming next</span>
+        <p class="forecast-detail__placeholder-text">
+          Tap a day to see <em>where</em> and <em>when</em> the crunch lands.
+          Map and busyness timeline arrive in the next milestones.
+        </p>
+      </div>
     </section>
   </main>
 
   <footer class="app-footer">
     <small class="app-footer__attribution" id="ticketmaster-attribution">
-      <!-- M0+: Ticketmaster attribution rendered here once event data lands. Required wherever events are shown. -->
+      Event discovery powered by Ticketmaster.
     </small>
     <small class="app-footer__disclaimer">
       Modeled estimate, not measured.

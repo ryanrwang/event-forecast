@@ -129,13 +129,13 @@
       relaxed: '1.7'
     },
 
-    // Font families are intentionally placeholder — overview §7 forbids
-    // Inter/Roboto/Arial/system defaults. The actual display face and
-    // technical/mono face are picked during the M1 design pass.
+    // Chosen in M1 per overview §7 (characterful display + clean technical/mono,
+    // no Inter/Roboto/Arial/system defaults). Loaded via Google Fonts <link>
+    // in index.html. See 10-decisions-log.md for rationale.
     fontFamily: {
-      display: '"Display TBD", Georgia, serif',
-      mono:    '"Mono TBD", "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace',
-      body:    'system-ui, sans-serif' // temporary; replaced in M1
+      display: '"Instrument Serif", Georgia, serif',
+      mono:    '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace',
+      body:    '"Space Grotesk", "Helvetica Neue", sans-serif'
     },
 
     radius: {
@@ -279,7 +279,13 @@
       base: primitives.duration.base + ' ' + primitives.easing.standard,
       slow: primitives.duration.slow + ' ' + primitives.easing.decelerate
     },
-    opacity: primitives.opacity
+    // Re-exported so CSS animations can address them by name. The
+    // semantic flattener doesn't walk the primitives object, so without
+    // this any `animation: name var(--duration-slow) ...` declaration
+    // would silently break.
+    duration: primitives.duration,
+    easing:   primitives.easing,
+    opacity:  primitives.opacity
   };
 
   // ──────────────────────────────────────────────────────────────────
@@ -345,6 +351,8 @@
       glow: '0 0 0 1px rgba(16, 185, 129, 0.30), 0 0 24px rgba(16, 185, 129, 0.20)'
     },
     transition: semanticDark.transition,
+    duration:   semanticDark.duration,
+    easing:     semanticDark.easing,
     opacity:    semanticDark.opacity
   };
 
