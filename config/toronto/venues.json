@@ -5,17 +5,29 @@
     "lat": 43.6435,
     "lon": -79.3791,
     "capacity": 19800,
-    "category": "arena",
-    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+    "category": "arena_sports",
+    "notes": "NHL Maple Leafs and NBA Raptors home arena. Major concert venue.",
+    "ticketmaster_venue_id": "KovZpZAFFE1A"
   },
   {
     "id": "rogers-centre",
     "name": "Rogers Centre",
     "lat": 43.6414,
     "lon": -79.3894,
+    "capacity": 39150,
+    "category": "arena_sports",
+    "notes": "MLB Blue Jays home stadium; ~53,000 for concerts. Retractable roof, baseball ~39,150; concert mode up to ~54,000.",
+    "ticketmaster_venue_id": "KovZpa3Bbe"
+  },
+  {
+    "id": "rogers-stadium",
+    "name": "Rogers Stadium",
+    "lat": 43.7458,
+    "lon": -79.4807,
     "capacity": 50000,
-    "category": "stadium",
-    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+    "category": "major_concert",
+    "notes": "Outdoor concert venue at Downsview Park, opened 2025. Major touring acts.",
+    "ticketmaster_venue_id": "KovZ917ARzt"
   },
   {
     "id": "bmo-field",
@@ -23,16 +35,86 @@
     "lat": 43.6332,
     "lon": -79.4185,
     "capacity": 30000,
-    "category": "stadium",
-    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+    "category": "arena_sports",
+    "notes": "Toronto FC (MLS) and Toronto Argonauts (CFL) home. Open air. temporarily expanded to ~45,736 for FIFA World Cup matches, June–July 2026."
   },
   {
     "id": "budweiser-stage",
-    "name": "Budweiser Stage",
+    "name": "RBC Amphitheatre",
     "lat": 43.6294,
     "lon": -79.4154,
     "capacity": 16000,
-    "category": "amphitheatre",
-    "notes": "M0 stub. Capacity is a placeholder; verify in M1."
+    "category": "major_concert",
+    "notes": "Major outdoor amphitheatre at Ontario Place. Seasonal (open air, May-Oct).",
+    "aliases": ["Budweiser Stage"]
+  },
+  {
+    "id": "coca-cola-coliseum",
+    "name": "Coca-Cola Coliseum",
+    "lat": 43.6362,
+    "lon": -79.4126,
+    "capacity": 8140,
+    "category": "arena_sports",
+    "notes": "AHL Toronto Marlies home. Mid-size concerts and family shows.",
+    "aliases": ["Coca Cola Coliseum"],
+    "ticketmaster_venue_id": "KovZpZAJt7FA"
+  },
+  {
+    "id": "meridian-hall",
+    "name": "Meridian Hall",
+    "lat": 43.6479,
+    "lon": -79.3760,
+    "capacity": 3191,
+    "category": "performing_arts",
+    "notes": "Major performing arts (formerly Sony Centre / O'Keefe Centre). Below 5k threshold but regularly hosts touring headliners that materially affect downtown crowds.",
+    "aliases": ["Sony Centre for the Performing Arts", "Sony Centre"],
+    "ticketmaster_venue_id": "KovZpZAFFEJA"
+  },
+  {
+    "id": "massey-hall",
+    "name": "Massey Hall",
+    "lat": 43.6543,
+    "lon": -79.3791,
+    "capacity": 2550,
+    "category": "major_concert",
+    "notes": "Iconic concert hall. Below 5k threshold but a major touring booker; excluding it would drop the entire mid-size concert tier downtown.",
+    "ticketmaster_venue_id": "KovZpZAFnlnA"
+  },
+  {
+    "id": "roy-thomson-hall",
+    "name": "Roy Thomson Hall",
+    "lat": 43.6464,
+    "lon": -79.3866,
+    "capacity": 2630,
+    "category": "performing_arts",
+    "notes": "Toronto Symphony Orchestra home. Below 5k threshold; included for the same reason as Massey — major downtown crowd driver."
+  },
+  {
+    "id": "ed-mirvish-theatre",
+    "name": "Ed Mirvish Theatre",
+    "lat": 43.6557,
+    "lon": -79.3792,
+    "capacity": 2278,
+    "category": "performing_arts",
+    "notes": "Major touring Broadway venue (Mirvish). Below 5k threshold; long-running tours materially affect Yonge-Dundas crowds.",
+    "ticketmaster_venue_id": "ZFr9jZd66d"
+  },
+  {
+    "id": "princess-of-wales-theatre",
+    "name": "Princess of Wales Theatre",
+    "lat": 43.6478,
+    "lon": -79.3915,
+    "capacity": 2000,
+    "category": "performing_arts",
+    "notes": "Major touring Broadway venue (Mirvish). Below 5k threshold; included alongside Ed Mirvish for the King St West theatre district crowd."
+  },
+  {
+    "id": "history",
+    "name": "History",
+    "lat": 43.6671,
+    "lon": -79.3144,
+    "capacity": 2500,
+    "category": "major_concert",
+    "notes": "Live Nation venue in the Beach; major touring acts. Below 5k threshold but a regular headline booker."
   }
 ]

@@ -4,6 +4,7 @@
   "country_code": "CA",
   "state_code": "ON",
   "timezone": "America/Toronto",
+  "bbox": [-79.6393, 43.5810, -79.1152, 43.8555],
   "ticketmaster": {
     "city_query": "Toronto"
   }
