@@ -27,7 +27,8 @@ jobs:
             .claude/**
             cache/**
             data/**
-            secrets/**
+            secrets/*.env
+            secrets/*.key
             CLAUDE.md
             **/*.md
             api/config.example.php

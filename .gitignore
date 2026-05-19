@@ -6,7 +6,8 @@ error_log
 # Secrets (PHP-side config with Ticketmaster API key — server only)
 api/config.php
 includes/config.php
-secrets/
+secrets/*
+!secrets/.htaccess
 
 # Python (cron added in M0)
 __pycache__/
