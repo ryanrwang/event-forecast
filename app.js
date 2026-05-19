@@ -22,7 +22,13 @@
     // 15-minute bucket index [0, 95] for the day timeline / scrubber.
     // null until a forecast is loaded; reset to the new day's peak
     // bucket on day-change per M3 spec.
-    selectedBucket: null
+    selectedBucket: null,
+    // M6: per-city freshness + attributions surfaced by /api/cities.php
+    // and /api/city.php. Drives the status banner + GTFS attribution
+    // footer. Empty defaults so a missing API field renders cleanly.
+    gtfsAttributions: {},
+    mapAttribution: null,
+    freshness: null
   };
 
   var BUCKETS_PER_DAY = 96;
@@ -98,6 +104,79 @@
       node.appendChild(a);
     } else {
       node.textContent = attribution.text;
+    }
+  }
+
+  // M6: render the OSM + CARTO basemap attribution into the footer.
+  // The map module also renders this via Leaflet's L.control.attribution;
+  // the footer line is a redundant safeguard so the credit is present
+  // even when the map host hasn't been initialized yet (e.g. before a
+  // day is selected, or on a zero-event city).
+  function renderMapAttribution(mapAttr) {
+    if (!mapAttr) return;
+    var node = document.getElementById('map-attribution');
+    if (!node) return;
+    node.innerHTML = '';
+    var lead = document.createTextNode('Map: ');
+    node.appendChild(lead);
+    if (mapAttr.osm_url) {
+      var a1 = el('a', null, 'OpenStreetMap contributors');
+      a1.href = mapAttr.osm_url;
+      a1.target = '_blank';
+      a1.rel = 'noopener noreferrer';
+      node.appendChild(a1);
+    } else {
+      node.appendChild(document.createTextNode('OpenStreetMap contributors'));
+    }
+    node.appendChild(document.createTextNode(' · '));
+    if (mapAttr.carto_url) {
+      var a2 = el('a', null, 'CARTO basemaps');
+      a2.href = mapAttr.carto_url;
+      a2.target = '_blank';
+      a2.rel = 'noopener noreferrer';
+      node.appendChild(a2);
+    } else {
+      node.appendChild(document.createTextNode('CARTO basemaps'));
+    }
+  }
+
+  // M6: render the per-city GTFS feed attribution in the footer.
+  // MVP is Toronto-only, so the lookup always resolves to one entry,
+  // but the API ships a city_id-keyed map so the M5 expansion is a
+  // drop-in (one credit line per active city's transit feed).
+  function renderGtfsAttribution(cityId) {
+    var node = document.getElementById('gtfs-attribution');
+    if (!node) return;
+    var attr = state.gtfsAttributions && state.gtfsAttributions[cityId];
+    if (!attr || !attr.text) {
+      node.hidden = true;
+      node.innerHTML = '';
+      return;
+    }
+    node.hidden = false;
+    node.innerHTML = '';
+    // The licence link is the contractually-required disclosure; the
+    // dataset URL is the courteous "find the source" link.
+    var leadText = 'Transit: ';
+    node.appendChild(document.createTextNode(leadText));
+    if (attr.url) {
+      var src = el('a', null, attr.agency ? (attr.agency + ' GTFS') : 'GTFS feed');
+      src.href = attr.url;
+      src.target = '_blank';
+      src.rel = 'noopener noreferrer';
+      node.appendChild(src);
+      node.appendChild(document.createTextNode(' via City of Toronto Open Data '));
+    } else {
+      node.appendChild(document.createTextNode('TTC GTFS via City of Toronto Open Data '));
+    }
+    if (attr.license_url) {
+      var lic = el('a', null, '(' + (attr.license || 'Open Data Licence') + ')');
+      lic.href = attr.license_url;
+      lic.target = '_blank';
+      lic.rel = 'noopener noreferrer';
+      node.appendChild(lic);
+    } else if (attr.license) {
+      node.appendChild(document.createTextNode('(' + attr.license + ')'));
     }
   }
 
@@ -652,6 +731,96 @@
     host.appendChild(empty);
   }
 
+  // ─────────── M6: status banner + designed empty / stale states ───────────
+
+  // Compose a friendly absolute timestamp ("yesterday at 4:12 PM") in
+  // the city's timezone. Falls back to the raw ISO string on parser
+  // failure so the operator can still see when the last refresh was.
+  function friendlyTimestamp(iso, tz) {
+    if (!iso) return 'never';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    try {
+      var dateOpts = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+      if (tz) dateOpts.timeZone = tz;
+      return new Intl.DateTimeFormat('en-US', dateOpts).format(d);
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  // Banner copy is intentionally explicit about WHY the data is stale
+  // and WHEN it was last good. "Cache" is the lever the operator can
+  // pull — telling them so prevents an unnecessary support ticket.
+  function renderStatusBanner(freshness, cityCfg) {
+    var node = document.getElementById('status-banner');
+    if (!node) return;
+    node.innerHTML = '';
+    node.removeAttribute('data-kind');
+    if (!freshness || !freshness.present) {
+      node.hidden = true;
+      return;
+    }
+    var tz = cityCfg && cityCfg.timezone;
+    var kind = null;
+    var eyebrow = '';
+    var body = '';
+
+    var tm = freshness.tm || {};
+    var gtfs = freshness.gtfs || {};
+    var zeroEvent = !!freshness.zero_event_run;
+
+    if (tm.budget_exhausted) {
+      kind = 'warning';
+      eyebrow = 'Cached forecast';
+      body = 'Daily Ticketmaster budget reached. Showing the last successful refresh from ' +
+        friendlyTimestamp(tm.last_success_at, tz) + '.';
+    } else if (tm.stale && tm.last_success_at) {
+      kind = 'warning';
+      eyebrow = 'Forecast may be stale';
+      body = 'Ticketmaster refresh hasn’t completed in over ' + (tm.max_age_minutes || 180) +
+        ' minutes. Last good fetch: ' + friendlyTimestamp(tm.last_success_at, tz) + '.';
+    } else if (tm.stale && !tm.last_success_at) {
+      kind = 'error';
+      eyebrow = 'Forecast unavailable';
+      body = 'No successful Ticketmaster refresh on record yet. The pipeline may not have run.';
+    } else if (zeroEvent) {
+      kind = 'info';
+      eyebrow = 'Quiet week';
+      body = 'No major events meet the whitelist for any day in the window. Either a genuinely quiet stretch or an upstream feed change worth investigating.';
+    } else if (gtfs.stale) {
+      kind = 'info';
+      eyebrow = 'Transit data older than expected';
+      body = 'Static GTFS hasn’t refreshed in over ' + (gtfs.max_age_days || 14) +
+        ' days. Map + rail still render the last-known stations and lines.';
+    }
+
+    if (!kind) {
+      node.hidden = true;
+      return;
+    }
+
+    node.hidden = false;
+    node.setAttribute('data-kind', kind);
+    var dot = el('span', 'status-banner__dot');
+    dot.setAttribute('aria-hidden', 'true');
+    node.appendChild(dot);
+    var content = el('div', 'status-banner__content');
+    content.appendChild(el('span', 'status-banner__eyebrow', eyebrow));
+    content.appendChild(el('span', 'status-banner__body', body));
+    node.appendChild(content);
+  }
+
+  // The forecast strip + map both need a "no whitelisted events" empty
+  // state. Routed through one copy line so the two messages stay
+  // synonymous.
+  function designedEmptyForecastMessage(cityCfg) {
+    var name = (cityCfg && cityCfg.name) || 'this city';
+    return 'No major events meet the whitelist for ' + name + ' in the next 7 days. ' +
+      'The forecast only tracks venues ~5,000+ capacity (plus all pro sports venues), so a quiet ' +
+      'week here can be a genuinely quiet week, not a data problem.';
+  }
+
   // ─────────── City switching ───────────
 
   function switchCity(cityId) {
@@ -684,9 +853,22 @@
     var cityId = state.currentCityId;
     return fetchJson('api/city.php?id=' + encodeURIComponent(cityId)).then(function (resp) {
       state.cityConfig = resp.city;
+      state.freshness = resp.freshness || null;
+      // The map attribution and per-city GTFS attribution may also come
+      // through here. Fall back to what /api/cities.php already loaded
+      // if either field is absent (older deploys, missing endpoint).
+      if (resp.map_attribution) {
+        state.mapAttribution = resp.map_attribution;
+        renderMapAttribution(resp.map_attribution);
+      }
+      if (resp.gtfs_attribution) {
+        state.gtfsAttributions[cityId] = resp.gtfs_attribution;
+      }
+      renderGtfsAttribution(cityId);
+      renderStatusBanner(state.freshness, state.cityConfig);
       state.days = (resp.days || []).slice(0, 7);
       if (state.days.length === 0) {
-        renderEmptyState('No forecast days available for ' + (state.cityConfig.name || cityId) + ' yet.');
+        renderEmptyState(designedEmptyForecastMessage(state.cityConfig));
         return;
       }
       return Promise.all(
@@ -713,6 +895,13 @@
     fetchJson('api/cities.php').then(function (resp) {
       state.cities = resp.cities || [];
       renderAttribution(resp.attribution);
+      if (resp.map_attribution) {
+        state.mapAttribution = resp.map_attribution;
+        renderMapAttribution(resp.map_attribution);
+      }
+      if (resp.gtfs_attributions && typeof resp.gtfs_attributions === 'object') {
+        state.gtfsAttributions = resp.gtfs_attributions;
+      }
 
       if (state.cities.length === 0) {
         renderEmptyState('No cities configured.');
@@ -721,11 +910,15 @@
 
       state.currentCityId = state.cities[0].id;
       renderCitySelector(state.cities, state.currentCityId);
+      renderGtfsAttribution(state.currentCityId);
       return loadCurrentCity();
     }).catch(function (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      renderEmptyState('Forecast unavailable. Check that the API is reachable.');
+      renderEmptyState(
+        'Forecast unavailable. Check that the API is reachable, then refresh. ' +
+        'If the issue persists, the cron may not be running.'
+      );
     });
   }
 

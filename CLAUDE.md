@@ -68,11 +68,15 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants. |
 | `pipeline/timecurves.py` | Per-event 96-bucket time curve + daily timeline + peak-bucket + sigma. M2-locked. |
 | `pipeline/whitelist.py` | Apply venue whitelist to Ticketmaster events (TM id, name, alias). |
-| `pipeline/ticketmaster.py` | Discovery API client + on-disk cache. |
-| `api/_common.php` | Shared PHP helpers: city allowlist, venues index, JSON response. |
+| `pipeline/ticketmaster.py` | Discovery API client + on-disk cache. M6: jittered backoff + per-city per-day budget reservation; raises `BudgetExhausted` when the day's TM quota is hit. |
+| `pipeline/status.py` | M6: writes `data/status.json` (TM freshness, GTFS freshness, zero-event sanity flag per city). Single source of truth for "is the data fresh?". |
+| `pipeline/budget.py` | M6: per-city per-day Ticketmaster call counter (`data/cache/ticketmaster/budget.json`). |
+| `api/_common.php` | Shared PHP helpers: city allowlist, venues index, JSON response. M6: attribution loaders (TM, OSM+CARTO, per-city GTFS license), status reader, freshness summary. |
 | `api/forecast.php` | Per-day forecast JSON, joined with venue lat/lon from `venues.json`. |
-| `api/city.php` | Per-city config + list of available forecast days. |
-| `api/cities.php` | Configured cities + Ticketmaster attribution. |
+| `api/city.php` | Per-city config + list of available forecast days + M6 freshness summary + map / GTFS attribution. |
+| `api/cities.php` | Configured cities + all attribution surfaces (TM + OSM/CARTO + per-city GTFS licenses). |
+| `api/status.php` | M6: per-city cron freshness surface (TM/GTFS last success, stale flags, zero-event sanity). |
+| `DEPLOY.md` | M6: post-deploy verification runbook. |
 | `config/cities.json` | List of configured city ids. MVP: `["toronto"]`. |
 | `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query. |
 | `config/<city>/venues.json` | Major-venue whitelist. Single source of truth for venue lat/lon + capacity. |

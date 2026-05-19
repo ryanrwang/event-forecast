@@ -26,10 +26,21 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import gtfs, scoring, ticketmaster, timecurves, transit, whitelist
+from . import budget, gtfs, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
+
+
+def _safe_budget_state(city_id: str, city_cfg: dict) -> dict:
+    """Best-effort budget snapshot for status writes when fetch fails."""
+    try:
+        tz = ZoneInfo(city_cfg["timezone"])
+        daily = int((city_cfg.get("ticketmaster") or {}).get(
+            "daily_budget", budget.DEFAULT_DAILY_BUDGET))
+        return budget.get_state(city_id, tz, daily)
+    except Exception:  # pragma: no cover - never bring down the cron
+        return {"calls": 0, "limit": budget.DEFAULT_DAILY_BUDGET, "exhausted": False}
 
 
 def _setup_logging() -> None:
@@ -99,8 +110,39 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             window_days=window_days,
             force_refresh=force_refresh,
         )
+    except ticketmaster.BudgetExhausted:
+        # The per-city daily budget is gone. Don't crash the cron — the
+        # forecast files from the prior successful run are still on disk
+        # and will continue to serve. Surface the state to the operator
+        # via the status file so the frontend can render a "stale data"
+        # banner with a timestamp.
+        state = _safe_budget_state(city_id, city_cfg)
+        status_writer.mark_tm_attempt(
+            city_id,
+            success=False,
+            error="daily ticketmaster budget exhausted",
+            calls_today=state["calls"],
+            budget_per_day=state["limit"],
+            budget_exhausted=True,
+            tz=ZoneInfo(city_cfg["timezone"]),
+        )
+        log.warning(
+            "[run] %s budget exhausted; previous forecast files unchanged.",
+            city_id,
+        )
+        return 0
     except Exception as exc:  # pragma: no cover - top-level guard
         log.error("[fatal] Ticketmaster fetch failed for %s: %s", city_id, exc)
+        state = _safe_budget_state(city_id, city_cfg)
+        status_writer.mark_tm_attempt(
+            city_id,
+            success=False,
+            error=str(exc)[:200],
+            calls_today=state["calls"],
+            budget_per_day=state["limit"],
+            budget_exhausted=False,
+            tz=ZoneInfo(city_cfg["timezone"]),
+        )
         return 2
 
     out_dir = REPO_ROOT / "data" / city_id
@@ -142,6 +184,11 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         log.info("[whitelist] top unmatched venues: %s", unmatched.most_common(10))
 
     buckets = _bucket_by_local_day(matched, tz)
+
+    # Track per-day scored event counts so we can fire the zero-event
+    # sanity alert and feed status.json.
+    days_with_events = 0
+    total_scored_events = 0
 
     for day_key in meta["day_keys"]:
         day_events = buckets.get(day_key, [])
@@ -227,6 +274,42 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             peak_value,
             len(forecast_events),
         )
+
+        if forecast_events:
+            days_with_events += 1
+            total_scored_events += len(forecast_events)
+
+    # M6 sanity check: a run that produces zero impactful events across
+    # EVERY day in the rolling window is almost always a real problem —
+    # whitelist mismatch, upstream Ticketmaster outage swallowed silently,
+    # or a fetch that returned [] without raising. Surface loudly to the
+    # status file so the frontend can render a banner.
+    if total_scored_events == 0:
+        log.error(
+            "[sanity] %s: ZERO impactful events across the %d-day window. "
+            "Investigate: whitelist mismatch, upstream outage, or empty fetch.",
+            city_id, len(meta["day_keys"]),
+        )
+
+    # Record this run's outcome to status.json. Successful fetch +
+    # forecast write — TM is fresh; ``forecast`` section captures the
+    # zero-event sanity bit.
+    budget_state = meta.get("budget") or _safe_budget_state(city_id, city_cfg)
+    status_writer.mark_tm_attempt(
+        city_id,
+        success=True,
+        error=None,
+        calls_today=budget_state["calls"],
+        budget_per_day=budget_state["limit"],
+        budget_exhausted=bool(budget_state.get("exhausted")),
+        tz=tz,
+    )
+    status_writer.mark_forecast_run(
+        city_id,
+        days_with_events=days_with_events,
+        total_events=total_scored_events,
+        tz=tz,
+    )
 
     return 0
 

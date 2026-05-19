@@ -5,6 +5,10 @@
  * Returns the per-city config (id, name, timezone, bbox, etc.) plus
  * the list of available forecast days under data/<city_id>/.
  * The venue whitelist is NOT echoed — it's server-side detail.
+ *
+ * Also returns the per-city freshness summary (Ticketmaster + GTFS
+ * staleness + zero-event-run sanity flag) so the frontend can render
+ * the stale-data banner without a second roundtrip.
  */
 
 require_once __DIR__ . '/_common.php';
@@ -28,7 +32,10 @@ $city_payload = [
 ];
 
 send_json([
-    'city'        => $city_payload,
-    'days'        => list_forecast_days($id),
-    'attribution' => attribution(),
+    'city'              => $city_payload,
+    'days'              => list_forecast_days($id),
+    'attribution'       => attribution(),
+    'map_attribution'   => map_attribution(),
+    'gtfs_attribution'  => gtfs_attribution_for($id),
+    'freshness'         => city_freshness($id),
 ]);

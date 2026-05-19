@@ -59,9 +59,18 @@ from urllib.parse import urlparse
 
 import requests
 
+from . import status as status_writer
 from .config import CONFIG_DIR, REPO_ROOT, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.gtfs")
+
+# How many prior zips to retain per city in the GTFS cache. The pipeline
+# normally overwrites the same path (``<city_id>.zip``), but a previous
+# milestone or a one-off ``--refresh`` may have left rotated copies
+# behind. We keep the latest 2 (current + one prior, for rollback) and
+# delete anything older. Sized for shared hosting where disk is finite
+# (TTC's zip alone is ~75 MB).
+ZIPS_TO_RETAIN = 2
 
 # Station-to-venue proximity radius. 600m ≈ 7-8 min walk; covers downtown
 # Toronto blocks where venues like Scotiabank Arena / Rogers Centre sit on
@@ -146,21 +155,72 @@ def _download_zip(url: str, dest: Path) -> None:
     log.info("[gtfs] cached %.1f MB at %s", dest.stat().st_size / (1024 * 1024), dest)
 
 
-def resolve_gtfs_zip(city_id: str, source: str, force_refresh: bool) -> Path:
-    """Return a local Path to the GTFS zip for one city.
+def _prune_old_zips(city_id: str, retain: int = ZIPS_TO_RETAIN) -> None:
+    """Delete all but the ``retain`` most-recent zips for this city.
 
-    `source` may be a URL or a local path. URLs are cached under
-    data/cache/gtfs/<city_id>.zip with GTFS_CACHE_TTL_SECONDS TTL.
+    The pipeline normally writes to a stable path (``<city_id>.zip``), so
+    in steady state this is a no-op. But ``--refresh`` and earlier code
+    paths may have left ``<city_id>.zip.YYYYMMDD`` or ``.tmp`` files
+    around; this is the bounded-disk guarantee M6 owed the operator.
+    """
+    if not GTFS_CACHE_DIR.exists():
+        return
+    # Match either "<city_id>.zip" or "<city_id>.zip.*" so a rotated
+    # filename convention later doesn't bypass the prune.
+    candidates = [
+        p for p in GTFS_CACHE_DIR.iterdir()
+        if p.is_file() and (p.name == f"{city_id}.zip" or p.name.startswith(f"{city_id}.zip."))
+        and not p.name.endswith(".tmp")
+    ]
+    if len(candidates) <= retain:
+        return
+    candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for stale in candidates[retain:]:
+        try:
+            stale.unlink()
+            log.info("[gtfs] pruned old cache file %s", stale)
+        except OSError as exc:  # pragma: no cover - filesystem edge
+            log.warning("[gtfs] could not prune %s: %s", stale, exc)
+
+
+def resolve_gtfs_zip(city_id: str, source: str, force_refresh: bool) -> tuple[Path, bool]:
+    """Return ``(zip_path, freshly_downloaded)`` for one city.
+
+    ``source`` may be a URL or a local path. URLs are cached under
+    ``data/cache/gtfs/<city_id>.zip`` with ``GTFS_CACHE_TTL_SECONDS`` TTL.
+    If the cached zip is fresh, no download occurs and the second tuple
+    element is False — useful for the M6 status writer, which records
+    the zip mtime regardless (so a "we fell back to cache" run still
+    surfaces the cache's age to the operator).
     """
     parsed = urlparse(source)
     if parsed.scheme in ("http", "https"):
         cache_path = _cache_path_for(city_id)
         if force_refresh or not _is_cache_fresh(cache_path, GTFS_CACHE_TTL_SECONDS):
-            _download_zip(source, cache_path)
+            try:
+                _download_zip(source, cache_path)
+                freshly_downloaded = True
+            except (requests.RequestException, OSError) as exc:
+                # The M6 contract: a download failure must NOT silently
+                # fall back to a stale zip. We still return the cached
+                # path so the pipeline can proceed (better than zero
+                # transit data), but the freshly_downloaded flag tells
+                # the caller to log loudly and record the stale state.
+                if cache_path.exists():
+                    log.error(
+                        "[gtfs] download failed (%s); falling back to "
+                        "STALE cached zip at %s — operator should "
+                        "investigate the feed URL",
+                        exc, cache_path,
+                    )
+                    freshly_downloaded = False
+                else:
+                    raise
         else:
             age_min = (time.time() - cache_path.stat().st_mtime) / 60.0
             log.info("[gtfs] using cached zip (%.0fmin old): %s", age_min, cache_path)
-        return cache_path
+            freshly_downloaded = False
+        return cache_path, freshly_downloaded
 
     # Local path. Resolve relative to repo root if not absolute.
     p = Path(source)
@@ -168,7 +228,7 @@ def resolve_gtfs_zip(city_id: str, source: str, force_refresh: bool) -> Path:
         p = (REPO_ROOT / p).resolve()
     if not p.exists():
         raise FileNotFoundError(f"GTFS source not found: {p}")
-    return p
+    return p, False
 
 
 # ─────────── Geometry ───────────
@@ -479,13 +539,29 @@ def refresh_city(city_id: str, force_refresh: bool) -> int:
     source = (city_cfg.get("gtfs_static_source") or "").strip()
     if not source:
         log.warning("[gtfs] %s has no gtfs_static_source; skipping", city_id)
+        status_writer.mark_gtfs_refresh(city_id, zip_mtime_epoch=None, zip_size_bytes=None)
         return 0
 
     try:
-        zip_path = resolve_gtfs_zip(city_id, source, force_refresh)
+        zip_path, _freshly = resolve_gtfs_zip(city_id, source, force_refresh)
     except Exception as exc:
         log.error("[gtfs] failed to resolve GTFS zip for %s: %s", city_id, exc)
+        status_writer.mark_gtfs_refresh(city_id, zip_mtime_epoch=None, zip_size_bytes=None)
         return 1
+
+    # Record the zip's mtime + size in the status file BEFORE parsing —
+    # if the parse fails we still want the operator to see how old the
+    # zip on disk is. _freshly is intentionally not propagated to status;
+    # the mtime tells the same story without an extra field.
+    try:
+        st = zip_path.stat()
+        status_writer.mark_gtfs_refresh(
+            city_id,
+            zip_mtime_epoch=st.st_mtime,
+            zip_size_bytes=st.st_size,
+        )
+    except OSError:
+        status_writer.mark_gtfs_refresh(city_id, zip_mtime_epoch=None, zip_size_bytes=None)
 
     venues = city_cfg.get("venues") or []
     if not venues:
@@ -523,6 +599,7 @@ def refresh_city(city_id: str, force_refresh: bool) -> int:
         "[gtfs] %s: wrote %d reduced stations (radius=%dm)",
         city_id, len(stations), int(STATION_RADIUS_M),
     )
+    _prune_old_zips(city_id)
     return 0
 
 
