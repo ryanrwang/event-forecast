@@ -57,13 +57,27 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | File | Purpose |
 |---|---|
 | `00-overview.md` | Single source of truth for product, stack, milestones. Read first. |
-| `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. |
+| `10-decisions-log.md` | Chronological log of consequential decisions with rationale. |
+| `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
 | `styles.css` | Global styles, references CSS custom properties only. |
-| `index.html` | Frontend shell. Forecast strip + detail region + footer. |
-| `app.js` | Entry point. Applies theme, renders placeholder until M0+. |
+| `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
+| `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. |
+| `map.js` | Leaflet map + custom canvas heat overlay + markers + legend (M2). |
+| `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |
+| `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants. |
+| `pipeline/timecurves.py` | Per-event 96-bucket time curve + daily timeline + peak-bucket + sigma. M2-locked. |
+| `pipeline/whitelist.py` | Apply venue whitelist to Ticketmaster events (TM id, name, alias). |
+| `pipeline/ticketmaster.py` | Discovery API client + on-disk cache. |
+| `api/_common.php` | Shared PHP helpers: city allowlist, venues index, JSON response. |
+| `api/forecast.php` | Per-day forecast JSON, joined with venue lat/lon from `venues.json`. |
+| `api/city.php` | Per-city config + list of available forecast days. |
+| `api/cities.php` | Configured cities + Ticketmaster attribution. |
+| `config/cities.json` | List of configured city ids. MVP: `["toronto"]`. |
+| `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query. |
+| `config/<city>/venues.json` | Major-venue whitelist. Single source of truth for venue lat/lon + capacity. |
 | `.github/workflows/deploy.yml` | SFTP deploy to Bluehost on push to `main`. |
 
-This table expands as milestones land (Python cron dir, PHP `api/` endpoints, city config, GTFS data, etc.).
+This table expands as milestones land (timeline UI, GTFS data, etc.).
 
 ## Rules
 

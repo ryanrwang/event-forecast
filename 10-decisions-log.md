@@ -58,3 +58,42 @@ This is consistent with the existing `.gitignore` (`data/` is ignored) and `.git
 The pipeline reads `config/cities.json` (a JSON array of city ids) and iterates. The PHP layer reads the same file. Adding a second city is two new files (`config/<id>/city.json`, `config/<id>/venues.json`) and one line in `cities.json` — no code change in any layer.
 
 `--city <id>` is preserved as an override on `pipeline.run` for one-off runs.
+
+## 2026-05-18 — M2
+
+### Heatmap summed client-side, not as a precomputed grid
+
+The M2 modeling spec offers either (a) precompute the full distance-decay heat grid in Python and ship it in the per-day JSON, or (b) ship per-event venue intensities + sigmas and sum on the client.
+
+**Chose (b).** Reasons:
+- Toronto's bbox at a 75m grid is ~570 × ~407 = ~232,000 cells. Even a Float32 array would be ~900 KB before JSON encoding — too large.
+- Per-event intensity + sigma is O(events) ≈ 20–60 floats per day — forecast.json stays under 20 KB for a busy day.
+- M3's scrubber needs the heat to recompute at an arbitrary bucket. With (b) the client just multiplies `impact × time_curve[bucket]` and re-sums — no new endpoint, no new JSON shape.
+- Heat is rendered onto a downsampled canvas (one canvas pixel ≈ 75m at the current zoom), then bilinearly upscaled. Cheap to redraw on zoom/move; cheap to re-sum on day switch.
+
+**Trade-off accepted.** Normalization is per-redraw (`v / max(grid)`) — a Quiet day's "peak" lights up the same brightness as a Severe day's, just at smaller radius. Absolute intensity is conveyed by marker size + the daily verdict chip; the legend reads `Low → Peak` (relative), not `0 → 100` (absolute). If calibration later wants an absolute ramp, the change is one line in `map.js`.
+
+### Per-event `time_curve` shipped in forecast.json
+
+The per-day JSON carries each event's full 96-bucket street-presence curve (Float, rounded to 4 decimals), plus `sigma_m` and `peak_intensity`.
+
+The curve is technically redundant with `start_local`, `end_local`, `category`, and `impact` — the client could recompute it. But:
+- Duplicating the arrival-ramp / dispersal-tail math in JS is brittle (two sources of truth for the modeling spec).
+- The full curve costs ~200 bytes per event after JSON-encoding zeros; ~50 events × 200 B = ~10 KB per day, acceptable.
+- M3's scrubber reads `events[i].time_curve[bucket]` directly — no client-side modeling code.
+
+### Heatmap palette + legend
+
+Five-stop ramp (`#0EA5A5 → #22C55E → #EAB308 → #F97316 → #EF4444`) lives in `tokens.js` under `primitives.color.heatmap` and is re-exported as `semantic.color.heatmap.s0..s4`. Same hue progression as the verdict palette but the canvas overlay uses `mix-blend-mode: screen` so the dark basemap stays legible underneath.
+
+The legend is **NOT** Leaflet's `L.control.info`-style widget — it's a custom HTML control with explicit "Modeled estimate / Not measured" eyebrow plus fine print explaining the modeling. Visible at all times per the spec.
+
+### OSM basemap = CARTO's `dark_all`
+
+OpenStreetMap doesn't ship a dark tile set itself. CARTO's `dark_all` is OSM-derived (no key required) and renders the city as a quiet black canvas that the heatmap reads cleanly on. Attribution string carries both OSM and CARTO credit, satisfying OSM's required attribution.
+
+No Mapbox / MapTiler key is introduced — staying within the spec's "no third-party basemap key" rule.
+
+### Map detail panel — single scaffold, not re-rendered on day-change
+
+`renderDetailForSelected` builds the detail panel's DOM once (`data-scaffolded`) and reuses it on every day switch. Earlier iteration cleared `#forecast-detail` and rebuilt; that detaches the Leaflet map (still bound to the old `#map-canvas`) and breaks the heat layer + markers on second click. The fix is straightforward but worth recording so M3 doesn't trip over it when wiring the timeline.

@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import scoring, ticketmaster, whitelist
+from . import scoring, ticketmaster, timecurves, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
@@ -174,6 +174,14 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         for e in forecast_events:
             e.pop("_start_local", None)
 
+        # M2: per-event time curves, daily summed timeline, peak bucket,
+        # and per-event venue intensity at the peak bucket. These feed the
+        # map heatmap (M2) and will feed the scrubber in M3.
+        timecurves.build_event_curves(forecast_events, day_key, tz)
+        timeline = timecurves.build_daily_timeline(forecast_events)
+        peak_bucket, peak_value = timecurves.pick_peak_bucket(timeline)
+        timecurves.annotate_peak_intensity(forecast_events, peak_bucket)
+
         forecast_payload = {
             "date": day_key,
             "city_id": city_id,
@@ -181,6 +189,10 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             "generated_at": meta["fetched_at"],
             "verdict": verdict,
             "peak_proxy": peak_proxy,
+            "peak_bucket": peak_bucket,
+            "peak_value": round(peak_value, 3),
+            "bucket_minutes": timecurves.BUCKET_MINUTES,
+            "timeline": timeline,
             "thresholds": scoring.THRESHOLDS,
             "attribution": ticketmaster.ATTRIBUTION,
             "event_count": len(forecast_events),
@@ -188,10 +200,12 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         }
         _write_json(out_dir / day_key / "forecast.json", forecast_payload)
         log.info(
-            "[forecast] %s: verdict=%s peak=%.2f events=%d",
+            "[forecast] %s: verdict=%s peak_proxy=%.2f peak_bucket=%d peak_value=%.2f events=%d",
             day_key,
             verdict,
             peak_proxy,
+            peak_bucket,
+            peak_value,
             len(forecast_events),
         )
 

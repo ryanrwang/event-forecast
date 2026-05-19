@@ -41,8 +41,8 @@
   {
     "id": "budweiser-stage",
     "name": "RBC Amphitheatre",
-    "lat": 43.6294,
-    "lon": -79.4154,
+    "lat": 43.6276,
+    "lon": -79.4147,
     "capacity": 16000,
     "category": "major_concert",
     "notes": "Major outdoor amphitheatre at Ontario Place. Seasonal (open air, May-Oct).",
@@ -102,7 +102,7 @@
   {
     "id": "princess-of-wales-theatre",
     "name": "Princess of Wales Theatre",
-    "lat": 43.6478,
+    "lat": 43.6464,
     "lon": -79.3915,
     "capacity": 2000,
     "category": "performing_arts",
@@ -111,8 +111,8 @@
   {
     "id": "history",
     "name": "History",
-    "lat": 43.6671,
-    "lon": -79.3144,
+    "lat": 43.6633,
+    "lon": -79.3137,
     "capacity": 2500,
     "category": "major_concert",
     "notes": "Live Nation venue in the Beach; major touring acts. Below 5k threshold but a regular headline booker."
