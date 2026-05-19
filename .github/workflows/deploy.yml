@@ -26,6 +26,7 @@ jobs:
             **/__pycache__/**
             .claude/**
             cache/**
+            data/**
             secrets/**
             CLAUDE.md
             **/*.md
