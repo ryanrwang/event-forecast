@@ -97,3 +97,63 @@ No Mapbox / MapTiler key is introduced — staying within the spec's "no third-p
 ### Map detail panel — single scaffold, not re-rendered on day-change
 
 `renderDetailForSelected` builds the detail panel's DOM once (`data-scaffolded`) and reuses it on every day switch. Earlier iteration cleared `#forecast-detail` and rebuilt; that detaches the Leaflet map (still bound to the old `#map-canvas`) and breaks the heat layer + markers on second click. The fix is straightforward but worth recording so M3 doesn't trip over it when wiring the timeline.
+
+## 2026-05-19 — M6
+
+### Cron cadence — two TM cron entries, one weekly GTFS
+
+Bluehost cPanel cron configures three entries instead of one shared schedule:
+
+- **Every 30 min:** `python -m pipeline.run --window-days 1` (refreshes the next-24h window — this is the cadence that matters for "is tonight going to be a problem?").
+- **Every 3 hours:** `python -m pipeline.run --window-days 7` (refreshes the full forecast window — slower because changes 2-7 days out are not time-sensitive).
+- **Weekly Sun 03:30:** `python -m pipeline.gtfs` (TTC publishes a fresh static zip about monthly; refreshing weekly catches each new release within ~7 days without hammering the agency mirror).
+
+**Why this shape and not "every 30 min for everything":** Toronto's headroom is comfortable (a single window-days=7 cycle ≈ 5-10 page fetches; 5000/day TM budget covers ~500-1000 full-window refreshes). But the architecture must remain sane if M5 adds 2 more cities — running every-30-min for all 3 cities at full 7-day window would still be safe (~432 short + 24 full = ~460 cycles/day × 3 cities × ~10 page fetches = ~13,800 calls/day, which is over budget). The tiered cadence keeps the busy short window aggressive while staying within budget at M5 scale.
+
+The 30-min cadence was chosen over 15-min because the underlying data (Ticketmaster event listings) changes at the cadence of new event announcements (hours-days), not minutes. 30-min trades 30 mins of staleness for half the cron-process overhead on shared hosting.
+
+### Per-city daily Ticketmaster budget
+
+`pipeline/budget.py` tracks calls per city per local-calendar-day in `data/cache/ticketmaster/budget.json`, with a configurable per-city `daily_budget` (default 2000). When exhausted, `ticketmaster.fetch_events` raises `BudgetExhausted` and `pipeline.run` catches it — the prior forecast files stay on disk and the frontend shows a "Cached forecast — daily budget reached" banner with the last-successful timestamp.
+
+**Why 2000/city default and not 5000:** Ticketmaster documents the free tier as ~5000 calls/day **across all keys** for one account. With one key shared across all configured cities, partitioning headroom avoids the situation where Toronto runs hot and pre-empts NYC/Chicago at the M5 expansion point. 2000 × 3 cities = 6000 nominal, but exhausting all three same-day is implausible; the practical ceiling is closer to 2-3 cities running at ~500 calls each.
+
+### Status file — single source of truth for "is the data fresh?"
+
+`data/status.json` is written by both the TM cron and the GTFS cron (different sections, atomic merge). PHP `/api/status.php` exposes it; `/api/city.php` includes a per-city freshness summary so the frontend can render the banner without a second roundtrip. The thresholds (TM `max_age_minutes=180`, GTFS `max_age_days=14`) live in `pipeline/status.py` and are also persisted to the status JSON so PHP / JS don't duplicate the constants.
+
+**Staleness reflects last SUCCESS, not last ATTEMPT.** A failed fetch records `last_attempt_at` but doesn't reset `last_success_at` — the operator-facing banner ("Forecast may be stale — last good fetch was X") describes data freshness, not cron liveness. A separate `last_error` field tells the operator what just failed, without lying about how old the data they're looking at is.
+
+### GTFS — fall back to stale cache loudly, never silently
+
+The M4 implementation silently used a stale cached zip when the GTFS download failed. M6 changes this to log loudly (`download failed; falling back to STALE cached zip ... operator should investigate the feed URL`), record the cache's mtime to `status.json` so the frontend shows the GTFS-stale banner, and surface the age in `/api/status.php`. The cache TTL itself stays 24h.
+
+### GTFS zip cache prune — retain 2
+
+`pipeline/gtfs.py` calls `_prune_old_zips` at the end of every successful refresh, keeping the latest 2 zip files per city in `data/cache/gtfs/`. In steady state this is a no-op (the pipeline writes to one stable filename), but a one-off `--refresh` or a future filename rotation could pile up disk usage on shared hosting where space is finite.
+
+### M6 stretch items — both declined
+
+Two stretch items were optional. Both were declined for shipping reasons, not preference. Either could be a post-MVP add later.
+
+**Street-snapped heatmap — declined.** The current radial Gaussian field renders cleanly under the CARTO dark basemap and is honestly labeled as a modeled estimate. Street snapping would require either:
+- offline OSM extract preprocessing (adds a non-trivial build step, violates the no-build-tooling constraint and the $0-to-run constraint if the operator pays for hosted routing tiles), or
+- a client-side library like Turf.js running over a cached OSM road graph (adds a build dependency or pulls in a CDN-loaded JS lib that the no-framework rule was meant to prevent).
+
+The visual fidelity gain is real but doesn't pay for the architectural cost at MVP. The hook exists to add it later — the heatmap is masked at the canvas layer, so a future "intersect with street mask" pass plugs in without touching the modeling spec.
+
+**"Was it actually busy?" feedback hook — declined.** Implementing this cleanly requires:
+- a server-side WRITE endpoint (the PHP layer is currently read-only — adding a write endpoint expands the attack surface: CSRF tokens, IP rate-limiting, and a denylist for abuse mitigation),
+- a per-day feedback storage file alongside `forecast.json` (anonymous but durable),
+- a UI affordance on past forecast days only.
+
+That's a meaningful chunk of work that would compromise other M6 acceptance criteria if rushed in. The decisions log notes the eventual integration point (the feedback file lives alongside per-day JSON, so it's trivial to read back when tuning the modeling spec constants).
+
+### Footer attribution — three lines, each contractually required
+
+The footer now renders three credits per the respective free-tier ToS:
+- "Event discovery powered by Ticketmaster." — Ticketmaster developer ToS.
+- "Map: OpenStreetMap contributors · CARTO basemaps" — OSM tile usage policy + CARTO basemap attribution.
+- "Transit: TTC GTFS via City of Toronto Open Data (City of Toronto Open Data Licence v1.0)" — Open Data Licence v1.0 requires source + licence disclosure.
+
+The GTFS credit is keyed by city_id; M5's NYC and Chicago expansion adds entries to `gtfs_attribution_for()` in `api/_common.php` without touching the frontend.

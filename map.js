@@ -78,6 +78,12 @@
   var _stationMarkers = {};
   var _bucketFlags = null;
   var _stationEventIndex = {};
+  // M6: map-level transit empty-state notice. Renders only when a day
+  // has zero flagged stations across all whitelisted events (i.e.
+  // transit_flags.events is empty). Distinct from "GTFS hasn't run" —
+  // that's an entirely missing station collection. Kept on the map
+  // module so setForecast can toggle it without app-level plumbing.
+  var _transitNoticeControl = null;
 
   // ─────────── Utilities ───────────
 
@@ -716,6 +722,72 @@
     return out;
   }
 
+  // M6: a compact top-left Leaflet control that explains why no station
+  // markers are visible. Distinguishes three states:
+  //   * No whitelisted events at all this day → "No major events".
+  //   * Events present but none have nearby transit stations →
+  //     "No major transit within range".
+  //   * Reduced station set is empty (pipeline.gtfs hasn't run) →
+  //     suppressed; the GTFS-stale banner above the map covers that.
+  function buildTransitNoticeControl() {
+    var Ctl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd: function () {
+        var wrap = el('div', 'ef-transit-empty');
+        wrap.setAttribute('role', 'note');
+        wrap.appendChild(el('span', 'ef-transit-empty__eyebrow', 'Transit layer'));
+        var msg = el('span', 'ef-transit-empty__body');
+        msg.setAttribute('data-msg', 'true');
+        wrap.appendChild(msg);
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.disableScrollPropagation(wrap);
+        this._wrap = wrap;
+        this._msg = msg;
+        return wrap;
+      },
+      setMessage: function (text) {
+        if (this._msg) this._msg.textContent = text;
+      }
+    });
+    return new Ctl();
+  }
+
+  function transitFlagsHaveStations(forecast) {
+    var tf = forecast && forecast.transit_flags;
+    var list = (tf && tf.events) || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].stations && list[i].stations.length) return true;
+    }
+    return false;
+  }
+
+  function updateTransitNotice(forecast) {
+    if (!_map) return;
+    var stationsConfigured = Object.keys(_stationMarkers).length > 0;
+    var hasEvents = !!(forecast && forecast.events && forecast.events.length);
+    var hasFlaggedStations = transitFlagsHaveStations(forecast);
+
+    // If the city has no station collection at all, the GTFS layer is
+    // simply not present — the global stale-data banner covers that.
+    // Suppress this map-level notice in that case.
+    var shouldShow = stationsConfigured && !hasFlaggedStations;
+    if (!shouldShow) {
+      if (_transitNoticeControl) {
+        _map.removeControl(_transitNoticeControl);
+        _transitNoticeControl = null;
+      }
+      return;
+    }
+
+    if (!_transitNoticeControl) {
+      _transitNoticeControl = buildTransitNoticeControl().addTo(_map);
+    }
+    var msg = hasEvents
+      ? 'No major transit stations within modeled range of today’s events.'
+      : 'No major events on this day, so no transit stations are flagged.';
+    _transitNoticeControl.setMessage(msg);
+  }
+
   function setForecast(forecast, cityConfig) {
     if (!_map) return;
     _currentForecast = forecast || null;
@@ -729,6 +801,7 @@
     // walks avoid_windows[] + transit_flags.events[] once on day change,
     // so subsequent setBucket() calls stay O(stations).
     buildBucketFlags(forecast);
+    updateTransitNotice(forecast);
 
     // Default the heatmap to the day's peak bucket. The scrubber will
     // call setBucket() to override.

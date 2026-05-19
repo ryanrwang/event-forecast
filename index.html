@@ -27,6 +27,11 @@
   </header>
 
   <main class="app-main" id="app-main">
+    <!-- M6: stale-data / zero-event banner. Populated by app.js when
+         /api/city.php reports staleness or a zero-event run. Hidden
+         (via the hidden attribute) by default. -->
+    <div class="status-banner" id="status-banner" role="status" aria-live="polite" hidden></div>
+
     <section class="forecast-strip" id="forecast-strip" aria-label="Multi-day forecast">
       <div class="placeholder" role="status">
         <span class="placeholder__dot" aria-hidden="true"></span>
@@ -47,6 +52,12 @@
   <footer class="app-footer">
     <small class="app-footer__attribution" id="ticketmaster-attribution">
       Event discovery powered by Ticketmaster.
+    </small>
+    <small class="app-footer__attribution" id="map-attribution">
+      OpenStreetMap contributors &middot; CARTO basemaps
+    </small>
+    <small class="app-footer__attribution" id="gtfs-attribution" hidden>
+      <!-- Populated per configured city from /api/cities.php gtfs_attributions. -->
     </small>
     <small class="app-footer__disclaimer">
       Modeled estimate, not measured.

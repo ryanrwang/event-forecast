@@ -149,6 +149,88 @@ a:visited {
     var(--color-bg-surface);
 }
 
+/* ────────────── M6 Status banner ────────────── */
+
+/*
+ * Stale-data / zero-event / budget-exhausted banner. Renders ABOVE the
+ * forecast strip when the pipeline reports any of:
+ *   * Ticketmaster refresh older than max_age_minutes
+ *   * Per-day TM budget exhausted
+ *   * Zero impactful events across the entire window
+ *   * GTFS zip older than max_age_days
+ *
+ * Three visual kinds — info / warning / error — keyed off data-kind.
+ * The dot color encodes severity at a glance.
+ */
+.status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-base);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 2%, transparent), transparent 60%),
+              var(--color-bg-raised);
+  box-shadow: var(--shadow-sm);
+}
+
+.status-banner[data-kind="info"] {
+  border-color: color-mix(in srgb, var(--color-status-info) 40%, transparent);
+}
+
+.status-banner[data-kind="warning"] {
+  border-color: color-mix(in srgb, var(--color-status-warning) 50%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-status-warning) 6%, transparent), transparent 70%),
+              var(--color-bg-raised);
+}
+
+.status-banner[data-kind="error"] {
+  border-color: color-mix(in srgb, var(--color-verdict-severe) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-verdict-severe) 8%, transparent), transparent 70%),
+              var(--color-bg-raised);
+}
+
+.status-banner__dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-status-info);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-status-info) 25%, transparent);
+}
+
+.status-banner[data-kind="warning"] .status-banner__dot {
+  background: var(--color-status-warning);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-status-warning) 25%, transparent);
+}
+
+.status-banner[data-kind="error"] .status-banner__dot {
+  background: var(--color-verdict-severe);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-verdict-severe) 25%, transparent);
+}
+
+.status-banner__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.status-banner__eyebrow {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+.status-banner__body {
+  font-size: var(--typography-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
 /* ────────────── Forecast strip ────────────── */
 
 .forecast-strip__grid {
@@ -431,7 +513,8 @@ a:visited {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
   border-top: 1px solid var(--color-border-subtle);
   color: var(--color-text-tertiary);
@@ -682,6 +765,39 @@ a:visited {
   font-size: 11px;
   line-height: 1.4;
   color: var(--color-text-tertiary);
+}
+
+/* M6: map-level transit empty-state notice. Renders top-left as a
+   subdued chip — enough presence to explain why no station markers
+   are visible without crowding the heat field or the legend. */
+
+.ef-transit-empty {
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
+  backdrop-filter: blur(6px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, var(--color-border-base));
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  box-shadow: var(--shadow-md);
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-text-secondary);
+}
+
+.ef-transit-empty__eyebrow {
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-status-info);
+}
+
+.ef-transit-empty__body {
+  font-size: var(--typography-micro);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  font-style: italic;
 }
 
 /* M4: small inline transit-station legend row. */
