@@ -57,6 +57,10 @@
   var _markerLayer = null;
   var _legendControl = null;
   var _currentForecast = null;
+  // Bucket the heatmap is currently rendered for. Mirrors app state's
+  // selectedBucket; the map owns this only as a cache so a Leaflet
+  // moveend/zoomend redraw uses the right curve sample.
+  var _currentBucket = null;
 
   // ─────────── Utilities ───────────
 
@@ -161,13 +165,31 @@
         this._map = null;
       },
 
-      setData: function (events) {
-        // Each entry must carry: lat, lon, peak_intensity, sigma_m.
-        this._events = (events || []).filter(function (e) {
+      setData: function (events, peakValue) {
+        // Each entry must carry: lat, lon, sigma_m, and either
+        // `intensity` (current-bucket value, set by the scrubber) or
+        // `peak_intensity` (legacy day-peak fallback).
+        var src = (events || []).filter(function (e) {
+          var i = typeof e.intensity === 'number' ? e.intensity : e.peak_intensity;
           return e && typeof e.lat === 'number' && typeof e.lon === 'number' &&
-                 typeof e.peak_intensity === 'number' && e.peak_intensity > 0 &&
+                 typeof i === 'number' && i > 0 &&
                  typeof e.sigma_m === 'number' && e.sigma_m > 0;
         });
+        // Normalize the working shape so _redraw doesn't care which key
+        // the caller used — the splat reads `_drawIntensity` only.
+        this._events = src.map(function (e) {
+          return {
+            lat: e.lat,
+            lon: e.lon,
+            sigma_m: e.sigma_m,
+            _drawIntensity: typeof e.intensity === 'number' ? e.intensity : e.peak_intensity
+          };
+        });
+        // Day's absolute peak (timeline max). Normalizing against this
+        // instead of per-redraw max lets the heat visibly dim and brighten
+        // as the operator scrubs. Falls back to grid max only if missing.
+        this._normMax = (typeof peakValue === 'number' && peakValue > 0)
+          ? peakValue : null;
         this._redraw();
       },
 
@@ -223,7 +245,7 @@
           var y0 = Math.max(0, Math.floor(cy - r));
           var y1 = Math.min(gh - 1, Math.ceil(cy + r));
           var inv2s2 = 1.0 / (2.0 * sigmaCells * sigmaCells);
-          var intensity = e.peak_intensity;
+          var intensity = e._drawIntensity;
           for (var y = y0; y <= y1; y++) {
             for (var x = x0; x <= x1; x++) {
               var dx = x - cx;
@@ -234,12 +256,16 @@
           }
         }
 
-        // Normalize against this redraw's max so the legend reads as a
-        // relative ramp ("low → peak" within the day). Absolute
-        // intensity is intentionally not pinned: a Quiet day's "peak"
-        // should still light up, just at smaller radius.
-        var maxV = 0;
-        for (var k = 0; k < grid.length; k++) if (grid[k] > maxV) maxV = grid[k];
+        // Normalize against the day's absolute peak_value (timeline max)
+        // so scrubbing visibly dims and brightens. The grid's peak-bucket
+        // max ≈ peak_value when the dominant venue dominates, which
+        // anchors t≈1 at the brightest pixel of the peak bucket. Falls
+        // back to the per-redraw grid max if peak_value wasn't supplied.
+        var maxV = this._normMax;
+        if (!(maxV > 0)) {
+          maxV = 0;
+          for (var k = 0; k < grid.length; k++) if (grid[k] > maxV) maxV = grid[k];
+        }
         if (maxV <= 0) return;
 
         var ramp = buildHeatRamp();
@@ -451,6 +477,28 @@
     return _map;
   }
 
+  function eventsForBucket(forecast, bucket) {
+    var events = (forecast && forecast.events) || [];
+    if (typeof bucket !== 'number') return events;
+    var out = new Array(events.length);
+    for (var i = 0; i < events.length; i++) {
+      var ev = events[i];
+      var curve = ev && ev.time_curve;
+      var w = (curve && bucket >= 0 && bucket < curve.length) ? curve[bucket] : 0;
+      var impact = (ev && typeof ev.impact === 'number') ? ev.impact : 0;
+      // Shallow-copy the event with an intensity field reflecting the
+      // selected bucket. Avoids mutating the forecast object the rail
+      // and timeline are also reading.
+      out[i] = {
+        lat: ev.lat,
+        lon: ev.lon,
+        sigma_m: ev.sigma_m,
+        intensity: impact * w
+      };
+    }
+    return out;
+  }
+
   function setForecast(forecast, cityConfig) {
     if (!_map) return;
     _currentForecast = forecast || null;
@@ -459,7 +507,31 @@
     var verdict = forecast && forecast.verdict;
 
     renderMarkers(events, tz, verdict);
-    if (_heatLayer && _heatLayer.setData) _heatLayer.setData(events);
+
+    // Default the heatmap to the day's peak bucket. The scrubber will
+    // call setBucket() to override.
+    var peakBucket = (forecast && typeof forecast.peak_bucket === 'number')
+      ? forecast.peak_bucket : null;
+    _currentBucket = peakBucket;
+    var peakValue = forecast && forecast.peak_value;
+    if (_heatLayer && _heatLayer.setData) {
+      _heatLayer.setData(eventsForBucket(forecast, peakBucket), peakValue);
+    }
+  }
+
+  // Recompute per-event intensity at the given 15-minute bucket and
+  // re-splat the heat canvas. The scrubber calls this on every drag tick;
+  // no server round-trip, no sigma recomputation. peak_value (set on
+  // setForecast) anchors the normalization so brightness varies with
+  // the bucket's timeline value.
+  function setBucket(bucket) {
+    if (!_map || !_currentForecast || !_heatLayer) return;
+    if (typeof bucket !== 'number') return;
+    _currentBucket = bucket;
+    _heatLayer.setData(
+      eventsForBucket(_currentForecast, bucket),
+      _currentForecast.peak_value
+    );
   }
 
   function invalidate() {
@@ -469,6 +541,7 @@
   window.EFMap = {
     ensureMap: ensureMap,
     setForecast: setForecast,
+    setBucket: setBucket,
     invalidate: invalidate
   };
 })();
