@@ -684,6 +684,51 @@ a:visited {
   color: var(--color-text-tertiary);
 }
 
+/* M4: small inline transit-station legend row. */
+.ef-legend__stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border-subtle);
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.ef-legend__station {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.ef-legend__station-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-status-info) 75%, var(--color-bg-overlay));
+  border: 1px solid var(--color-status-info);
+}
+
+.ef-legend__station-dot[data-kind="dispersal"] {
+  background: color-mix(in srgb, var(--color-status-warning) 75%, var(--color-bg-overlay));
+  border-color: var(--color-status-warning);
+}
+
+.ef-legend__station-dot[data-state="multi"] {
+  background: var(--color-verdict-severe);
+  border-color: color-mix(in srgb, var(--color-verdict-severe) 60%, var(--color-text-primary));
+}
+
+.ef-legend__fine--transit {
+  font-style: italic;
+}
+
 /* ────────────── Timeline (M3) ────────────── */
 
 .forecast-detail__timeline {
@@ -950,4 +995,194 @@ a:visited {
   font-size: var(--typography-micro);
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+/* M4: populated transit slot. Visual hierarchy in three lines, all
+   monospace + muted to read as "metadata", not chart copy.
+
+   Row 1: lines (pills) + station count summary
+   Row 2: dispersal/arrival window time text
+   Row 3: modeled-not-measured fine print */
+
+.rail__transit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.rail__transit-count {
+  color: var(--color-text-primary);
+  font-weight: var(--typography-weight-medium);
+}
+
+.rail__transit-lines {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rail__transit-line {
+  display: inline-block;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, transparent);
+  color: var(--color-status-info);
+  background: color-mix(in srgb, var(--color-status-info) 8%, transparent);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+
+.rail__transit-windows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: 2px;
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.rail__transit-window {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.rail__transit-window--arrival   { color: var(--color-status-info); }
+.rail__transit-window--dispersal { color: var(--color-status-warning); }
+.rail__transit-window-active     { color: var(--color-text-primary); }
+
+.rail__transit-fine {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+
+.rail__transit-empty {
+  font-size: var(--typography-micro);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ────────────── M4 Transit station markers ────────────── */
+
+/* Wrapper class on the L.divIcon. Leaflet adds .leaflet-div-icon by
+   default; we strip its background/border via the empty .ef-station-marker
+   selector so only our inner dot renders. */
+.leaflet-div-icon.ef-station-marker {
+  background: transparent;
+  border: 0;
+}
+
+.ef-station-marker__dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  /* Rotated square reads as "this is not the same shape as an event
+     marker" without going pictogram. */
+  transform: rotate(45deg);
+  border-radius: var(--radius-xs);
+  /* Dormant default — barely-there in the candidate set so the eye
+     locks onto the active ones. */
+  background: color-mix(in srgb, var(--color-bg-overlay) 85%, var(--color-text-primary) 15%);
+  border: 1px solid var(--color-border-base);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  opacity: 0.45;
+  transition:
+    background var(--transition-base),
+    border-color var(--transition-base),
+    opacity var(--transition-base),
+    transform var(--transition-base),
+    box-shadow var(--transition-base);
+}
+
+.ef-station-marker__dot[data-state="dormant"] {
+  /* Hide dormant markers entirely so the map only foregrounds the
+     stations actually being impacted at the current scrubber bucket. */
+  opacity: 0;
+  pointer-events: none;
+  transform: rotate(45deg) scale(0.6);
+}
+
+.ef-station-marker__dot[data-state="single"] {
+  opacity: 1;
+  background: color-mix(in srgb, var(--color-status-info) 75%, var(--color-bg-overlay));
+  border-color: var(--color-status-info);
+  transform: rotate(45deg) scale(1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-status-info) 20%, transparent),
+              0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.ef-station-marker__dot[data-state="single"][data-kind="dispersal"] {
+  background: color-mix(in srgb, var(--color-status-warning) 75%, var(--color-bg-overlay));
+  border-color: var(--color-status-warning);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-status-warning) 20%, transparent),
+              0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.ef-station-marker__dot[data-state="multi"] {
+  /* Multi-event flag — reserve the brightest accent so the eye finds it
+     even on a saturated Severe day. */
+  opacity: 1;
+  background: var(--color-verdict-severe);
+  border-color: color-mix(in srgb, var(--color-verdict-severe) 60%, var(--color-text-primary));
+  transform: rotate(45deg) scale(1.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-verdict-severe) 25%, transparent),
+              0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-station-marker__dot { transition: none; }
+}
+
+/* Popup specifics for stations */
+.ef-popup--station .ef-popup__eyebrow {
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.ef-popup__lines {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ef-popup__line {
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, transparent);
+  color: var(--color-status-info);
+  background: color-mix(in srgb, var(--color-status-info) 8%, transparent);
+}
+
+.ef-popup__lines-empty {
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.ef-popup__fine {
+  font-family: var(--typography-font-body);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border-subtle);
 }

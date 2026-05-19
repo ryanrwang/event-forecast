@@ -21,23 +21,14 @@
   var BUCKETS = 96;
   var BUCKET_MIN = 15;
 
-  // Dispersal tails per category (minutes). Mirrors timecurves.py —
-  // intentionally duplicated so the visual band matches the modeling
-  // tail without a JSON round-trip. If the spec changes, change both.
-  var DISPERSAL_TAIL_MIN = {
-    major_concert:   45,
-    performing_arts: 45,
-    comedy:          45,
-    family_other:    45,
-    arena_sports:    75,
-    festival:        120
-  };
-  var DEFAULT_TAIL_MIN = 45;
-  // Operator-facing "avoid arrival" window: tighter than the modeling
-  // arrival ramp (which starts at start-120). 90→15 is the stretch where
-  // queues / sidewalks / transit ramps actually saturate.
-  var ARRIVAL_LEAD_MIN  = 90;
-  var ARRIVAL_TRAIL_MIN = 15;
+  // Avoid windows are now SERVER-COMPUTED — see
+  // pipeline/timecurves.py `build_avoid_windows`. The per-day forecast
+  // JSON carries `avoid_windows[]` with {event_id, kind, from_bucket,
+  // to_bucket, from_minute, to_minute}, the single source of truth for
+  // the timeline bands AND the M4 transit-station flagging windows. The
+  // dispersal-tail-per-category constants (45/75/120) live in Python
+  // (timecurves.DISPERSAL_TAIL_MIN); we never need them on the client
+  // anymore. The pre-M4 client-side recomputation is gone.
 
   // Layout (CSS pixels). Off-grid values are intentional ONLY where the
   // 4px grid leaves a curve plot too thin; otherwise we stay on grid.
@@ -102,26 +93,6 @@
 
   // ─────────── time / bucket helpers ───────────
 
-  // Returns YYYY-MM-DD prefix of an ISO date-time string.
-  function isoDate(s) {
-    if (!s || typeof s !== 'string') return null;
-    var i = s.indexOf('T');
-    return i >= 0 ? s.slice(0, i) : s.slice(0, 10);
-  }
-
-  // Returns minutes-since-local-midnight from an ISO "...Thh:mm:ss±zz:zz".
-  // We read the wall-clock portion directly — the offset already places
-  // it in the same timezone as the day grid.
-  function isoMinutesOfDay(s) {
-    if (!s || typeof s !== 'string') return null;
-    var t = s.indexOf('T');
-    if (t < 0) return null;
-    var hh = parseInt(s.substr(t + 1, 2), 10);
-    var mm = parseInt(s.substr(t + 4, 2), 10);
-    if (isNaN(hh) || isNaN(mm)) return null;
-    return hh * 60 + mm;
-  }
-
   function bucketLabel(bucket) {
     var b = clamp(bucket || 0, 0, BUCKETS - 1);
     var mins = b * BUCKET_MIN;
@@ -156,59 +127,15 @@
     return Math.min(BUCKETS - 1, Math.floor((hh * 60 + mm) / BUCKET_MIN));
   }
 
-  // For an event, returns the bucket index ranges within the displayed
-  // day for its arrival window and dispersal window. Returns null entries
-  // if the window doesn't intersect this day.
-  function eventWindowsForDay(ev, dayIso) {
-    if (!ev) return { arrival: null, dispersal: null };
-    var startDay = isoDate(ev.start_local);
-    var endDay   = isoDate(ev.end_local);
-    var startMin = isoMinutesOfDay(ev.start_local);
-    var endMin   = isoMinutesOfDay(ev.end_local);
-    var arrival = null;
-    var dispersal = null;
-
-    if (startMin != null) {
-      // Arrival window endpoints in minutes-of-day, anchored to the
-      // event's start day. If the event starts today, the window may
-      // extend into the previous day (start-90 from a 00:30 start).
-      // Convert to "minutes since dayIso 00:00" using the start-day vs
-      // dayIso relationship.
-      var dayDelta = dayDifference(dayIso, startDay);
-      // dayDelta = (startDay - dayIso) in days. Positive if event start
-      // is in a later day than the one being displayed.
-      var startAbs = startMin + dayDelta * 24 * 60;
-      var arrFrom = startAbs - ARRIVAL_LEAD_MIN;
-      var arrTo   = startAbs - ARRIVAL_TRAIL_MIN;
-      arrival = intersectMinuteRangeWithDay(arrFrom, arrTo);
-    }
-    if (endMin != null) {
-      var dayDelta2 = dayDifference(dayIso, endDay);
-      var endAbs = endMin + dayDelta2 * 24 * 60;
-      var tail = DISPERSAL_TAIL_MIN[ev.category] || DEFAULT_TAIL_MIN;
-      var dispFrom = endAbs;
-      var dispTo   = endAbs + tail;
-      dispersal = intersectMinuteRangeWithDay(dispFrom, dispTo);
-    }
-    return { arrival: arrival, dispersal: dispersal };
-  }
-
-  // Whole-day delta (b - a) in days for two YYYY-MM-DD strings.
-  function dayDifference(aIso, bIso) {
-    if (!aIso || !bIso) return 0;
-    var a = new Date(aIso + 'T00:00:00Z');
-    var b = new Date(bIso + 'T00:00:00Z');
-    return Math.round((b.getTime() - a.getTime()) / 86400000);
-  }
-
-  // Clip a minute range to [0, 1440] of the displayed day, return as
-  // bucket-index range (fractional) or null if no intersection.
-  function intersectMinuteRangeWithDay(fromMin, toMin) {
-    if (toMin <= 0 || fromMin >= 24 * 60) return null;
-    var lo = Math.max(0, fromMin);
-    var hi = Math.min(24 * 60, toMin);
-    if (hi <= lo) return null;
-    return { from: lo / BUCKET_MIN, to: hi / BUCKET_MIN };
+  // Group the server-emitted forecast.avoid_windows[] by kind for the
+  // band-drawing loop. Each entry already carries from_bucket/to_bucket
+  // intersected with the displayed day, so no client-side window math.
+  function bucketsFromWindow(w) {
+    if (!w) return null;
+    var from = (typeof w.from_bucket === 'number') ? w.from_bucket : null;
+    var to   = (typeof w.to_bucket   === 'number') ? w.to_bucket   : null;
+    if (from == null || to == null || to <= from) return null;
+    return { from: from, to: to };
   }
 
   // Find the contiguous run around the peak bucket where the timeline
@@ -270,8 +197,6 @@
     var peakValue = _forecast.peak_value || 0;
     var peakBucket = (typeof _forecast.peak_bucket === 'number') ? _forecast.peak_bucket : 0;
     var verdict = _forecast.verdict;
-    var dateIso = _forecast.date;
-    var events = _forecast.events || [];
 
     var W = size.w, H = size.h;
     var plotTop = MT, plotBot = H - MB;
@@ -293,23 +218,21 @@
     }
 
     // ── 2. Per-event arrival + dispersal bands. Aggregate the alpha so
-    // overlapping events darken naturally.
+    // overlapping events darken naturally. avoid_windows[] is
+    // pre-intersected with the displayed day by the pipeline.
     var arrivalFill   = tokenColor('color.status.info',    '#38BDF8');
     var dispersalFill = tokenColor('color.status.warning', '#EAB308');
-    for (var i = 0; i < events.length; i++) {
-      var win = eventWindowsForDay(events[i], dateIso);
-      if (win.arrival) {
-        _ctx.fillStyle = hexToRgba(arrivalFill, 0.12);
-        var ax0 = bucketToX(win.arrival.from, size);
-        var ax1 = bucketToX(win.arrival.to,   size);
-        _ctx.fillRect(ax0, plotTop, Math.max(1, ax1 - ax0), plotBot - plotTop);
-      }
-      if (win.dispersal) {
-        _ctx.fillStyle = hexToRgba(dispersalFill, 0.10);
-        var dx0 = bucketToX(win.dispersal.from, size);
-        var dx1 = bucketToX(win.dispersal.to,   size);
-        _ctx.fillRect(dx0, plotTop, Math.max(1, dx1 - dx0), plotBot - plotTop);
-      }
+    var avoidWindows = _forecast.avoid_windows || [];
+    for (var i = 0; i < avoidWindows.length; i++) {
+      var rng = bucketsFromWindow(avoidWindows[i]);
+      if (!rng) continue;
+      var kind = avoidWindows[i].kind;
+      var fill = (kind === 'arrival') ? arrivalFill : dispersalFill;
+      var alpha = (kind === 'arrival') ? 0.12 : 0.10;
+      _ctx.fillStyle = hexToRgba(fill, alpha);
+      var bx0 = bucketToX(rng.from, size);
+      var bx1 = bucketToX(rng.to,   size);
+      _ctx.fillRect(bx0, plotTop, Math.max(1, bx1 - bx0), plotBot - plotTop);
     }
 
     // ── 3. Peak window band. Uses verdict color, stronger than avoid bands.

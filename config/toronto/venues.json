@@ -26,7 +26,7 @@
     "lon": -79.4807,
     "capacity": 50000,
     "category": "major_concert",
-    "notes": "Outdoor concert venue at Downsview Park, opened 2025. Major touring acts.",
+    "notes": "Outdoor concert venue at Downsview Park, opened 2025. Major touring acts., transit: bus routes only within 600m; nearest subway Sheppard West ~1700m — accepted; reconsider with per-venue radius override in future calibration",
     "ticketmaster_venue_id": "KovZ917ARzt"
   },
   {
@@ -45,7 +45,7 @@
     "lon": -79.4147,
     "capacity": 16000,
     "category": "major_concert",
-    "notes": "Major outdoor amphitheatre at Ontario Place. Seasonal (open air, May-Oct).",
+    "notes": "Major outdoor amphitheatre at Ontario Place. Seasonal (open air, May-Oct)., transit: zero TTC stops within 600m (Ontario Place across the Lake Shore divide) — accepted; reconsider with per-venue radius override in future calibration",
     "aliases": ["Budweiser Stage"]
   },
   {

@@ -55,12 +55,29 @@
   var _basemap = null;
   var _heatLayer = null;
   var _markerLayer = null;
+  var _stationLayer = null;
   var _legendControl = null;
   var _currentForecast = null;
   // Bucket the heatmap is currently rendered for. Mirrors app state's
   // selectedBucket; the map owns this only as a cache so a Leaflet
   // moveend/zoomend redraw uses the right curve sample.
   var _currentBucket = null;
+
+  // M4 transit-station bookkeeping. Kept on the map module so setBucket
+  // can update marker states in O(stations) without re-creating markers.
+  //   _stations             — last setStations() input, by station_id.
+  //   _stationMarkers       — station_id → { marker, el } (el lazily
+  //                            resolved once the marker is in the DOM).
+  //   _bucketFlags          — per-bucket Map<station_id, FlagInfo> built
+  //                            once on setForecast; FlagInfo carries the
+  //                            kinds (Set of "arrival"|"dispersal") and
+  //                            the count of distinct events flagging it.
+  //   _stationEventIndex    — station_id → Set<event_id> for the rail's
+  //                            "events impacting this station" cross-ref.
+  var _stations = {};
+  var _stationMarkers = {};
+  var _bucketFlags = null;
+  var _stationEventIndex = {};
 
   // ─────────── Utilities ───────────
 
@@ -392,6 +409,19 @@
 
   // ─────────── Legend ───────────
 
+  function _legendStationGlyph(stateName, label) {
+    var item = el('span', 'ef-legend__station');
+    var dot = el('span', 'ef-legend__station-dot');
+    // Re-use the same data-state attribute as live markers so a token
+    // tweak propagates to the legend without a second styling pass.
+    dot.setAttribute('data-state', stateName === 'multi' ? 'multi' : 'single');
+    if (stateName === 'dispersal') dot.setAttribute('data-kind', 'dispersal');
+    else if (stateName === 'arrival') dot.setAttribute('data-kind', 'arrival');
+    item.appendChild(dot);
+    item.appendChild(document.createTextNode(label));
+    return item;
+  }
+
   function buildLegendControl() {
     var Ctl = L.Control.extend({
       options: { position: 'bottomright' },
@@ -424,6 +454,21 @@
           'start time, category) and proximity. Not live crowd data.';
         wrap.appendChild(fine);
 
+        // M4: transit-station glyph row. Reads as a small inline legend
+        // for the rotated-square markers — arrival (info hue),
+        // dispersal (warning hue), multi-event (severe accent).
+        var stationsRow = el('div', 'ef-legend__stations');
+        stationsRow.appendChild(_legendStationGlyph('arrival',   'Arrival'));
+        stationsRow.appendChild(_legendStationGlyph('dispersal', 'Dispersal'));
+        stationsRow.appendChild(_legendStationGlyph('multi',     'Multiple events'));
+        wrap.appendChild(stationsRow);
+
+        var transitFine = el('p', 'ef-legend__fine ef-legend__fine--transit');
+        transitFine.textContent =
+          'Station load modeled from venue proximity and event ' +
+          'dispersal timing. Not live transit data.';
+        wrap.appendChild(transitFine);
+
         // Block map drag/scroll while interacting with the legend.
         L.DomEvent.disableClickPropagation(wrap);
         L.DomEvent.disableScrollPropagation(wrap);
@@ -431,6 +476,172 @@
       }
     });
     return new Ctl();
+  }
+
+  // ─────────── Stations (M4) ───────────
+  //
+  // Stations are L.marker entries with L.divIcon, in a dedicated
+  // layerGroup. Each marker carries a stable DOM div whose data-state
+  // attribute the scrubber re-paints via CSS — no marker re-creation per
+  // tick. Three states: "dormant" (in candidate set, not currently
+  // flagged), "single" (one event has it inside its avoid window),
+  // "multi" (two or more). The "single" state's tint is further split
+  // arrival vs dispersal via data-kind.
+
+  function buildStationIcon() {
+    return L.divIcon({
+      className: 'ef-station-marker',
+      html:
+        '<span class="ef-station-marker__dot" data-state="dormant" aria-hidden="true"></span>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
+  }
+
+  function buildStationPopupHtml(station) {
+    var lines = (station.lines || []);
+    var linesHtml = lines.length
+      ? '<span class="ef-popup__lines">' +
+          lines.map(function (l) {
+            return '<span class="ef-popup__line">' + escapeHtml(l) + '</span>';
+          }).join('') +
+        '</span>'
+      : '<span class="ef-popup__lines-empty">No lines listed</span>';
+    return (
+      '<div class="ef-popup ef-popup--station">' +
+        '<div class="ef-popup__name">' + escapeHtml(station.station_name || 'Station') + '</div>' +
+        '<div class="ef-popup__meta">' +
+          '<span class="ef-popup__eyebrow">Transit</span>' +
+          '<span class="ef-popup__sep">·</span>' +
+          linesHtml +
+        '</div>' +
+        '<div class="ef-popup__fine">Modeled load from nearby event arrival and dispersal windows. Not measured.</div>' +
+      '</div>'
+    );
+  }
+
+  function setStations(stations) {
+    if (!_map || !_stationLayer) return;
+    _stationLayer.clearLayers();
+    _stations = {};
+    _stationMarkers = {};
+    if (!stations || !stations.length) return;
+
+    for (var i = 0; i < stations.length; i++) {
+      var s = stations[i];
+      if (typeof s.lat !== 'number' || typeof s.lon !== 'number') continue;
+      _stations[s.station_id] = s;
+      var marker = L.marker([s.lat, s.lon], {
+        icon: buildStationIcon(),
+        // Make sure stations float above events without intercepting
+        // every map click — popups still open via the marker itself.
+        zIndexOffset: 600,
+        keyboard: false,
+        riseOnHover: true
+      });
+      marker.bindPopup(buildStationPopupHtml(s), {
+        className: 'ef-popup-wrap ef-popup-wrap--station',
+        closeButton: true,
+        autoPan: true,
+        offset: L.point(0, -4)
+      });
+      marker.addTo(_stationLayer);
+      _stationMarkers[s.station_id] = { marker: marker, station: s, el: null };
+    }
+  }
+
+  // Resolve the dot child for a given station id, caching it. Leaflet
+  // creates the icon's DOM lazily on first render; the cache avoids a
+  // querySelector per scrub tick.
+  function stationDotEl(stationId) {
+    var entry = _stationMarkers[stationId];
+    if (!entry) return null;
+    if (entry.el && entry.el.isConnected) return entry.el;
+    var iconEl = entry.marker.getElement();
+    if (!iconEl) return null;
+    entry.el = iconEl.querySelector('.ef-station-marker__dot');
+    return entry.el;
+  }
+
+  // Build per-bucket flag index from avoid_windows + transit_flags.
+  // _bucketFlags[b] = Map<station_id, {kinds:Set, eventCount:number}>.
+  function buildBucketFlags(forecast) {
+    var byEvent = {};
+    var tf = forecast && forecast.transit_flags;
+    var tfEvents = (tf && tf.events) || [];
+    for (var i = 0; i < tfEvents.length; i++) {
+      byEvent[tfEvents[i].event_id] = tfEvents[i].stations || [];
+    }
+    _stationEventIndex = {};
+    var BUCKETS = 96;
+    var flags = new Array(BUCKETS);
+    var windows = (forecast && forecast.avoid_windows) || [];
+    for (var w = 0; w < windows.length; w++) {
+      var win = windows[w];
+      var stations = byEvent[win.event_id];
+      if (!stations || !stations.length) continue;
+      var from = Math.max(0, Math.floor(win.from_bucket));
+      var to   = Math.min(BUCKETS, Math.ceil(win.to_bucket));
+      for (var b = from; b < to; b++) {
+        var bucketMap = flags[b];
+        if (!bucketMap) { bucketMap = new Map(); flags[b] = bucketMap; }
+        for (var s = 0; s < stations.length; s++) {
+          var sid = stations[s].station_id;
+          var rec = bucketMap.get(sid);
+          if (!rec) {
+            rec = { kinds: new Set(), events: new Set() };
+            bucketMap.set(sid, rec);
+          }
+          rec.kinds.add(win.kind);
+          rec.events.add(win.event_id);
+        }
+      }
+      // Maintain the static (day-level) station→events index too — used by
+      // the rail to list which events flag each station, independent of
+      // current bucket.
+      for (var s2 = 0; s2 < stations.length; s2++) {
+        var sid2 = stations[s2].station_id;
+        var set = _stationEventIndex[sid2];
+        if (!set) { set = new Set(); _stationEventIndex[sid2] = set; }
+        set.add(win.event_id);
+      }
+    }
+    _bucketFlags = flags;
+  }
+
+  function applyStationStatesForBucket(bucket) {
+    var ids = Object.keys(_stationMarkers);
+    if (!ids.length) return;
+    var bucketMap = (_bucketFlags && typeof bucket === 'number') ? _bucketFlags[bucket] : null;
+    for (var i = 0; i < ids.length; i++) {
+      var sid = ids[i];
+      var dot = stationDotEl(sid);
+      if (!dot) continue;
+      var rec = bucketMap ? bucketMap.get(sid) : null;
+      if (!rec) {
+        dot.setAttribute('data-state', 'dormant');
+        dot.removeAttribute('data-kind');
+        continue;
+      }
+      var eventCount = rec.events.size;
+      dot.setAttribute('data-state', eventCount >= 2 ? 'multi' : 'single');
+      // Multi-kind = both arrival AND dispersal active right now.
+      // Single-kind = either, used as a hue swap. The map module never
+      // claims one kind is "more" than the other — just visually distinct.
+      var kind = rec.kinds.size > 1
+        ? 'both'
+        : (rec.kinds.has('dispersal') ? 'dispersal' : 'arrival');
+      dot.setAttribute('data-kind', kind);
+    }
+  }
+
+  // Public hook for the rail: at bucket B, which events flag station S
+  // (or null if none). Returns the kinds set as well for label copy.
+  function stationFlagsAtBucket(stationId, bucket) {
+    if (!_bucketFlags || typeof bucket !== 'number') return null;
+    var bucketMap = _bucketFlags[bucket];
+    if (!bucketMap) return null;
+    return bucketMap.get(stationId) || null;
   }
 
   // ─────────── Public API ───────────
@@ -462,6 +673,12 @@
 
     _heatLayer = makeHeatLayer().addTo(_map);
     _markerLayer = L.layerGroup().addTo(_map);
+    // Stations sit ABOVE the heat canvas (which lives in overlayPane)
+    // and ABOVE the event markers — so a flagged subway station reads
+    // clearly even on a saturated red Severe day. Toggling visibility +
+    // updating per-bucket state stays a layerGroup operation, never
+    // touches the heat or event-marker layers.
+    _stationLayer = L.layerGroup().addTo(_map);
     _legendControl = buildLegendControl().addTo(_map);
 
     if (bbox && bbox.length === 4) {
@@ -508,6 +725,11 @@
 
     renderMarkers(events, tz, verdict);
 
+    // Rebuild the per-bucket transit-flag index for the new day. This
+    // walks avoid_windows[] + transit_flags.events[] once on day change,
+    // so subsequent setBucket() calls stay O(stations).
+    buildBucketFlags(forecast);
+
     // Default the heatmap to the day's peak bucket. The scrubber will
     // call setBucket() to override.
     var peakBucket = (forecast && typeof forecast.peak_bucket === 'number')
@@ -517,13 +739,15 @@
     if (_heatLayer && _heatLayer.setData) {
       _heatLayer.setData(eventsForBucket(forecast, peakBucket), peakValue);
     }
+    applyStationStatesForBucket(peakBucket);
   }
 
   // Recompute per-event intensity at the given 15-minute bucket and
   // re-splat the heat canvas. The scrubber calls this on every drag tick;
   // no server round-trip, no sigma recomputation. peak_value (set on
   // setForecast) anchors the normalization so brightness varies with
-  // the bucket's timeline value.
+  // the bucket's timeline value. Also repaints flagged-station states
+  // off the precomputed _bucketFlags index.
   function setBucket(bucket) {
     if (!_map || !_currentForecast || !_heatLayer) return;
     if (typeof bucket !== 'number') return;
@@ -532,6 +756,7 @@
       eventsForBucket(_currentForecast, bucket),
       _currentForecast.peak_value
     );
+    applyStationStatesForBucket(bucket);
   }
 
   function invalidate() {
@@ -542,6 +767,8 @@
     ensureMap: ensureMap,
     setForecast: setForecast,
     setBucket: setBucket,
+    setStations: setStations,
+    stationFlagsAtBucket: stationFlagsAtBucket,
     invalidate: invalidate
   };
 })();

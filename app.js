@@ -333,6 +333,14 @@
       ? forecast.peak_bucket : 0;
     state.selectedBucket = newBucket;
 
+    // M4: hand the candidate transit-station set to the map BEFORE
+    // setForecast so the day's bucket-flag index is built against the
+    // current station collection. setStations is a no-op for the same
+    // station list, but a city switch can shift it.
+    if (window.EFMap.setStations) {
+      window.EFMap.setStations(stationCollectionFromForecast(forecast));
+    }
+
     // setForecast renders the heatmap at peak_bucket using peak_value
     // normalization. The scrubber will override via setBucket().
     window.EFMap.setForecast(forecast, state.cityConfig);
@@ -341,6 +349,34 @@
       window.EFTimeline.setForecast(forecast, state.cityConfig);
     }
     renderRail();
+  }
+
+  // Reduce the per-day forecast's transit_flags into a flat, deduped
+  // station list for the map. Each station appears once even when
+  // multiple events flag it; the per-bucket state is computed inside
+  // the map module from avoid_windows + transit_flags.
+  function stationCollectionFromForecast(forecast) {
+    var tf = forecast && forecast.transit_flags;
+    var evList = (tf && tf.events) || [];
+    var byId = {};
+    for (var i = 0; i < evList.length; i++) {
+      var stations = evList[i].stations || [];
+      for (var j = 0; j < stations.length; j++) {
+        var s = stations[j];
+        if (!byId[s.station_id]) {
+          byId[s.station_id] = {
+            station_id: s.station_id,
+            station_name: s.station_name,
+            lat: s.lat,
+            lon: s.lon,
+            lines: (s.lines || []).slice()
+          };
+        }
+      }
+    }
+    var out = [];
+    for (var k in byId) if (Object.prototype.hasOwnProperty.call(byId, k)) out.push(byId[k]);
+    return out;
   }
 
   // ─────────── Detail rail ───────────
@@ -480,16 +516,120 @@
     meta.appendChild(times);
     item.appendChild(meta);
 
-    // Reserved transit slot. M4 will populate by event id.
+    // Reserved transit slot. M3 reserved the box (min-height 36px) so
+    // M4's populate-by-event pass doesn't shift the rail layout. We
+    // build the eyebrow + populate fresh children here; the slot's
+    // identity (data-transit-slot, data-event-id) is preserved so
+    // anything that targets the slot by event id keeps working.
     var transit = el('div', 'rail__transit');
     transit.setAttribute('data-transit-slot', 'true');
     transit.setAttribute('data-event-id', ev.id || '');
     transit.appendChild(el('span', 'rail__transit-eyebrow', 'Transit'));
-    transit.appendChild(el('span', 'rail__transit-placeholder',
-      'Transit station info arrives in the next update.'));
+    populateRailTransitSlot(transit, ev, bucket, tz);
     item.appendChild(transit);
 
     return item;
+  }
+
+  // M4: populate the rail row's reserved transit slot with the modeled
+  // stations + lines + window time text for this event. Replaces the
+  // .rail__transit-placeholder child while leaving the eyebrow alone.
+  function populateRailTransitSlot(slotEl, ev, bucket, tz) {
+    // Drop any prior dynamic children (the eyebrow is the first child;
+    // everything after is owned by this function).
+    while (slotEl.children.length > 1) {
+      slotEl.removeChild(slotEl.lastChild);
+    }
+
+    var date = state.selectedDate;
+    var forecast = date && state.forecasts[date];
+    if (!forecast) return;
+    var tf = forecast.transit_flags;
+    var transitEv = tf && tf.events
+      ? tf.events.find(function (te) { return te.event_id === (ev.id || ''); })
+      : null;
+
+    if (!transitEv || !transitEv.stations || !transitEv.stations.length) {
+      var empty = el('span', 'rail__transit-empty',
+        'No major-transit stations within modeled range.');
+      slotEl.appendChild(empty);
+      return;
+    }
+
+    // 1. Summary row: station count + dedup'd line pills (across all
+    //    nearby stations of this event).
+    var summary = el('div', 'rail__transit-summary');
+    var count = transitEv.stations.length;
+    summary.appendChild(el('span', 'rail__transit-count',
+      count + (count === 1 ? ' station' : ' stations')));
+
+    var linesSet = {};
+    var linesOrdered = [];
+    transitEv.stations.forEach(function (s) {
+      (s.lines || []).forEach(function (line) {
+        if (!linesSet[line]) {
+          linesSet[line] = true;
+          linesOrdered.push(line);
+        }
+      });
+    });
+    if (linesOrdered.length) {
+      summary.appendChild(el('span', 'rail__sep', '·'));
+      var linesWrap = el('span', 'rail__transit-lines');
+      // Cap at 8 to avoid wrapping the row; the popup carries the full
+      // set for any one station.
+      linesOrdered.slice(0, 8).forEach(function (line) {
+        linesWrap.appendChild(el('span', 'rail__transit-line', line));
+      });
+      if (linesOrdered.length > 8) {
+        linesWrap.appendChild(el('span', 'rail__transit-line', '+' + (linesOrdered.length - 8)));
+      }
+      summary.appendChild(linesWrap);
+    }
+    slotEl.appendChild(summary);
+
+    // 2. Window time row: arrival / dispersal windows for THIS event,
+    //    pulled from the same forecast.avoid_windows the timeline reads.
+    //    Highlight whichever window the current bucket is inside so the
+    //    scrubber's effect is visible row-by-row.
+    var windowsForEvent = (forecast.avoid_windows || []).filter(function (w) {
+      return w.event_id === (ev.id || '');
+    });
+    if (windowsForEvent.length) {
+      var winsRow = el('div', 'rail__transit-windows');
+      windowsForEvent.forEach(function (w) {
+        var inWindow = (typeof bucket === 'number') &&
+          bucket >= Math.floor(w.from_bucket) &&
+          bucket <  Math.ceil(w.to_bucket);
+        var span = el('span', 'rail__transit-window rail__transit-window--' + w.kind +
+          (inWindow ? ' rail__transit-window-active' : ''));
+        var label = (w.kind === 'arrival' ? 'Arrival' : 'Dispersal') + ' ' +
+          minuteRangeLabel(w.from_minute, w.to_minute);
+        span.textContent = label;
+        winsRow.appendChild(span);
+      });
+      slotEl.appendChild(winsRow);
+    }
+
+    // 3. Modeled-not-measured fine print, every row, every event.
+    slotEl.appendChild(el('span', 'rail__transit-fine',
+      'Modeled load from proximity + dispersal timing — not measured.'));
+  }
+
+  function minuteRangeLabel(fromMin, toMin) {
+    return minuteToHHMM(fromMin) + '–' + minuteToHHMM(toMin);
+  }
+
+  function minuteToHHMM(min) {
+    if (typeof min !== 'number') return '';
+    // Clip to [0, 1440] for display — windows are pre-intersected with
+    // the displayed day server-side, but a negative or >=1440 sneak-in
+    // would render as gibberish.
+    var m = Math.max(0, Math.min(24 * 60, Math.round(min)));
+    var hh = Math.floor(m / 60);
+    var mm = m % 60;
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    return pad(hh) + ':' + pad(mm);
   }
 
   function humanCategory(cat) {

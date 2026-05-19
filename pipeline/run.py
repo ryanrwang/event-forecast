@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import scoring, ticketmaster, timecurves, whitelist
+from . import gtfs, scoring, ticketmaster, timecurves, transit, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
@@ -121,6 +121,16 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
     log.info("[output] wrote %d events to %s", len(events), out_dir / "raw_events.json")
 
     venues = city_cfg["venues"]
+    # M4: reduced station set for this city. Empty if pipeline.gtfs has
+    # not been run yet; the per-day forecast simply ships no transit_flags
+    # and the frontend skips the station layer.
+    stations = gtfs.load_reduced_stations(city_id)
+    if not stations:
+        log.info(
+            "[transit] no reduced stations for %s; run `python -m pipeline.gtfs --city %s`",
+            city_id, city_id,
+        )
+
     matched, unmatched = whitelist.apply(events, venues)
     log.info(
         "[whitelist] %d events matched (of %d); %d distinct unmatched venues",
@@ -182,6 +192,13 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         peak_bucket, peak_value = timecurves.pick_peak_bucket(timeline)
         timecurves.annotate_peak_intensity(forecast_events, peak_bucket)
 
+        # M4: server-computed avoid windows (single source of truth for
+        # timeline bands + transit-station flagging) and per-event
+        # transit flags. Both are keyed by event_id; the frontend joins
+        # them when scrubbing.
+        avoid_windows = timecurves.build_avoid_windows(forecast_events, day_key, tz)
+        transit_flags = transit.build_transit_flags(forecast_events, venues, stations)
+
         forecast_payload = {
             "date": day_key,
             "city_id": city_id,
@@ -194,6 +211,8 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             "bucket_minutes": timecurves.BUCKET_MINUTES,
             "timeline": timeline,
             "thresholds": scoring.THRESHOLDS,
+            "avoid_windows": avoid_windows,
+            "transit_flags": transit_flags,
             "attribution": ticketmaster.ATTRIBUTION,
             "event_count": len(forecast_events),
             "events": forecast_events,
