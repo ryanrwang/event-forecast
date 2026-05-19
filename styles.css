@@ -34,8 +34,8 @@ body {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(80% 60% at 10% -10%, rgba(16, 185, 129, 0.10), transparent 60%),
-    radial-gradient(60% 50% at 90% 0%, rgba(56, 189, 248, 0.06), transparent 65%),
+    radial-gradient(80% 60% at 10% -10%, color-mix(in srgb, var(--color-action-primary) 10%, transparent), transparent 60%),
+    radial-gradient(60% 50% at 90% 0%, color-mix(in srgb, var(--color-status-info) 6%, transparent), transparent 65%),
     var(--color-bg-page);
   transition: background-color var(--transition-base), color var(--transition-base);
 }
@@ -61,7 +61,7 @@ a:visited {
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 80%),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 2%, transparent), transparent 80%),
               var(--color-bg-surface);
   border-bottom: 1px solid var(--color-border-subtle);
   backdrop-filter: saturate(140%) blur(6px);
@@ -145,7 +145,7 @@ a:visited {
 
 .forecast-strip {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 30%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 1.5%, transparent), transparent 30%),
     var(--color-bg-surface);
 }
 
@@ -356,7 +356,7 @@ a:visited {
   gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: 1px solid var(--color-border-subtle);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 80%),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 1.5%, transparent), transparent 80%),
               var(--color-bg-surface);
 }
 
@@ -499,7 +499,7 @@ a:visited {
 }
 
 .leaflet-control-attribution {
-  background: rgba(13, 17, 23, 0.78) !important;
+  background: color-mix(in srgb, var(--color-bg-surface) 78%, transparent) !important;
   color: var(--color-text-tertiary) !important;
   font-family: var(--typography-font-mono);
   font-size: 10px;
@@ -621,7 +621,7 @@ a:visited {
 /* Legend */
 
 .ef-legend {
-  background: rgba(13, 17, 23, 0.88);
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
   backdrop-filter: blur(6px) saturate(140%);
   border: 1px solid var(--color-border-base);
   border-radius: var(--radius-md);
@@ -689,7 +689,7 @@ a:visited {
 .forecast-detail__timeline {
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
   border-top: 1px solid var(--color-border-subtle);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 50%),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 1.5%, transparent), transparent 50%),
               var(--color-bg-surface);
 }
 
@@ -807,9 +807,9 @@ a:visited {
   border: 1px solid var(--color-border-subtle);
 }
 
-.ef-timeline__legend-swatch--arrival  { background: rgba(56, 189, 248, 0.30); }
-.ef-timeline__legend-swatch--dispersal{ background: rgba(234, 179, 8, 0.30); }
-.ef-timeline__legend-swatch--peak     { background: rgba(239, 68, 68, 0.30); }
+.ef-timeline__legend-swatch--arrival  { background: color-mix(in srgb, var(--color-status-info) 30%, transparent); }
+.ef-timeline__legend-swatch--dispersal{ background: color-mix(in srgb, var(--color-status-warning) 30%, transparent); }
+.ef-timeline__legend-swatch--peak     { background: color-mix(in srgb, var(--color-verdict-severe) 30%, transparent); }
 
 .ef-timeline__legend-note {
   margin-left: auto;
@@ -897,9 +897,9 @@ a:visited {
   flex-shrink: 0;
 }
 
-.rail__phase--arrival   { color: var(--color-status-info);    border-color: rgba(56, 189, 248, 0.35); }
-.rail__phase--during    { color: var(--color-text-accent);    border-color: rgba(52, 211, 153, 0.30); }
-.rail__phase--dispersal { color: var(--color-status-warning); border-color: rgba(234, 179, 8, 0.35); }
+.rail__phase--arrival   { color: var(--color-status-info);    border-color: color-mix(in srgb, var(--color-status-info) 35%, transparent); }
+.rail__phase--during    { color: var(--color-text-accent);    border-color: color-mix(in srgb, var(--color-text-accent) 30%, transparent); }
+.rail__phase--dispersal { color: var(--color-status-warning); border-color: color-mix(in srgb, var(--color-status-warning) 35%, transparent); }
 
 .rail__name {
   font-size: var(--typography-caption);

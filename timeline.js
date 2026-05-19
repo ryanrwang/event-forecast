@@ -279,7 +279,10 @@
     _ctx.clearRect(0, 0, W, H);
 
     // ── 1. Hour grid (every 6h: 00, 06, 12, 18). Quiet.
-    _ctx.strokeStyle = tokenColor('color.border.subtle', 'rgba(255,255,255,0.06)');
+    // Fallback is a near-equivalent solid hex (bg.3) for the unreachable
+    // TOKENS-missing case; canvas can't parse color-mix() so we can't
+    // route through a token expression here.
+    _ctx.strokeStyle = tokenColor('color.border.subtle', '#1C232E');
     _ctx.lineWidth = 1;
     for (var hr = 0; hr <= 24; hr += 6) {
       var bx = bucketToX((hr / 24) * BUCKETS, size);
