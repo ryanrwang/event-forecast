@@ -1,0 +1,1614 @@
+{
+  "date": "2026-05-21",
+  "city_id": "toronto",
+  "timezone": "America/Toronto",
+  "generated_at": "2026-05-19T10:32:12-04:00",
+  "verdict": "Severe",
+  "peak_proxy": 89.73,
+  "peak_bucket": 74,
+  "peak_value": 61.946,
+  "bucket_minutes": 15,
+  "timeline": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.535,
+    4.666,
+    12.452,
+    24.385,
+    38.446,
+    51.851,
+    61.946,
+    28.771,
+    31.426,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    7.026,
+    37.071,
+    26.752,
+    39.676,
+    30.011,
+    26.724,
+    25.907,
+    25.278,
+    4.494
+  ],
+  "thresholds": {
+    "T1": 5.0,
+    "T2": 15.0,
+    "T3": 30.0
+  },
+  "avoid_windows": [
+    {
+      "event_id": "1A8ZkoeGke-IUwq",
+      "kind": "arrival",
+      "from_minute": 1050.0,
+      "to_minute": 1125.0,
+      "from_bucket": 70.0,
+      "to_bucket": 75.0
+    },
+    {
+      "event_id": "1A8ZkoeGke-IUwq",
+      "kind": "dispersal",
+      "from_minute": 1320.0,
+      "to_minute": 1395.0,
+      "from_bucket": 88.0,
+      "to_bucket": 93.0
+    },
+    {
+      "event_id": "1AvZZ_aGkw3d_80",
+      "kind": "arrival",
+      "from_minute": 1349.0,
+      "to_minute": 1424.0,
+      "from_bucket": 89.933,
+      "to_bucket": 94.933
+    },
+    {
+      "event_id": "1k7Zv0xfGAuFvsY",
+      "kind": "arrival",
+      "from_minute": 1080.0,
+      "to_minute": 1155.0,
+      "from_bucket": 72.0,
+      "to_bucket": 77.0
+    },
+    {
+      "event_id": "1k7Zv0xfGAuFvsY",
+      "kind": "dispersal",
+      "from_minute": 1350.0,
+      "to_minute": 1395.0,
+      "from_bucket": 90.0,
+      "to_bucket": 93.0
+    },
+    {
+      "event_id": "1AvZZ_7GknFi0DP",
+      "kind": "arrival",
+      "from_minute": 1080.0,
+      "to_minute": 1155.0,
+      "from_bucket": 72.0,
+      "to_bucket": 77.0
+    },
+    {
+      "event_id": "1AvZZ_7GknFi0DP",
+      "kind": "dispersal",
+      "from_minute": 1350.0,
+      "to_minute": 1425.0,
+      "from_bucket": 90.0,
+      "to_bucket": 95.0
+    },
+    {
+      "event_id": "Z7r9jZ1A7Oefv",
+      "kind": "arrival",
+      "from_minute": 1080.0,
+      "to_minute": 1155.0,
+      "from_bucket": 72.0,
+      "to_bucket": 77.0
+    },
+    {
+      "event_id": "Z7r9jZ1A7Oefv",
+      "kind": "dispersal",
+      "from_minute": 1350.0,
+      "to_minute": 1395.0,
+      "from_bucket": 90.0,
+      "to_bucket": 93.0
+    }
+  ],
+  "transit_flags": {
+    "events": [
+      {
+        "event_id": "1A8ZkoeGke-IUwq",
+        "venue_id": "rogers-centre",
+        "stations": [
+          {
+            "station_id": "10777",
+            "station_name": "Spadina Ave at Bremner Blvd",
+            "lat": 43.641023,
+            "lon": -79.393183,
+            "lines": [
+              "310",
+              "510"
+            ],
+            "distance_m": 307.3
+          },
+          {
+            "station_id": "15331",
+            "station_name": "Queens Quay West at Rees St",
+            "lat": 43.638753,
+            "lon": -79.386978,
+            "lines": [
+              "310",
+              "509",
+              "510"
+            ],
+            "distance_m": 353.0
+          },
+          {
+            "station_id": "10927",
+            "station_name": "Queens Quay Loop at Lower Spadina Ave",
+            "lat": 43.638419,
+            "lon": -79.39184,
+            "lines": [
+              "510"
+            ],
+            "distance_m": 385.3
+          },
+          {
+            "station_id": "7346",
+            "station_name": "Spadina Ave at Front St West",
+            "lat": 43.643058,
+            "lon": -79.394027,
+            "lines": [
+              "310",
+              "510"
+            ],
+            "distance_m": 415.5
+          },
+          {
+            "station_id": "12085",
+            "station_name": "Spadina Ave at Queens Quay West",
+            "lat": 43.638141,
+            "lon": -79.39201,
+            "lines": [
+              "310",
+              "510"
+            ],
+            "distance_m": 418.8
+          },
+          {
+            "station_id": "13131",
+            "station_name": "Queens Quay West at Lower Spadina Ave",
+            "lat": 43.637642,
+            "lon": -79.3919,
+            "lines": [
+              "310",
+              "509",
+              "510"
+            ],
+            "distance_m": 463.8
+          },
+          {
+            "station_id": "15646",
+            "station_name": "King St West at Blue Jays Way",
+            "lat": 43.646101,
+            "lon": -79.391644,
+            "lines": [
+              "304",
+              "504",
+              "508"
+            ],
+            "distance_m": 553.0
+          },
+          {
+            "station_id": "4181",
+            "station_name": "King St West at Peter St",
+            "lat": 43.646161,
+            "lon": -79.39201,
+            "lines": [
+              "304",
+              "504",
+              "508"
+            ],
+            "distance_m": 569.5
+          },
+          {
+            "station_id": "15643",
+            "station_name": "King St West at John St",
+            "lat": 43.646576,
+            "lon": -79.389714,
+            "lines": [
+              "304",
+              "504",
+              "508"
+            ],
+            "distance_m": 576.1
+          }
+        ]
+      },
+      {
+        "event_id": "1AvZZ_aGkw3d_80",
+        "venue_id": "scotiabank-arena",
+        "stations": [
+          {
+            "station_id": "15151",
+            "station_name": "Bay St at Lake Shore Blvd W",
+            "lat": 43.643114,
+            "lon": -79.377779,
+            "lines": [
+              "114",
+              "202"
+            ],
+            "distance_m": 114.6
+          },
+          {
+            "station_id": "254",
+            "station_name": "Bay St at Harbour St - Jack Layton Ferry Terminal",
+            "lat": 43.641735,
+            "lon": -79.377377,
+            "lines": [
+              "114",
+              "202",
+              "320"
+            ],
+            "distance_m": 240.3
+          },
+          {
+            "station_id": "246",
+            "station_name": "Bay St at Front St West - Union Station",
+            "lat": 43.645667,
+            "lon": -79.378966,
+            "lines": [
+              "114",
+              "121",
+              "202",
+              "320"
+            ],
+            "distance_m": 241.2
+          },
+          {
+            "station_id": "10935",
+            "station_name": "Union Station",
+            "lat": 43.645683,
+            "lon": -79.380129,
+            "lines": [
+              "1",
+              "310",
+              "509",
+              "510"
+            ],
+            "distance_m": 256.5
+          },
+          {
+            "station_id": "262",
+            "station_name": "Bay St at Queens Quay West - Jack Layton Ferry Terminal",
+            "lat": 43.641686,
+            "lon": -79.377069,
+            "lines": [
+              "114",
+              "202"
+            ],
+            "distance_m": 259.6
+          },
+          {
+            "station_id": "10945",
+            "station_name": "Queens Quay/Ferry Docks Station",
+            "lat": 43.641614,
+            "lon": -79.377139,
+            "lines": [
+              "310",
+              "509",
+              "510"
+            ],
+            "distance_m": 262.4
+          },
+          {
+            "station_id": "1069",
+            "station_name": "Front St West at Bay St",
+            "lat": 43.64617,
+            "lon": -79.37883,
+            "lines": [
+              "19",
+              "97"
+            ],
+            "distance_m": 297.7
+          },
+          {
+            "station_id": "16754",
+            "station_name": "1 Front St West - Union Station",
+            "lat": 43.646205,
+            "lon": -79.377816,
+            "lines": [
+              "114",
+              "121",
+              "202"
+            ],
+            "distance_m": 318.0
+          },
+          {
+            "station_id": "11902",
+            "station_name": "Yonge St at Queens Quay East",
+            "lat": 43.642776,
+            "lon": -79.37509,
+            "lines": [
+              "320"
+            ],
+            "distance_m": 332.6
+          },
+          {
+            "station_id": "12425",
+            "station_name": "The Esplanade at Yonge St",
+            "lat": 43.645867,
+            "lon": -79.37637,
+            "lines": [
+              "121"
+            ],
+            "distance_m": 342.8
+          },
+          {
+            "station_id": "1465",
+            "station_name": "Queens Quay West at Bay St",
+            "lat": 43.641548,
+            "lon": -79.375474,
+            "lines": [
+              "114",
+              "202",
+              "320"
+            ],
+            "distance_m": 363.7
+          },
+          {
+            "station_id": "270",
+            "station_name": "Bay St at Wellington St West",
+            "lat": 43.647217,
+            "lon": -79.379555,
+            "lines": [
+              "19",
+              "97"
+            ],
+            "distance_m": 414.9
+          },
+          {
+            "station_id": "1467",
+            "station_name": "Queens Quay East at Yonge St",
+            "lat": 43.642166,
+            "lon": -79.37421,
+            "lines": [
+              "114",
+              "202"
+            ],
+            "distance_m": 420.5
+          },
+          {
+            "station_id": "1671",
+            "station_name": "Yonge St at Front St West",
+            "lat": 43.647003,
+            "lon": -79.377086,
+            "lines": [
+              "19",
+              "97"
+            ],
+            "distance_m": 421.9
+          },
+          {
+            "station_id": "13455",
+            "station_name": "Yonge St at Front St East",
+            "lat": 43.647073,
+            "lon": -79.376908,
+            "lines": [
+              "121",
+              "320"
+            ],
+            "distance_m": 434.7
+          },
+          {
+            "station_id": "15332",
+            "station_name": "Queens Quay West at Harbourfront Centre",
+            "lat": 43.639697,
+            "lon": -79.381542,
+            "lines": [
+              "310",
+              "509",
+              "510"
+            ],
+            "distance_m": 466.3
+          },
+          {
+            "station_id": "1466",
+            "station_name": "Queens Quay East at Freeland St",
+            "lat": 43.642488,
+            "lon": -79.373076,
+            "lines": [
+              "114",
+              "202"
+            ],
+            "distance_m": 497.6
+          },
+          {
+            "station_id": "3247",
+            "station_name": "Yonge St at Wellington St West",
+            "lat": 43.648025,
+            "lon": -79.377521,
+            "lines": [
+              "19",
+              "97",
+              "320"
+            ],
+            "distance_m": 518.9
+          },
+          {
+            "station_id": "256",
+            "station_name": "Bay St at King St West",
+            "lat": 43.648532,
+            "lon": -79.380116,
+            "lines": [
+              "19",
+              "97"
+            ],
+            "distance_m": 565.5
+          },
+          {
+            "station_id": "15639",
+            "station_name": "King St West at Bay St",
+            "lat": 43.648673,
+            "lon": -79.38012,
+            "lines": [
+              "304",
+              "503",
+              "504",
+              "508"
+            ],
+            "distance_m": 581.0
+          },
+          {
+            "station_id": "15583",
+            "station_name": "The Esplanade at Church St",
+            "lat": 43.647131,
+            "lon": -79.37365,
+            "lines": [
+              "121"
+            ],
+            "distance_m": 596.1
+          },
+          {
+            "station_id": "13813",
+            "station_name": "King Station",
+            "lat": 43.649049,
+            "lon": -79.377888,
+            "lines": [
+              "1"
+            ],
+            "distance_m": 624.7
+          },
+          {
+            "station_id": "13817",
+            "station_name": "St Andrew Station",
+            "lat": 43.647649,
+            "lon": -79.384788,
+            "lines": [
+              "1"
+            ],
+            "distance_m": 649.9
+          }
+        ]
+      },
+      {
+        "event_id": "1AvZZ_7GknFi0DP",
+        "venue_id": "coca-cola-coliseum",
+        "stations": [
+          {
+            "station_id": "13366",
+            "station_name": "Exhibition Loop at Manitoba Dr",
+            "lat": 43.636511,
+            "lon": -79.41471,
+            "lines": [
+              "509"
+            ],
+            "distance_m": 173.3
+          },
+          {
+            "station_id": "1062",
+            "station_name": "Manitoba Dr at Strachan Ave",
+            "lat": 43.636236,
+            "lon": -79.410278,
+            "lines": [
+              "307",
+              "363",
+              "509",
+              "511"
+            ],
+            "distance_m": 186.9
+          },
+          {
+            "station_id": "11991",
+            "station_name": "Strachan Ave at Fleet St",
+            "lat": 43.636556,
+            "lon": -79.40975,
+            "lines": [
+              "329",
+              "363"
+            ],
+            "distance_m": 232.7
+          },
+          {
+            "station_id": "12584",
+            "station_name": "Exhibition Loop",
+            "lat": 43.636102,
+            "lon": -79.416213,
+            "lines": [
+              "307",
+              "329",
+              "363",
+              "509",
+              "511"
+            ],
+            "distance_m": 291.0
+          },
+          {
+            "station_id": "14537",
+            "station_name": "East Liberty St at Pirandello St",
+            "lat": 43.638609,
+            "lon": -79.414255,
+            "lines": [
+              "63",
+              "329"
+            ],
+            "distance_m": 299.2
+          },
+          {
+            "station_id": "15501",
+            "station_name": "Princes' Blvd at Strachan Ave",
+            "lat": 43.635089,
+            "lon": -79.408555,
+            "lines": [
+              "307"
+            ],
+            "distance_m": 348.2
+          },
+          {
+            "station_id": "14536",
+            "station_name": "Strachan Ave at East Liberty St",
+            "lat": 43.639439,
+            "lon": -79.411078,
+            "lines": [
+              "63",
+              "363"
+            ],
+            "distance_m": 380.4
+          },
+          {
+            "station_id": "14538",
+            "station_name": "East Liberty St at Lynn Williams St",
+            "lat": 43.638615,
+            "lon": -79.416904,
+            "lines": [
+              "63",
+              "329"
+            ],
+            "distance_m": 438.3
+          },
+          {
+            "station_id": "15500",
+            "station_name": "Fort York Blvd at Fleet St",
+            "lat": 43.636369,
+            "lon": -79.40686,
+            "lines": [
+              "307"
+            ],
+            "distance_m": 462.3
+          },
+          {
+            "station_id": "14508",
+            "station_name": "Fleet St at Fort York Blvd",
+            "lat": 43.636339,
+            "lon": -79.406837,
+            "lines": [
+              "509",
+              "511"
+            ],
+            "distance_m": 464.0
+          },
+          {
+            "station_id": "16063",
+            "station_name": "Strachan Ave at Wellington St West",
+            "lat": 43.641093,
+            "lon": -79.411473,
+            "lines": [
+              "363"
+            ],
+            "distance_m": 551.6
+          },
+          {
+            "station_id": "13625",
+            "station_name": "Strachan Ave at Canniff St",
+            "lat": 43.641543,
+            "lon": -79.411854,
+            "lines": [
+              "63",
+              "363"
+            ],
+            "distance_m": 597.1
+          }
+        ]
+      },
+      {
+        "event_id": "Z7r9jZ1A7Oefv",
+        "venue_id": "ed-mirvish-theatre",
+        "stations": [
+          {
+            "station_id": "3237",
+            "station_name": "Opposite 247 Yonge St - Toronto Eaton Centre",
+            "lat": 43.654934,
+            "lon": -79.380414,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 129.6
+          },
+          {
+            "station_id": "3221",
+            "station_name": "Yonge St at Dundas St East - TMU Station",
+            "lat": 43.656196,
+            "lon": -79.380763,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 137.3
+          },
+          {
+            "station_id": "2136",
+            "station_name": "Dundas St East at Yonge St - TMU Station",
+            "lat": 43.656426,
+            "lon": -79.380755,
+            "lines": [
+              "305",
+              "505"
+            ],
+            "distance_m": 148.9
+          },
+          {
+            "station_id": "2197",
+            "station_name": "Dundas St West at Yonge St - TMU Station",
+            "lat": 43.65619,
+            "lon": -79.38119,
+            "lines": [
+              "305",
+              "505"
+            ],
+            "distance_m": 169.1
+          },
+          {
+            "station_id": "13809",
+            "station_name": "TMU Station",
+            "lat": 43.656549,
+            "lon": -79.380988,
+            "lines": [
+              "1"
+            ],
+            "distance_m": 172.1
+          },
+          {
+            "station_id": "3222",
+            "station_name": "Yonge St at Dundas St West - TMU Station",
+            "lat": 43.656505,
+            "lon": -79.381074,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 175.3
+          },
+          {
+            "station_id": "2116",
+            "station_name": "Dundas St East at Church St",
+            "lat": 43.656477,
+            "lon": -79.377175,
+            "lines": [
+              "305",
+              "505"
+            ],
+            "distance_m": 184.4
+          },
+          {
+            "station_id": "3243",
+            "station_name": "Yonge St at Shuter St",
+            "lat": 43.65406,
+            "lon": -79.379971,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 192.6
+          },
+          {
+            "station_id": "16260",
+            "station_name": "Yonge St at Gould St",
+            "lat": 43.65756,
+            "lon": -79.381539,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 279.6
+          },
+          {
+            "station_id": "3228",
+            "station_name": "Yonge St at Elm St",
+            "lat": 43.657876,
+            "lon": -79.381484,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 303.8
+          },
+          {
+            "station_id": "13811",
+            "station_name": "Queen Station",
+            "lat": 43.652749,
+            "lon": -79.379388,
+            "lines": [
+              "1"
+            ],
+            "distance_m": 328.5
+          },
+          {
+            "station_id": "252",
+            "station_name": "Bay St at Hagerman St",
+            "lat": 43.654373,
+            "lon": -79.383184,
+            "lines": [
+              "19"
+            ],
+            "distance_m": 352.8
+          },
+          {
+            "station_id": "3239",
+            "station_name": "Yonge St at Queen St West - Queen Station",
+            "lat": 43.65251,
+            "lon": -79.379408,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 355.1
+          },
+          {
+            "station_id": "242",
+            "station_name": "Bay St at Dundas St West",
+            "lat": 43.655673,
+            "lon": -79.38371,
+            "lines": [
+              "19"
+            ],
+            "distance_m": 362.8
+          },
+          {
+            "station_id": "2142",
+            "station_name": "Dundas St West at Bay St",
+            "lat": 43.655714,
+            "lon": -79.383753,
+            "lines": [
+              "305",
+              "505"
+            ],
+            "distance_m": 366.3
+          },
+          {
+            "station_id": "3238",
+            "station_name": "Yonge St at Queen St East - Queen Station",
+            "lat": 43.652319,
+            "lon": -79.379085,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 376.1
+          },
+          {
+            "station_id": "3226",
+            "station_name": "Yonge St at Gerrard St East",
+            "lat": 43.658698,
+            "lon": -79.381838,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 395.2
+          },
+          {
+            "station_id": "3041",
+            "station_name": "Queen St East at Church St",
+            "lat": 43.653269,
+            "lon": -79.37552,
+            "lines": [
+              "301"
+            ],
+            "distance_m": 400.9
+          },
+          {
+            "station_id": "2118",
+            "station_name": "Dundas St East at Jarvis St",
+            "lat": 43.657055,
+            "lon": -79.374542,
+            "lines": [
+              "305",
+              "505"
+            ],
+            "distance_m": 403.9
+          },
+          {
+            "station_id": "233",
+            "station_name": "Bay St at Albert St",
+            "lat": 43.65296,
+            "lon": -79.382636,
+            "lines": [
+              "19"
+            ],
+            "distance_m": 411.4
+          },
+          {
+            "station_id": "12314",
+            "station_name": "Church St at Queen St East",
+            "lat": 43.653061,
+            "lon": -79.375613,
+            "lines": [
+              "301",
+              "501"
+            ],
+            "distance_m": 411.6
+          },
+          {
+            "station_id": "16833",
+            "station_name": "Yonge St at Gerrard St West",
+            "lat": 43.658814,
+            "lon": -79.382099,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 417.5
+          },
+          {
+            "station_id": "3241",
+            "station_name": "Yonge St at Richmond St West",
+            "lat": 43.651769,
+            "lon": -79.379085,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 437.2
+          },
+          {
+            "station_id": "803",
+            "station_name": "Church St at Richmond St East",
+            "lat": 43.652637,
+            "lon": -79.375624,
+            "lines": [
+              "301",
+              "501"
+            ],
+            "distance_m": 445.8
+          },
+          {
+            "station_id": "244",
+            "station_name": "Bay St at Elm St",
+            "lat": 43.657262,
+            "lon": -79.384347,
+            "lines": [
+              "19"
+            ],
+            "distance_m": 449.0
+          },
+          {
+            "station_id": "10892",
+            "station_name": "Richmond St West at Yonge St - Queen Station",
+            "lat": 43.651654,
+            "lon": -79.379372,
+            "lines": [
+              "301",
+              "501"
+            ],
+            "distance_m": 450.1
+          },
+          {
+            "station_id": "3240",
+            "station_name": "Yonge St at Richmond St East",
+            "lat": 43.651579,
+            "lon": -79.378823,
+            "lines": [
+              "97",
+              "320"
+            ],
+            "distance_m": 459.2
+          },
+          {
+            "station_id": "260",
+            "station_name": "Bay St at Queen St West",
+            "lat": 43.651792,
+            "lon": -79.381805,
+            "lines": [
+              "19"
+            ],
+            "distance_m": 482.4
+          },
+          {
+            "station_id": "3050",
+            "station_name": "Queen St East at Jarvis St",
+            "lat": 43.6537,
+            "lon": -79.37323,
+            "lines": [
+              "301",
+              "501"
+            ],
+            "distance_m": 529.3
+          },
+          {
+            "station_id": "2153",
+            "station_name": "Dundas St West at Chestnut St",
+            "lat": 43.655237,
+            "lon": -79.385998,
+            "lines": [
+              "305",
+              "505"
+            ],
+            "distance_m": 549.3
+          },
+          {
+            "station_id": "13807",
+            "station_name": "College Station",
+            "lat": 43.660149,
+            "lon": -79.382688,
+            "lines": [
+              "1"
+            ],
+            "distance_m": 568.7
+          },
+          {
+            "station_id": "248",
+            "station_name": "Bay St at Gerrard St West",
+            "lat": 43.65869,
+            "lon": -79.384942,
+            "lines": [
+              "19"
+            ],
+            "distance_m": 569.1
+          }
+        ]
+      }
+    ],
+    "radius_m": 600
+  },
+  "attribution": "Event discovery powered by Ticketmaster.",
+  "event_count": 5,
+  "events": [
+    {
+      "id": "1A8ZkoeGke-IUwq",
+      "name": "Rogers Centre Ballpark Tours",
+      "venue_id": "rogers-centre",
+      "venue_name": "Rogers Centre",
+      "category": "arena_sports",
+      "start_local": "2026-05-21T19:00:00-04:00",
+      "end_local": "2026-05-21T22:00:00-04:00",
+      "impact": 42.771,
+      "ticketmaster_url": "https://www.ticketmaster.ca/rogers-centre-ballpark-tours-toronto-ontario-05-21-2026/event/10006442A1A36C9D",
+      "time_curve": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0125,
+        0.1091,
+        0.2831,
+        0.5,
+        0.7169,
+        0.8909,
+        0.9875,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.7943,
+        0.5012,
+        0.3162,
+        0.1995,
+        0.1259,
+        0.0794,
+        0.0501,
+        0.0316
+      ],
+      "sigma_m": 1200.0,
+      "peak_intensity": 42.236
+    },
+    {
+      "id": "1AvZZ_aGkw3d_80",
+      "name": "Guided Tours of Scotiabank Arena",
+      "venue_id": "scotiabank-arena",
+      "venue_name": "Scotiabank Arena",
+      "category": "arena_sports",
+      "start_local": "2026-05-21T23:59:00-04:00",
+      "end_local": "2026-05-22T02:59:00-04:00",
+      "impact": 21.631,
+      "ticketmaster_url": "https://www.ticketmaster.ca/guided-tours-of-scotiabank-arena-toronto-ontario-05-21-2026/event/1000649C920D9424",
+      "time_curve": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0161,
+        0.1186,
+        0.2966,
+        0.515,
+        0.7303,
+        0.9001,
+        0.9906,
+        0.1
+      ],
+      "sigma_m": 1115.2,
+      "peak_intensity": 0.0
+    },
+    {
+      "id": "1k7Zv0xfGAuFvsY",
+      "name": "RBC Amphitheatre Opening Night: Imagine Dragons",
+      "venue_id": "budweiser-stage",
+      "venue_name": "RBC Amphitheatre",
+      "category": "major_concert",
+      "start_local": "2026-05-21T19:30:00-04:00",
+      "end_local": "2026-05-21T22:30:00-04:00",
+      "impact": 17.48,
+      "ticketmaster_url": "https://www.ticketmaster.ca/rbc-amphitheatre-opening-night-imagine-dragons-toronto-ontario-05-21-2026/event/100064894D201C70",
+      "time_curve": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0125,
+        0.1091,
+        0.2831,
+        0.5,
+        0.7169,
+        0.8909,
+        0.9875,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.6813,
+        0.3162,
+        0.1468,
+        0.0681,
+        0.0316,
+        0.0147
+      ],
+      "sigma_m": 949.2,
+      "peak_intensity": 12.531
+    },
+    {
+      "id": "1AvZZ_7GknFi0DP",
+      "name": "Brennan Lee Mulligan's ENDLESS DUNGEON",
+      "venue_id": "coca-cola-coliseum",
+      "venue_name": "Coca-Cola Coliseum",
+      "category": "arena_sports",
+      "start_local": "2026-05-21T19:30:00-04:00",
+      "end_local": "2026-05-21T22:30:00-04:00",
+      "impact": 8.893,
+      "ticketmaster_url": "https://www.ticketmaster.ca/brennan-lee-mulligans-endless-dungeon-toronto-ontario-05-21-2026/event/1000644A88B24EE5",
+      "time_curve": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0125,
+        0.1091,
+        0.2831,
+        0.5,
+        0.7169,
+        0.8909,
+        0.9875,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.7943,
+        0.5012,
+        0.3162,
+        0.1995,
+        0.1259,
+        0.0794
+      ],
+      "sigma_m": 605.7,
+      "peak_intensity": 6.375
+    },
+    {
+      "id": "Z7r9jZ1A7Oefv",
+      "name": "Kinky Boots (Touring)",
+      "venue_id": "ed-mirvish-theatre",
+      "venue_name": "Ed Mirvish Theatre",
+      "category": "performing_arts",
+      "start_local": "2026-05-21T19:30:00-04:00",
+      "end_local": "2026-05-21T22:30:00-04:00",
+      "impact": 1.12,
+      "ticketmaster_url": "https://www.ticketmaster.ca/event/Z7r9jZ1A7Oefv",
+      "time_curve": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0125,
+        0.1091,
+        0.2831,
+        0.5,
+        0.7169,
+        0.8909,
+        0.9875,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.6813,
+        0.3162,
+        0.1468,
+        0.0681,
+        0.0316,
+        0.0147
+      ],
+      "sigma_m": 294.8,
+      "peak_intensity": 0.803
+    }
+  ]
+}

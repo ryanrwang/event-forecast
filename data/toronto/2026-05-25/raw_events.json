@@ -1,0 +1,2684 @@
+{
+  "city": "toronto",
+  "date": "2026-05-25",
+  "timezone": "America/Toronto",
+  "attribution": "Event discovery powered by Ticketmaster.",
+  "source": "ticketmaster",
+  "event_count": 4,
+  "events": [
+    {
+      "name": "Black Veil Brides: North American Tour 2026",
+      "type": "event",
+      "id": "1k7Zv0u3GA5JXzi",
+      "test": false,
+      "url": "https://www.ticketmaster.ca/black-veil-brides-north-american-tour-toronto-ontario-05-25-2026/event/100064352B9BEE2C",
+      "locale": "en-us",
+      "images": [
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_TABLET_LANDSCAPE_3_2.jpg",
+          "width": 1024,
+          "height": 683,
+          "fallback": false
+        },
+        {
+          "ratio": "4_3",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_CUSTOM.jpg",
+          "width": 305,
+          "height": 225,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RETINA_PORTRAIT_16_9.jpg",
+          "width": 640,
+          "height": 360,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RETINA_PORTRAIT_3_2.jpg",
+          "width": 640,
+          "height": 427,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_ARTIST_PAGE_3_2.jpg",
+          "width": 305,
+          "height": 203,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_EVENT_DETAIL_PAGE_16_9.jpg",
+          "width": 205,
+          "height": 115,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RECOMENDATION_16_9.jpg",
+          "width": 100,
+          "height": 56,
+          "fallback": false
+        },
+        {
+          "ratio": "4_3",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_SOURCE",
+          "width": 2426,
+          "height": 1800,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/2c9/92a512cd-28b9-441d-a886-1c8e95e432c9_SOURCE",
+          "width": 2426,
+          "height": 1365,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+          "width": 2048,
+          "height": 1152,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_TABLET_LANDSCAPE_16_9.jpg",
+          "width": 1024,
+          "height": 576,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RETINA_LANDSCAPE_16_9.jpg",
+          "width": 1136,
+          "height": 639,
+          "fallback": false
+        }
+      ],
+      "sales": {
+        "public": {
+          "startDateTime": "2026-01-30T15:00:00Z",
+          "startTBD": false,
+          "startTBA": false,
+          "endDateTime": "2026-05-25T23:30:00Z"
+        },
+        "presales": [
+          {
+            "startDateTime": "2026-01-27T19:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "Live Nation Presale"
+          },
+          {
+            "startDateTime": "2026-01-27T17:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "Artist Presale"
+          },
+          {
+            "startDateTime": "2026-01-27T17:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "From Ashes to New Presale"
+          },
+          {
+            "startDateTime": "2026-01-27T16:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "Front Of The Line Amex Presale Tickets",
+            "description": "For Front Of The Line Tickets, purchase must be charged in full to an American Express Card. Subject to availability and to event and ticketing agent terms, conditions and fees. Please note: All American Express Cards are eligible for American Express Experiences tickets including Cardmembers from other countries outside of Canada."
+          },
+          {
+            "startDateTime": "2026-01-27T17:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "As December Falls Presale"
+          },
+          {
+            "startDateTime": "2026-01-27T19:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "Ticketmaster Presale"
+          },
+          {
+            "startDateTime": "2026-01-28T19:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "Spotify Presale"
+          },
+          {
+            "startDateTime": "2026-01-28T19:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "KF Presale"
+          },
+          {
+            "startDateTime": "2026-01-28T19:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "BBM Presale"
+          },
+          {
+            "startDateTime": "2026-01-27T17:00:00Z",
+            "endDateTime": "2026-01-30T03:00:00Z",
+            "name": "TX2 Presale"
+          },
+          {
+            "startDateTime": "2026-03-20T14:00:00Z",
+            "endDateTime": "2026-03-23T14:00:00Z",
+            "name": "2 Pack Tickets",
+            "shortDescription": "2 Pack Tickets"
+          }
+        ]
+      },
+      "dates": {
+        "start": {
+          "localDate": "2026-05-25",
+          "localTime": "17:30:00",
+          "dateTime": "2026-05-25T21:30:00Z",
+          "dateTBD": false,
+          "dateTBA": false,
+          "timeTBA": false,
+          "noSpecificTime": false
+        },
+        "timezone": "America/New_York",
+        "status": {
+          "code": "onsale"
+        },
+        "spanMultipleDays": false
+      },
+      "classifications": [
+        {
+          "primary": true,
+          "segment": {
+            "id": "KZFzniwnSyZfZ7v7nJ",
+            "name": "Music"
+          },
+          "genre": {
+            "id": "KnvZfZ7vAvt",
+            "name": "Metal"
+          },
+          "subGenre": {
+            "id": "KZazBEonSMnZfZ7vaJ6",
+            "name": "Nu-Metal"
+          },
+          "type": {
+            "id": "KZAyXgnZfZ7v7nI",
+            "name": "Undefined"
+          },
+          "subType": {
+            "id": "KZFzBErXgnZfZ7v7lJ",
+            "name": "Undefined"
+          },
+          "family": false
+        }
+      ],
+      "promoter": {
+        "id": "850",
+        "name": "LIVE NATION CANADA (LN)",
+        "description": "LIVE NATION CANADA (LN) / NTL / CAN"
+      },
+      "promoters": [
+        {
+          "id": "850",
+          "name": "LIVE NATION CANADA (LN)",
+          "description": "LIVE NATION CANADA (LN) / NTL / CAN"
+        },
+        {
+          "id": "653",
+          "name": "LIVE NATION MUSIC",
+          "description": "LIVE NATION MUSIC / NTL / USA"
+        },
+        {
+          "id": "6095",
+          "name": "LIVE NATION CANADA-ROGERS",
+          "description": "LIVE NATION CANADA-ROGERS / NTL / CAN"
+        },
+        {
+          "id": "4636",
+          "name": "LIVE NATION CANADA-RBC",
+          "description": "LIVE NATION CANADA-RBC / NTL / CAN"
+        }
+      ],
+      "info": "This is an ALL AGES event Doors: 5:30pm Show: 6:35pm",
+      "pleaseNote": "This is an ALL AGES event Doors: 5:30pm Show: 6:35pm Net Capacity: 2,500",
+      "products": [
+        {
+          "name": "History Event Parking - Black Veil Brides",
+          "id": "1k7Zv0u3GAG5XH8",
+          "url": "https://www.ticketmaster.ca/history-event-parking-black-veil-brides-toronto-ontario-05-25-2026/event/100064352C2FEF10",
+          "type": "Parking",
+          "classifications": [
+            {
+              "primary": true,
+              "segment": {
+                "id": "KZFzniwnSyZfZ7v7n1",
+                "name": "Miscellaneous"
+              },
+              "genre": {
+                "id": "KnvZfZ7v7ll",
+                "name": "Undefined"
+              },
+              "subGenre": {
+                "id": "KZazBEonSMnZfZ7vAv1",
+                "name": "Undefined"
+              },
+              "type": {
+                "id": "KZAyXgnZfZ7vAva",
+                "name": "Parking"
+              },
+              "subType": {
+                "id": "KZFzBErXgnZfZ7vAFe",
+                "name": "Regular"
+              },
+              "family": false
+            }
+          ]
+        }
+      ],
+      "seatmap": {
+        "staticUrl": "https://mapsapi.tmol.io/maps/geometry/3/event/100064352B9BEE2C/staticImage?type=png&systemId=HOST"
+      },
+      "accessibility": {
+        "ticketLimit": 2
+      },
+      "ticketLimit": {
+        "info": "There is an overall 6 ticket limit for this event."
+      },
+      "ageRestrictions": {
+        "legalAgeEnforced": false
+      },
+      "ticketing": {
+        "safeTix": {
+          "enabled": true
+        },
+        "allInclusivePricing": {
+          "enabled": false
+        }
+      },
+      "nameOrigin": "custom",
+      "linkMoreInfo": {
+        "descriptions": {
+          "en-nz": "www.livenation.com",
+          "en-ca": "www.livenation.com",
+          "en-us": "www.livenation.com",
+          "pt-br": "www.livenation.com",
+          "en-au": "www.livenation.com",
+          "es-us": "www.livenation.com",
+          "es-br": "www.livenation.com",
+          "en-mx": "www.livenation.com",
+          "es-mx": "www.livenation.com",
+          "fr-ca": "www.livenation.com"
+        },
+        "url": "http://www.livenation.com"
+      },
+      "_links": {
+        "self": {
+          "href": "/discovery/v2/events/1k7Zv0u3GA5JXzi?locale=en-us"
+        },
+        "attractions": [
+          {
+            "href": "/discovery/v2/attractions/K8vZ917GJC0?locale=en-us"
+          },
+          {
+            "href": "/discovery/v2/attractions/K8vZ917K5V7?locale=en-us"
+          },
+          {
+            "href": "/discovery/v2/attractions/K8vZ917hIXf?locale=en-us"
+          },
+          {
+            "href": "/discovery/v2/attractions/K8vZ9173nd7?locale=en-us"
+          }
+        ],
+        "venues": [
+          {
+            "href": "/discovery/v2/venues/KovZ917AJ4f?locale=en-us"
+          }
+        ]
+      },
+      "_embedded": {
+        "venues": [
+          {
+            "name": "History",
+            "type": "venue",
+            "id": "KovZ917AJ4f",
+            "test": false,
+            "url": "https://www.ticketmaster.ca/history-tickets-toronto/venue/132501",
+            "locale": "en-us",
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dbimages/22163v.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              }
+            ],
+            "postalCode": "M4L 1G5",
+            "timezone": "America/New_York",
+            "city": {
+              "name": "Toronto"
+            },
+            "state": {
+              "name": "Ontario",
+              "stateCode": "ON"
+            },
+            "country": {
+              "name": "Canada",
+              "countryCode": "CA"
+            },
+            "address": {
+              "line1": "1663 Queen St. East"
+            },
+            "location": {
+              "longitude": "-79.31351149",
+              "latitude": "43.66684147"
+            },
+            "markets": [
+              {
+                "name": " Hamilton & Area\"",
+                "id": "102"
+              }
+            ],
+            "dmas": [
+              {
+                "id": 501
+              },
+              {
+                "id": 502
+              },
+              {
+                "id": 503
+              },
+              {
+                "id": 508
+              },
+              {
+                "id": 509
+              },
+              {
+                "id": 510
+              },
+              {
+                "id": 511
+              },
+              {
+                "id": 527
+              }
+            ],
+            "upcomingEvents": {
+              "ticketmaster": 69,
+              "ticketweb": 1,
+              "_total": 70,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/venues/KovZ917AJ4f?locale=en-us"
+              }
+            }
+          }
+        ],
+        "attractions": [
+          {
+            "name": "Black Veil Brides",
+            "type": "attraction",
+            "id": "K8vZ917GJC0",
+            "test": false,
+            "url": "https://www.ticketmaster.com/black-veil-brides-tickets/artist/1469883",
+            "locale": "en-us",
+            "externalLinks": {
+              "youtube": [
+                {
+                  "url": "https://www.youtube.com/channel/UCDdKEz8e7m5g-hXg42-HBQg"
+                }
+              ],
+              "twitter": [
+                {
+                  "url": "https://twitter.com/officialbvb"
+                }
+              ],
+              "itunes": [
+                {
+                  "url": "https://music.apple.com/us/artist/black-veil-brides/276789923"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/Blackveilbrides"
+                }
+              ],
+              "spotify": [
+                {
+                  "url": "https://open.spotify.com/artist/6O7MpKrY91vlCd4Osi6XKs"
+                }
+              ],
+              "wiki": [
+                {
+                  "url": "https://en.wikipedia.org/wiki/Black_Veil_Brides"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/blackveilbrides/"
+                }
+              ],
+              "musicbrainz": [
+                {
+                  "id": "33319aed-9bd7-4cd1-903c-716845c1b7cd",
+                  "url": "https://musicbrainz.org/artist/33319aed-9bd7-4cd1-903c-716845c1b7cd"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "http://blackveilbrides.net"
+                }
+              ]
+            },
+            "images": [
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_SOURCE",
+                "width": 2426,
+                "height": 1800,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/2c9/92a512cd-28b9-441d-a886-1c8e95e432c9_SOURCE",
+                "width": 2426,
+                "height": 1365,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f7d/82a26e44-b08e-45d4-8b4a-99afa558ff7d_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nJ",
+                  "name": "Music"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAvt",
+                  "name": "Metal"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7vkFd",
+                  "name": "Heavy Metal"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7nI",
+                  "name": "Undefined"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7v7lJ",
+                  "name": "Undefined"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "mticket": 1,
+              "tmr": 6,
+              "mfx-nl": 1,
+              "ticketmaster": 31,
+              "trium": 1,
+              "_total": 40,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ917GJC0?locale=en-us"
+              }
+            }
+          },
+          {
+            "name": "From Ashes To New",
+            "type": "attraction",
+            "id": "K8vZ917K5V7",
+            "test": false,
+            "url": "https://www.ticketmaster.com/from-ashes-to-new-tickets/artist/2088121",
+            "locale": "en-us",
+            "externalLinks": {
+              "youtube": [
+                {
+                  "url": "https://www.youtube.com/channel/UCIKT9lPoSdK2zgHZ0WsdOww"
+                }
+              ],
+              "twitter": [
+                {
+                  "url": "https://twitter.com/FromAshesToNew"
+                }
+              ],
+              "itunes": [
+                {
+                  "url": "https://music.apple.com/us/artist/from-ashes-to-new/688645097"
+                }
+              ],
+              "spotify": [
+                {
+                  "url": "https://open.spotify.com/artist/4HrkLxQHZ5mgCtIVpiH5QX?autoplay=true"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/FromAshesToNew"
+                }
+              ],
+              "musicbrainz": [
+                {
+                  "id": "66baa549-ec7d-410f-88bf-d4f9bbb21890",
+                  "url": "https://musicbrainz.org/artist/66baa549-ec7d-410f-88bf-d4f9bbb21890"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/FromAshesToNew/"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "https://www.fromashestonew.com/"
+                }
+              ]
+            },
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_SOURCE",
+                "width": 2426,
+                "height": 1600,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/bd9/4350ae4b-44eb-4286-ab6d-a6a8023b4bd9_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nJ",
+                  "name": "Music"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAeA",
+                  "name": "Rock"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7v6da",
+                  "name": "Rock"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7l1",
+                  "name": "Group"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7vA71",
+                  "name": "Band"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "tmr": 1,
+              "ticketmaster": 28,
+              "ticketweb": 1,
+              "_total": 30,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ917K5V7?locale=en-us"
+              }
+            }
+          },
+          {
+            "name": "TX2",
+            "type": "attraction",
+            "id": "K8vZ917hIXf",
+            "test": false,
+            "url": "https://www.ticketmaster.com/tx2-tickets/artist/3049375",
+            "locale": "en-us",
+            "externalLinks": {
+              "musicbrainz": [
+                {
+                  "id": "6093443d-d1fd-4bf0-b058-63840f11c0cd",
+                  "url": "https://musicbrainz.org/artist/6093443d-d1fd-4bf0-b058-63840f11c0cd"
+                }
+              ]
+            },
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_SOURCE",
+                "width": 2624,
+                "height": 1365,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/772/8ab9855a-bf9f-401a-bfcc-ab0aa2ebc772_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nJ",
+                  "name": "Music"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAvv",
+                  "name": "Alternative"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7vAvn",
+                  "name": "Alternative Rock"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7la",
+                  "name": "Individual"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7vAde",
+                  "name": "Singer/Vocalist"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "tmr": 1,
+              "ticketmaster": 13,
+              "_total": 14,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ917hIXf?locale=en-us"
+              }
+            }
+          },
+          {
+            "name": "As December Falls",
+            "type": "attraction",
+            "id": "K8vZ9173nd7",
+            "test": false,
+            "url": "https://www.ticketmaster.com/as-december-falls-tickets/artist/2014674",
+            "locale": "en-us",
+            "externalLinks": {
+              "youtube": [
+                {
+                  "url": "https://www.youtube.com/channel/UCAiOTXMQwmrJYFYirYM_HFQ"
+                }
+              ],
+              "twitter": [
+                {
+                  "url": "https://twitter.com/asdecemberfalls"
+                }
+              ],
+              "itunes": [
+                {
+                  "url": "https://music.apple.com/us/artist/as-december-falls/928043849"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/asdecemberfalls"
+                }
+              ],
+              "spotify": [
+                {
+                  "url": "https://open.spotify.com/artist/7Atp614yT56v9XrlqZryzX?autoplay=true"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/asdecemberfalls/"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "https://www.asdecemberfalls.com/"
+                }
+              ]
+            },
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": true
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": true
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": true
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": true
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": true
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": true
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": true
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": true
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": true
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": true
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nJ",
+                  "name": "Music"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAeA",
+                  "name": "Rock"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7v6a6",
+                  "name": "Punk"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7nI",
+                  "name": "Undefined"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7v7lJ",
+                  "name": "Undefined"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "ticketmaster": 11,
+              "mfx-de": 2,
+              "_total": 13,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ9173nd7?locale=en-us"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Belle and Sebastian: Tigermilk + Classic Songs",
+      "type": "event",
+      "id": "rZ7HnEZ1Affb1K",
+      "test": false,
+      "url": "https://www.ticketweb.ca/event/belle-and-sebastian-tigermilk-massey-hall-tickets/14518293",
+      "locale": "en-us",
+      "images": [
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_SOURCE",
+          "width": 2426,
+          "height": 1365,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_TABLET_LANDSCAPE_3_2.jpg",
+          "width": 1024,
+          "height": 683,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RETINA_PORTRAIT_3_2.jpg",
+          "width": 640,
+          "height": 427,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RECOMENDATION_16_9.jpg",
+          "width": 100,
+          "height": 56,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+          "width": 2048,
+          "height": 1152,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_ARTIST_PAGE_3_2.jpg",
+          "width": 305,
+          "height": 203,
+          "fallback": false
+        },
+        {
+          "ratio": "4_3",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_CUSTOM.jpg",
+          "width": 305,
+          "height": 225,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_EVENT_DETAIL_PAGE_16_9.jpg",
+          "width": 205,
+          "height": 115,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RETINA_PORTRAIT_16_9.jpg",
+          "width": 640,
+          "height": 360,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_TABLET_LANDSCAPE_16_9.jpg",
+          "width": 1024,
+          "height": 576,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RETINA_LANDSCAPE_16_9.jpg",
+          "width": 1136,
+          "height": 639,
+          "fallback": false
+        }
+      ],
+      "sales": {
+        "public": {
+          "startDateTime": "2025-09-01T03:55:00Z",
+          "startTBD": false,
+          "startTBA": false,
+          "endDateTime": "2026-05-25T23:00:00Z"
+        }
+      },
+      "dates": {
+        "access": {
+          "startDateTime": "2026-05-25T23:00:00Z",
+          "startApproximate": false,
+          "endApproximate": false
+        },
+        "start": {
+          "localDate": "2026-05-25",
+          "localTime": "19:00:00",
+          "dateTime": "2026-05-25T23:00:00Z",
+          "dateTBD": false,
+          "dateTBA": false,
+          "timeTBA": false,
+          "noSpecificTime": false
+        },
+        "end": {
+          "approximate": false,
+          "noSpecificTime": false
+        },
+        "timezone": "America/Toronto",
+        "status": {
+          "code": "onsale"
+        },
+        "spanMultipleDays": false
+      },
+      "classifications": [
+        {
+          "primary": true,
+          "segment": {
+            "id": "KZFzniwnSyZfZ7v7nJ",
+            "name": "Music"
+          },
+          "genre": {
+            "id": "KnvZfZ7vAev",
+            "name": "Pop"
+          },
+          "subGenre": {
+            "id": "KZazBEonSMnZfZ7vkEl",
+            "name": "Pop Rock"
+          },
+          "type": {
+            "id": "KZAyXgnZfZ7v7nI",
+            "name": "Undefined"
+          },
+          "subType": {
+            "id": "KZFzBErXgnZfZ7v7lJ",
+            "name": "Undefined"
+          },
+          "family": false
+        },
+        {
+          "primary": false,
+          "segment": {
+            "id": "KZFzniwnSyZfZ7v7nJ",
+            "name": "Music"
+          },
+          "genre": {
+            "id": "KnvZfZ7vAvv",
+            "name": "Alternative"
+          },
+          "subGenre": {
+            "id": "KZazBEonSMnZfZ7vAdI",
+            "name": "Noise Pop"
+          },
+          "type": {
+            "id": "KZAyXgnZfZ7v7nI",
+            "name": "Undefined"
+          },
+          "subType": {
+            "id": "KZFzBErXgnZfZ7v7lJ",
+            "name": "Undefined"
+          },
+          "family": false
+        }
+      ],
+      "promoter": {
+        "id": "151",
+        "name": "COLLECTIVE CONCERTS",
+        "description": "COLLECTIVE CONCERTS / NTL / CAN"
+      },
+      "promoters": [
+        {
+          "id": "151",
+          "name": "COLLECTIVE CONCERTS",
+          "description": "COLLECTIVE CONCERTS / NTL / CAN"
+        }
+      ],
+      "pleaseNote": "By clicking 'Agree and Check Out' you are opting in to We Are In The Future's marketing emails. You may unsubscribe at any time.",
+      "priceRanges": [
+        {
+          "type": "standard",
+          "currency": "CAD",
+          "min": 86.33,
+          "max": 146.53
+        }
+      ],
+      "nameOrigin": "custom",
+      "_links": {
+        "self": {
+          "href": "/discovery/v2/events/rZ7HnEZ1Affb1K?locale=en-us"
+        },
+        "attractions": [
+          {
+            "href": "/discovery/v2/attractions/K8vZ9171Mlf?locale=en-us"
+          },
+          {
+            "href": "/discovery/v2/attractions/K8vZ917GT-V?locale=en-us"
+          }
+        ],
+        "venues": [
+          {
+            "href": "/discovery/v2/venues/rZ7HnEZakuQ?locale=en-us"
+          }
+        ]
+      },
+      "_embedded": {
+        "venues": [
+          {
+            "name": "Massey Hall",
+            "type": "venue",
+            "id": "rZ7HnEZakuQ",
+            "test": false,
+            "url": "https://www.ticketweb.ca/venue/massey-hall-toronto-on/25434",
+            "locale": "en-us",
+            "postalCode": "M5B 1T7",
+            "timezone": "America/Toronto",
+            "city": {
+              "name": "Toronto"
+            },
+            "state": {
+              "name": "Ontario",
+              "stateCode": "ON"
+            },
+            "country": {
+              "name": "Canada",
+              "countryCode": "CA"
+            },
+            "address": {
+              "line1": "178 Victoria Street"
+            },
+            "location": {
+              "longitude": "-79.378548",
+              "latitude": "43.653809"
+            },
+            "upcomingEvents": {
+              "ticketmaster": 35,
+              "ticketweb": 2,
+              "_total": 37,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/venues/rZ7HnEZakuQ?locale=en-us"
+              }
+            }
+          }
+        ],
+        "attractions": [
+          {
+            "name": "Belle & Sebastian",
+            "type": "attraction",
+            "id": "K8vZ9171Mlf",
+            "test": false,
+            "url": "https://www.ticketmaster.com/belle-sebastian-tickets/artist/783750",
+            "locale": "en-us",
+            "externalLinks": {
+              "youtube": [
+                {
+                  "url": "https://www.youtube.com/channel/UClz7tzOxFJT_v5iOfh8PPvg"
+                }
+              ],
+              "twitter": [
+                {
+                  "url": "https://twitter.com/bellesglasgow"
+                }
+              ],
+              "itunes": [
+                {
+                  "url": "https://music.apple.com/us/artist/belle-and-sebastian/2989382"
+                }
+              ],
+              "spotify": [
+                {
+                  "url": "https://open.spotify.com/artist/4I2BJf80C0skQpp1sQmA0h?autoplay=true"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/belleandsebastian"
+                }
+              ],
+              "musicbrainz": [
+                {
+                  "id": "e5c7b94f-e264-473c-bb0f-37c85d4d5c70",
+                  "url": "https://musicbrainz.org/artist/e5c7b94f-e264-473c-bb0f-37c85d4d5c70"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/bellesglasgow/"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "https://belleandsebastian.com/"
+                }
+              ]
+            },
+            "aliases": [
+              "belle and sebastian",
+              "bell and",
+              "bell & sebastian"
+            ],
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_SOURCE",
+                "width": 2426,
+                "height": 1365,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/3cd/206f6a1a-ffd3-4849-a82f-d03a4d7d03cd_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nJ",
+                  "name": "Music"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAeA",
+                  "name": "Rock"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7v6dt",
+                  "name": "Alternative Rock"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7nI",
+                  "name": "Undefined"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7v7lJ",
+                  "name": "Undefined"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "tmr": 5,
+              "ticketmaster": 24,
+              "ticketweb": 2,
+              "_total": 31,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ9171Mlf?locale=en-us"
+              }
+            }
+          },
+          {
+            "name": "U.S. Girls",
+            "type": "attraction",
+            "id": "K8vZ917GT-V",
+            "test": false,
+            "url": "https://www.ticketmaster.com/us-girls-tickets/artist/1489016",
+            "locale": "en-us",
+            "externalLinks": {
+              "twitter": [
+                {
+                  "url": "https://twitter.com/yousgirls"
+                }
+              ],
+              "lastfm": [
+                {
+                  "url": "http://www.last.fm/music/U.S.+Girls"
+                }
+              ],
+              "spotify": [
+                {
+                  "url": "https://open.spotify.com/artist/3AHFDfqhSqPBecjQDIOIJA"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/yousgirls/"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/usgirls.and.remy/"
+                }
+              ],
+              "musicbrainz": [
+                {
+                  "id": "036912f5-c717-498d-8958-6058de17bb70",
+                  "url": "https://musicbrainz.org/artist/036912f5-c717-498d-8958-6058de17bb70"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "https://www.yousgirls.com/"
+                }
+              ]
+            },
+            "images": [
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_SOURCE",
+                "width": 2426,
+                "height": 1364,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/6c2/037dcbb2-4730-47d0-b94b-68213a6e06c2_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nJ",
+                  "name": "Music"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAeA",
+                  "name": "Rock"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7v6F1",
+                  "name": "Pop"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7nI",
+                  "name": "Undefined"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7v7lJ",
+                  "name": "Undefined"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "ticketmaster": 3,
+              "ticketweb": 2,
+              "_total": 5,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ917GT-V?locale=en-us"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Toronto Blue Jays vs. Miami (Born Ready' Vladdy Bobblehead Giveaway)",
+      "type": "event",
+      "id": "117ZvN0bG8Cdv2",
+      "test": false,
+      "url": "https://www.ticketmaster.ca/toronto-blue-jays-vs-miami-born-toronto-ontario-05-25-2026/event/100063918310383E",
+      "locale": "en-us",
+      "images": [
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RETINA_LANDSCAPE_16_9.jpg",
+          "width": 1136,
+          "height": 639,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_TABLET_LANDSCAPE_16_9.jpg",
+          "width": 1024,
+          "height": 576,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RETINA_PORTRAIT_16_9.jpg",
+          "width": 640,
+          "height": 360,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RECOMENDATION_16_9.jpg",
+          "width": 100,
+          "height": 56,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_ARTIST_PAGE_3_2.jpg",
+          "width": 305,
+          "height": 203,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_TABLET_LANDSCAPE_3_2.jpg",
+          "width": 1024,
+          "height": 683,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RETINA_PORTRAIT_3_2.jpg",
+          "width": 640,
+          "height": 427,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_EVENT_DETAIL_PAGE_16_9.jpg",
+          "width": 205,
+          "height": 115,
+          "fallback": false
+        },
+        {
+          "ratio": "4_3",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_CUSTOM.jpg",
+          "width": 305,
+          "height": 225,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_SOURCE",
+          "width": 2426,
+          "height": 1365,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+          "width": 2048,
+          "height": 1152,
+          "fallback": false
+        }
+      ],
+      "sales": {
+        "public": {
+          "startDateTime": "2026-01-22T15:00:00Z",
+          "startTBD": false,
+          "startTBA": false,
+          "endDateTime": "2026-05-26T01:07:00Z"
+        },
+        "presales": [
+          {
+            "startDateTime": "2025-12-26T17:00:00Z",
+            "endDateTime": "2025-12-30T04:59:00Z",
+            "name": "Boxing Day Offer"
+          },
+          {
+            "startDateTime": "2026-03-09T19:00:00Z",
+            "endDateTime": "2026-03-12T03:59:00Z",
+            "name": "District Drop"
+          }
+        ]
+      },
+      "dates": {
+        "start": {
+          "localDate": "2026-05-25",
+          "localTime": "19:07:00",
+          "dateTime": "2026-05-25T23:07:00Z",
+          "dateTBD": false,
+          "dateTBA": false,
+          "timeTBA": false,
+          "noSpecificTime": false
+        },
+        "timezone": "America/New_York",
+        "status": {
+          "code": "onsale"
+        },
+        "spanMultipleDays": false
+      },
+      "classifications": [
+        {
+          "primary": true,
+          "segment": {
+            "id": "KZFzniwnSyZfZ7v7nE",
+            "name": "Sports"
+          },
+          "genre": {
+            "id": "KnvZfZ7vAdv",
+            "name": "Baseball"
+          },
+          "subGenre": {
+            "id": "KZazBEonSMnZfZ7vF1n",
+            "name": "MLB"
+          },
+          "type": {
+            "id": "KZAyXgnZfZ7v7l1",
+            "name": "Group"
+          },
+          "subType": {
+            "id": "KZFzBErXgnZfZ7vA7d",
+            "name": "Team"
+          },
+          "family": false
+        }
+      ],
+      "promoter": {
+        "id": "494",
+        "name": "PROMOTED BY VENUE",
+        "description": "PROMOTED BY VENUE / NTL / USA"
+      },
+      "promoters": [
+        {
+          "id": "494",
+          "name": "PROMOTED BY VENUE",
+          "description": "PROMOTED BY VENUE / NTL / USA"
+        }
+      ],
+      "pleaseNote": "Net Capacity: 39,150 Fans in attendance agree to abide by the health and safety measures in effect at the time of the event. Visit bluejays.com/knowbeforeyougo for venue/gameday information. Tickets will be delivered digitally and can be managed beginning March 2, 2026. As a Blue Jays ticket purchaser, you may receive customer service messages via email from the Toronto Blue Jays including optional surveys regarding your baseball experience. The ticket purchaser must forward individual tickets to each person in their group; learn more at bluejays.com/tickethelp. Visit bluejays.com/tickets for additional ticket product information, including groups. By completing your purchase of a Toronto Blue Jays ticket, you expressly acknowledge and agree to the applicable [2025 Toronto Blue Jays Ticket Terms & Conditions](https://www.mlb.com/bluejays/tickets/terms-and-conditions).",
+      "products": [
+        {
+          "name": "SPOTHERO ROGERS CENTRE",
+          "id": "1A8ZkCKGkeYhpDB",
+          "url": "https://www.ticketmaster.ca/spothero-rogers-centre-toronto-ontario-05-25-2026/event/10006393B06D6EFA",
+          "type": "Upsell",
+          "classifications": [
+            {
+              "primary": true,
+              "segment": {
+                "id": "KZFzniwnSyZfZ7v7n1",
+                "name": "Miscellaneous"
+              },
+              "genre": {
+                "id": "KnvZfZ7v7ll",
+                "name": "Undefined"
+              },
+              "subGenre": {
+                "id": "KZazBEonSMnZfZ7vAv1",
+                "name": "Undefined"
+              },
+              "type": {
+                "id": "KZAyXgnZfZ7vAva",
+                "name": "Parking"
+              },
+              "subType": {
+                "id": "KZFzBErXgnZfZ7vAFe",
+                "name": "Regular"
+              },
+              "family": false
+            }
+          ]
+        }
+      ],
+      "seatmap": {
+        "staticUrl": "https://mapsapi.tmol.io/maps/geometry/3/event/100063918310383E/staticImage?type=png&systemId=HOST"
+      },
+      "accessibility": {
+        "ticketLimit": 4
+      },
+      "ticketLimit": {
+        "info": "There is an overall 11 ticket limit for this event."
+      },
+      "ageRestrictions": {
+        "legalAgeEnforced": false
+      },
+      "ticketing": {
+        "safeTix": {
+          "enabled": true
+        },
+        "allInclusivePricing": {
+          "enabled": false
+        }
+      },
+      "nameOrigin": "custom",
+      "_links": {
+        "self": {
+          "href": "/discovery/v2/events/117ZvN0bG8Cdv2?locale=en-us"
+        },
+        "attractions": [
+          {
+            "href": "/discovery/v2/attractions/K8vZ91718W0?locale=en-us"
+          },
+          {
+            "href": "/discovery/v2/attractions/K8vZ91718yf?locale=en-us"
+          }
+        ],
+        "venues": [
+          {
+            "href": "/discovery/v2/venues/KovZpa3Bbe?locale=en-us"
+          }
+        ]
+      },
+      "_embedded": {
+        "venues": [
+          {
+            "name": "Rogers Centre",
+            "type": "venue",
+            "id": "KovZpa3Bbe",
+            "test": false,
+            "url": "https://www.ticketmaster.ca/rogers-centre-tickets-toronto/venue/131114",
+            "locale": "en-us",
+            "aliases": [
+              "rogers center",
+              "rogers centre"
+            ],
+            "images": [
+              {
+                "url": "https://s1.ticketm.net/dbimages/26444v.jpg",
+                "width": 5120,
+                "height": 2700,
+                "fallback": false
+              }
+            ],
+            "postalCode": "M5V 1J3",
+            "timezone": "America/New_York",
+            "city": {
+              "name": "Toronto"
+            },
+            "state": {
+              "name": "Ontario",
+              "stateCode": "ON"
+            },
+            "country": {
+              "name": "Canada",
+              "countryCode": "CA"
+            },
+            "address": {
+              "line1": "1 Blue Jays Way"
+            },
+            "location": {
+              "longitude": "-79.39174470",
+              "latitude": "43.64173840"
+            },
+            "markets": [
+              {
+                "name": " Hamilton & Area\"",
+                "id": "102"
+              }
+            ],
+            "dmas": [
+              {
+                "id": 501
+              },
+              {
+                "id": 502
+              },
+              {
+                "id": 508
+              },
+              {
+                "id": 511
+              },
+              {
+                "id": 527
+              }
+            ],
+            "social": {
+              "twitter": {
+                "handle": "@Rogers_Centre"
+              }
+            },
+            "boxOfficeInfo": {
+              "phoneNumberDetail": "Ticket Support: (416)341-1234",
+              "openHoursDetail": "Rogers Centre Box Offices are available for mobile ticket support only when gates open on Blue Jays gamedays and Rogers Centre event days. Ticket purchases are not available onsite.",
+              "acceptedPaymentDetail": "Ticket purchases are not available onsite.",
+              "willCallDetail": "Rogers Centre Gate Box Offices are available for mobile ticket support only when gates open on Blue Jays gamedays and Rogers Centre event days."
+            },
+            "parkingDetail": "There are several independently owned parking facilities located within walking distance of Rogers Centre. Prices and availability are managed by the individual proprietors and are not connected with the Blue Jays organization. A limited number of parking spaces are available in the Rogers Centre underground lot for guests with accessibility needs. Reservations are required on game/event days and can be made by calling 416-341-1540. Please have your disability permit number handy for bookings. Cashless payment is required.",
+            "accessibleSeatingDetail": "Accessible seats are subject to the same onsale schedules and ticket availability as standard seating and are sold on a first-come, first-served basis. Fans requiring an accessible seat may also purchase up to three additional seats for their companions (subject to availability) unless otherwise restricted by event-level ticket limits. Fans with accessible needs may enter Rogers Centre through any open gate. Fans requiring accessible support are encouraged to enter through Gate 7, the designated accessible located on the south side of the building (along Bremner Boulevard). Rogers Centre is proud to be a Sensory Inclusive Certified venue by KultureCity. Sensory Bags are available at any Fan Services location. A Sensory Room can also be found at Section 212 behind Fan Services. Additional Info: bluejays.com/accessibility",
+            "generalInfo": {
+              "generalRule": "Know Before You Go Gameday Experience: bluejays.com/knowbeforeyougo Know Before You Go Concert Experience: bluejays.com/concerts MOBILE TICKETING Blue Jays and Rogers Centre concert tickets are delivered digitally and must be scanned in at the gate using a mobile device. Display your ticket at the gate through MLB Ballpark app, your Blue Jays Account Manager, or, if you purchased via ticketmaster.ca, the Ticketmaster app. Paper or PDF tickets are not accepted and the Box Office at Rogers Centre is not open for ticket purchases. Mobile support staff will be available to assist fans as required at the gates. GATE ENTRY Gates for Blue Jays games are open 90 minutes before the scheduled game time on weekdays and two hours on weekends. Check bluejays.com/concerts for concert gate information. Fans may enter at any open main gate, however the closest entrance to each fan's seat will be recommended by the ticket app. BAG POLICY Bags are discouraged and will be subject to a security search prior to entry. Only bags smaller than 16 x 16: x 8 are permitted into the ballpark. Bag restrictions and prohibited items for concerts may be different than Blue Jays games; visit bluejays.com/concerts SECURITY MEASURES In order to provide our fans with a safe environment, searches at all entry gates will include the inspection of all items that are carried into the stadium. Everyone entering will be subject to full searches of their person, with the use of walk through metal detectors (WTMD). Other methods include hand-held metal detectors or pat downs. For a list of prohibited items, please visit bluejays.com/ballpark. FAN FEEDBACK The Toronto Blue Jays and Rogers Centre welcome the ideas, comments and suggestions from our fans. It helps us improve the service we provide to our valued fans and fans. Please contact our Fan Services Team by email at fanfeedback@bluejays.com or by phone at (416)341-1000 to submit your feedback/inquiry.",
+              "childRule": "All fans two (2) years of age or older must have a valid ticket to enter Rogers Centre."
+            },
+            "upcomingEvents": {
+              "ticketmaster": 112,
+              "_total": 112,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/venues/KovZpa3Bbe?locale=en-us"
+              }
+            }
+          }
+        ],
+        "attractions": [
+          {
+            "name": "Toronto Blue Jays",
+            "type": "attraction",
+            "id": "K8vZ91718W0",
+            "test": false,
+            "url": "https://www.ticketmaster.com/toronto-blue-jays-tickets/artist/806032",
+            "locale": "en-us",
+            "externalLinks": {
+              "twitter": [
+                {
+                  "url": "https://twitter.com/Bluejays"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/Bluejays"
+                }
+              ],
+              "wiki": [
+                {
+                  "url": "https://en.wikipedia.org/wiki/Toronto_Blue_Jays"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/bluejays"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "https://www.mlb.com/bluejays"
+                }
+              ]
+            },
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_SOURCE",
+                "width": 2426,
+                "height": 1365,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/f09/75928aa5-c640-49e5-99ab-baa299d96f09_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nE",
+                  "name": "Sports"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAdv",
+                  "name": "Baseball"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7vF1n",
+                  "name": "MLB"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7l1",
+                  "name": "Group"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7vA7d",
+                  "name": "Team"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "tmr": 46,
+              "ticketmaster": 132,
+              "_total": 178,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ91718W0?locale=en-us"
+              }
+            }
+          },
+          {
+            "name": "Miami Marlins",
+            "type": "attraction",
+            "id": "K8vZ91718yf",
+            "test": false,
+            "url": "https://www.ticketmaster.com/miami-marlins-tickets/artist/805944",
+            "locale": "en-us",
+            "externalLinks": {
+              "twitter": [
+                {
+                  "url": "https://twitter.com/Marlins"
+                }
+              ],
+              "wiki": [
+                {
+                  "url": "https://en.wikipedia.org/wiki/Miami_Marlins"
+                }
+              ],
+              "facebook": [
+                {
+                  "url": "https://www.facebook.com/Marlins"
+                }
+              ],
+              "instagram": [
+                {
+                  "url": "https://www.instagram.com/marlins"
+                }
+              ],
+              "homepage": [
+                {
+                  "url": "https://www.mlb.com/marlins"
+                }
+              ]
+            },
+            "aliases": [
+              "floridamarlins",
+              "marlins tickets"
+            ],
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_SOURCE",
+                "width": 9704,
+                "height": 5460,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/343/37200823-952f-476c-8598-afc6ee04e343_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7nE",
+                  "name": "Sports"
+                },
+                "genre": {
+                  "id": "KnvZfZ7vAdv",
+                  "name": "Baseball"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7vF1n",
+                  "name": "MLB"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7l1",
+                  "name": "Group"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7vA7d",
+                  "name": "Team"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "tmr": 102,
+              "ticketmaster": 16,
+              "_total": 118,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ91718yf?locale=en-us"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Rogers Centre Ballpark Tours",
+      "type": "event",
+      "id": "1k7Zv0GwGA5v2hq",
+      "test": false,
+      "url": "https://www.ticketmaster.ca/rogers-centre-ballpark-tours-toronto-ontario-05-25-2026/event/100064332B04F6DD",
+      "locale": "en-us",
+      "images": [
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RECOMENDATION_16_9.jpg",
+          "width": 100,
+          "height": 56,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_TABLET_LANDSCAPE_3_2.jpg",
+          "width": 1024,
+          "height": 683,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RETINA_PORTRAIT_16_9.jpg",
+          "width": 640,
+          "height": 360,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_SOURCE",
+          "width": 2426,
+          "height": 1365,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+          "width": 2048,
+          "height": 1152,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RETINA_LANDSCAPE_16_9.jpg",
+          "width": 1136,
+          "height": 639,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_TABLET_LANDSCAPE_16_9.jpg",
+          "width": 1024,
+          "height": 576,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RETINA_PORTRAIT_3_2.jpg",
+          "width": 640,
+          "height": 427,
+          "fallback": false
+        },
+        {
+          "ratio": "3_2",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_ARTIST_PAGE_3_2.jpg",
+          "width": 305,
+          "height": 203,
+          "fallback": false
+        },
+        {
+          "ratio": "16_9",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_EVENT_DETAIL_PAGE_16_9.jpg",
+          "width": 205,
+          "height": 115,
+          "fallback": false
+        },
+        {
+          "ratio": "4_3",
+          "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_CUSTOM.jpg",
+          "width": 305,
+          "height": 225,
+          "fallback": false
+        }
+      ],
+      "sales": {
+        "public": {
+          "startDateTime": "2026-01-22T15:00:00Z",
+          "startTBD": false,
+          "startTBA": false,
+          "endDateTime": "2026-05-25T23:00:00Z"
+        }
+      },
+      "dates": {
+        "start": {
+          "localDate": "2026-05-25",
+          "dateTBD": false,
+          "dateTBA": false,
+          "timeTBA": true,
+          "noSpecificTime": false
+        },
+        "timezone": "America/New_York",
+        "status": {
+          "code": "onsale"
+        },
+        "spanMultipleDays": false
+      },
+      "classifications": [
+        {
+          "primary": true,
+          "segment": {
+            "id": "KZFzniwnSyZfZ7v7n1",
+            "name": "Miscellaneous"
+          },
+          "genre": {
+            "id": "KnvZfZ7v7ll",
+            "name": "Undefined"
+          },
+          "subGenre": {
+            "id": "KZazBEonSMnZfZ7vAv1",
+            "name": "Undefined"
+          },
+          "type": {
+            "id": "KZAyXgnZfZ7v7lt",
+            "name": "Event Style"
+          },
+          "subType": {
+            "id": "KZFzBErXgnZfZ7vAvv",
+            "name": "Sightseeing/Facility"
+          },
+          "family": false
+        }
+      ],
+      "promoter": {
+        "id": "320",
+        "name": "PROMOTER NOT DEFINED",
+        "description": "PROMOTER NOT DEFINED / NTL / CAN"
+      },
+      "promoters": [
+        {
+          "id": "320",
+          "name": "PROMOTER NOT DEFINED",
+          "description": "PROMOTER NOT DEFINED / NTL / CAN"
+        }
+      ],
+      "pleaseNote": "Visit Rogers Centre like never before on a Ballpark Tour. The entrance for the Classic and Pregame Tours is Gate 6A and the entrance for the Ultimate Pregame Tour is Gate 9.",
+      "seatmap": {
+        "staticUrl": "https://mapsapi.tmol.io/maps/geometry/3/event/100064332B04F6DD/staticImage?type=png&systemId=HOST"
+      },
+      "ticketLimit": {
+        "info": "There is an overall 11 ticket limit for this event."
+      },
+      "ageRestrictions": {
+        "legalAgeEnforced": false
+      },
+      "ticketing": {
+        "safeTix": {
+          "enabled": true
+        },
+        "allInclusivePricing": {
+          "enabled": false
+        }
+      },
+      "nameOrigin": "primaryAttraction",
+      "_links": {
+        "self": {
+          "href": "/discovery/v2/events/1k7Zv0GwGA5v2hq?locale=en-us"
+        },
+        "attractions": [
+          {
+            "href": "/discovery/v2/attractions/K8vZ917GzM0?locale=en-us"
+          }
+        ],
+        "venues": [
+          {
+            "href": "/discovery/v2/venues/KovZpa3Bbe?locale=en-us"
+          }
+        ]
+      },
+      "_embedded": {
+        "venues": [
+          {
+            "name": "Rogers Centre",
+            "type": "venue",
+            "id": "KovZpa3Bbe",
+            "test": false,
+            "url": "https://www.ticketmaster.ca/rogers-centre-tickets-toronto/venue/131114",
+            "locale": "en-us",
+            "aliases": [
+              "rogers center",
+              "rogers centre"
+            ],
+            "images": [
+              {
+                "url": "https://s1.ticketm.net/dbimages/26444v.jpg",
+                "width": 5120,
+                "height": 2700,
+                "fallback": false
+              }
+            ],
+            "postalCode": "M5V 1J3",
+            "timezone": "America/New_York",
+            "city": {
+              "name": "Toronto"
+            },
+            "state": {
+              "name": "Ontario",
+              "stateCode": "ON"
+            },
+            "country": {
+              "name": "Canada",
+              "countryCode": "CA"
+            },
+            "address": {
+              "line1": "1 Blue Jays Way"
+            },
+            "location": {
+              "longitude": "-79.39174470",
+              "latitude": "43.64173840"
+            },
+            "markets": [
+              {
+                "name": " Hamilton & Area\"",
+                "id": "102"
+              }
+            ],
+            "dmas": [
+              {
+                "id": 501
+              },
+              {
+                "id": 502
+              },
+              {
+                "id": 508
+              },
+              {
+                "id": 511
+              },
+              {
+                "id": 527
+              }
+            ],
+            "social": {
+              "twitter": {
+                "handle": "@Rogers_Centre"
+              }
+            },
+            "boxOfficeInfo": {
+              "phoneNumberDetail": "Ticket Support: (416)341-1234",
+              "openHoursDetail": "Rogers Centre Box Offices are available for mobile ticket support only when gates open on Blue Jays gamedays and Rogers Centre event days. Ticket purchases are not available onsite.",
+              "acceptedPaymentDetail": "Ticket purchases are not available onsite.",
+              "willCallDetail": "Rogers Centre Gate Box Offices are available for mobile ticket support only when gates open on Blue Jays gamedays and Rogers Centre event days."
+            },
+            "parkingDetail": "There are several independently owned parking facilities located within walking distance of Rogers Centre. Prices and availability are managed by the individual proprietors and are not connected with the Blue Jays organization. A limited number of parking spaces are available in the Rogers Centre underground lot for guests with accessibility needs. Reservations are required on game/event days and can be made by calling 416-341-1540. Please have your disability permit number handy for bookings. Cashless payment is required.",
+            "accessibleSeatingDetail": "Accessible seats are subject to the same onsale schedules and ticket availability as standard seating and are sold on a first-come, first-served basis. Fans requiring an accessible seat may also purchase up to three additional seats for their companions (subject to availability) unless otherwise restricted by event-level ticket limits. Fans with accessible needs may enter Rogers Centre through any open gate. Fans requiring accessible support are encouraged to enter through Gate 7, the designated accessible located on the south side of the building (along Bremner Boulevard). Rogers Centre is proud to be a Sensory Inclusive Certified venue by KultureCity. Sensory Bags are available at any Fan Services location. A Sensory Room can also be found at Section 212 behind Fan Services. Additional Info: bluejays.com/accessibility",
+            "generalInfo": {
+              "generalRule": "Know Before You Go Gameday Experience: bluejays.com/knowbeforeyougo Know Before You Go Concert Experience: bluejays.com/concerts MOBILE TICKETING Blue Jays and Rogers Centre concert tickets are delivered digitally and must be scanned in at the gate using a mobile device. Display your ticket at the gate through MLB Ballpark app, your Blue Jays Account Manager, or, if you purchased via ticketmaster.ca, the Ticketmaster app. Paper or PDF tickets are not accepted and the Box Office at Rogers Centre is not open for ticket purchases. Mobile support staff will be available to assist fans as required at the gates. GATE ENTRY Gates for Blue Jays games are open 90 minutes before the scheduled game time on weekdays and two hours on weekends. Check bluejays.com/concerts for concert gate information. Fans may enter at any open main gate, however the closest entrance to each fan's seat will be recommended by the ticket app. BAG POLICY Bags are discouraged and will be subject to a security search prior to entry. Only bags smaller than 16 x 16: x 8 are permitted into the ballpark. Bag restrictions and prohibited items for concerts may be different than Blue Jays games; visit bluejays.com/concerts SECURITY MEASURES In order to provide our fans with a safe environment, searches at all entry gates will include the inspection of all items that are carried into the stadium. Everyone entering will be subject to full searches of their person, with the use of walk through metal detectors (WTMD). Other methods include hand-held metal detectors or pat downs. For a list of prohibited items, please visit bluejays.com/ballpark. FAN FEEDBACK The Toronto Blue Jays and Rogers Centre welcome the ideas, comments and suggestions from our fans. It helps us improve the service we provide to our valued fans and fans. Please contact our Fan Services Team by email at fanfeedback@bluejays.com or by phone at (416)341-1000 to submit your feedback/inquiry.",
+              "childRule": "All fans two (2) years of age or older must have a valid ticket to enter Rogers Centre."
+            },
+            "upcomingEvents": {
+              "ticketmaster": 112,
+              "_total": 112,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/venues/KovZpa3Bbe?locale=en-us"
+              }
+            }
+          }
+        ],
+        "attractions": [
+          {
+            "name": "Rogers Centre Ballpark Tours",
+            "type": "attraction",
+            "id": "K8vZ917GzM0",
+            "test": false,
+            "url": "https://www.ticketmaster.com/rogers-centre-ballpark-tours-tickets/artist/1283805",
+            "locale": "en-us",
+            "images": [
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RECOMENDATION_16_9.jpg",
+                "width": 100,
+                "height": 56,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_TABLET_LANDSCAPE_3_2.jpg",
+                "width": 1024,
+                "height": 683,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RETINA_PORTRAIT_16_9.jpg",
+                "width": 640,
+                "height": 360,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_SOURCE",
+                "width": 2426,
+                "height": 1365,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+                "width": 2048,
+                "height": 1152,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RETINA_LANDSCAPE_16_9.jpg",
+                "width": 1136,
+                "height": 639,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_TABLET_LANDSCAPE_16_9.jpg",
+                "width": 1024,
+                "height": 576,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_RETINA_PORTRAIT_3_2.jpg",
+                "width": 640,
+                "height": 427,
+                "fallback": false
+              },
+              {
+                "ratio": "3_2",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_ARTIST_PAGE_3_2.jpg",
+                "width": 305,
+                "height": 203,
+                "fallback": false
+              },
+              {
+                "ratio": "16_9",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_EVENT_DETAIL_PAGE_16_9.jpg",
+                "width": 205,
+                "height": 115,
+                "fallback": false
+              },
+              {
+                "ratio": "4_3",
+                "url": "https://s1.ticketm.net/dam/a/826/7d703c1c-3bb0-4ac9-b8c6-c3351589b826_CUSTOM.jpg",
+                "width": 305,
+                "height": 225,
+                "fallback": false
+              }
+            ],
+            "classifications": [
+              {
+                "primary": true,
+                "segment": {
+                  "id": "KZFzniwnSyZfZ7v7n1",
+                  "name": "Miscellaneous"
+                },
+                "genre": {
+                  "id": "KnvZfZ7v7ll",
+                  "name": "Undefined"
+                },
+                "subGenre": {
+                  "id": "KZazBEonSMnZfZ7vAv1",
+                  "name": "Undefined"
+                },
+                "type": {
+                  "id": "KZAyXgnZfZ7v7lt",
+                  "name": "Event Style"
+                },
+                "subType": {
+                  "id": "KZFzBErXgnZfZ7vAvv",
+                  "name": "Sightseeing/Facility"
+                },
+                "family": false
+              }
+            ],
+            "upcomingEvents": {
+              "ticketmaster": 47,
+              "_total": 47,
+              "_filtered": 0
+            },
+            "_links": {
+              "self": {
+                "href": "/discovery/v2/attractions/K8vZ917GzM0?locale=en-us"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
