@@ -63,6 +63,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
 | `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. |
 | `map.js` | Leaflet map + custom canvas heat overlay + markers + legend (M2). |
+| `timeline.js` | Custom canvas day timeline + scrubber + per-event avoid bands (M3). |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |
 | `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants. |
 | `pipeline/timecurves.py` | Per-event 96-bucket time curve + daily timeline + peak-bucket + sigma. M2-locked. |
@@ -123,6 +124,19 @@ The project uses a centralized design token system defined in `tokens.js` with *
 var t = window.TOKENS;
 element.style.color = t.semantic.color.text.secondary;
 ```
+
+### Tinted variants of token colors
+
+When the same hue is needed at a lower alpha — a band fill, a swatch, a chip border, a gradient stop, a translucent surface — **route it through the token**. Never reach for a raw `rgba(R, G, B, A)` literal whose `(R, G, B)` mirrors a token color. That bypasses the token system: a future palette change won't propagate.
+
+- **What NOT to do:** `border-color: rgba(56, 189, 248, 0.35);` — even if `56, 189, 248` is `--color-status-info` today.
+- **What TO do:** `border-color: color-mix(in srgb, var(--color-status-info) 35%, transparent);`
+
+For canvas (where `color-mix` isn't accepted by `ctx.fillStyle` / `ctx.strokeStyle`), use a token-driven helper that takes a token-sourced hex and produces an `rgba` string — see `hexToRgba()` in `timeline.js`. The hex MUST come from `tokenColor()`, never from a literal in product code.
+
+The only place a raw `rgba(...)` literal is allowed is inside `tokens.js` itself, where it defines a semantic token (e.g. `border.subtle = 'rgba(255, 255, 255, 0.06)'`).
+
+If a specific tint is used in **3+ rules across files**, promote it to a semantic token before using it again (e.g. `--color-highlight` was added when the decorative white-on-dark gloss appeared in four gradient backgrounds).
 
 ## Environment
 

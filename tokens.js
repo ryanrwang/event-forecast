@@ -253,7 +253,13 @@
         s2: primitives.color.heatmap[2],
         s3: primitives.color.heatmap[3],
         s4: primitives.color.heatmap[4]
-      }
+      },
+      // Decorative top-edge highlight for surfaces. Used at low alphas
+      // via color-mix(...) to brighten the top of header / card / panel
+      // gradients. White in dark mode (renders as a subtle gloss),
+      // unchanged in light mode (color-mix collapses to invisible on
+      // white surfaces, which matches design intent).
+      highlight: primitives.color.white
     },
     spacing: {
       xs:  primitives.spacing[4],
@@ -366,7 +372,10 @@
         s2: primitives.color.heatmap[2],
         s3: primitives.color.heatmap[3],
         s4: primitives.color.heatmap[4]
-      }
+      },
+      // See semanticDark.color.highlight for intent. Same source color;
+      // color-mix at the call site keeps the gloss invisible on white.
+      highlight: primitives.color.white
     },
     spacing:    semanticDark.spacing,
     typography: semanticDark.typography,
