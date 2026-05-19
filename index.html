@@ -9,6 +9,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="anonymous">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,10 +35,10 @@
     </section>
     <section class="forecast-detail" id="forecast-detail" aria-label="Selected day detail">
       <div class="forecast-detail__placeholder">
-        <span class="forecast-detail__placeholder-eyebrow">Coming next</span>
+        <span class="forecast-detail__placeholder-eyebrow">Select a day</span>
         <p class="forecast-detail__placeholder-text">
-          Tap a day to see <em>where</em> and <em>when</em> the crunch lands.
-          Map and busyness timeline arrive in the next milestones.
+          Tap a day card above to see <em>where</em> the crunch lands.
+          A busyness timeline showing <em>when</em> arrives in the next milestone.
         </p>
       </div>
     </section>
@@ -50,6 +54,10 @@
   </footer>
 
   <script src="tokens.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin="anonymous"></script>
+  <script src="map.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

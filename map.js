@@ -1,0 +1,474 @@
+/*
+ * Event Forecast — Map module.
+ *
+ * Vanilla JS, no framework, no build step. Leaflet 1.9 is loaded
+ * separately by index.html. This file owns:
+ *
+ *   • The Leaflet map instance (initial fit to the city bbox, OSM dark
+ *     basemap, attribution).
+ *   • A custom L.Layer canvas overlay that renders the modeled crowd
+ *     heat field for the day's peak bucket. Heat is summed on the client
+ *     from per-event venue intensities + per-event sigmas shipped in
+ *     forecast.json.
+ *   • Event markers sized by impact, with popups linking to Ticketmaster.
+ *   • A persistent legend declaring the heatmap is a modeled estimate.
+ *
+ * Reads the selected city's bbox + timezone from the cityConfig the app
+ * already loads; no hardcoded city anywhere.
+ */
+(function () {
+  'use strict';
+
+  // ─────────── Constants (modeling-spec locked, do not retune here) ───────────
+
+  // Heat field is sampled on a roughly 75m grid (M2 modeling spec).
+  // We draw onto a downsampled canvas (one canvas pixel = ~75m) and CSS-
+  // scale it up; this keeps the per-day redraw cheap and the falloff
+  // visually soft without leaning on browser filters.
+  var HEAT_CELL_METERS = 75;
+  // Truncate the Gaussian beyond 3σ — contributions are negligible there.
+  var SIGMA_TRUNCATE = 3.0;
+  // Where the legend buckets the normalized heat. 0..0.25 maps to stop 0,
+  // etc. Values are linearly interpolated between stops on render.
+  var HEAT_STOPS_T = [0.0, 0.25, 0.5, 0.75, 1.0];
+
+  // Marker size scales with impact. Spec wants visible separation between
+  // a 50k-cap stadium event and a 2k-cap theatre event; these radii hit
+  // that without crowding the map.
+  var MARKER_MIN_PX = 8;
+  var MARKER_MAX_PX = 30;
+  var MARKER_IMPACT_LOW = 2;     // ~theatre
+  var MARKER_IMPACT_HIGH = 60;   // ~major stadium concert
+
+  // OSM dark basemap (CARTO's free dark-matter tiles, OSM-derived; the
+  // attribution string below carries the required OSM credit). No key,
+  // no signup. Standard for OSS dark-mode Leaflet apps.
+  var TILE_URL =
+    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  var TILE_ATTRIBUTION =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+    'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+  // ─────────── Module-private state ───────────
+
+  var _map = null;
+  var _basemap = null;
+  var _heatLayer = null;
+  var _markerLayer = null;
+  var _legendControl = null;
+  var _currentForecast = null;
+
+  // ─────────── Utilities ───────────
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  function tokenColor(path, fallback) {
+    try {
+      var parts = path.split('.');
+      var node = window.TOKENS && window.TOKENS.semantic;
+      for (var i = 0; i < parts.length && node; i++) node = node[parts[i]];
+      return (typeof node === 'string' && node) ? node : fallback;
+    } catch (_) { return fallback; }
+  }
+
+  // Parse "#RRGGBB" into [r,g,b]. Tolerates shorthand "#RGB".
+  function hexToRgb(hex) {
+    if (!hex) return [0, 0, 0];
+    var h = hex.replace('#', '');
+    if (h.length === 3) {
+      h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    }
+    var n = parseInt(h, 16);
+    return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // Build the active 5-stop heat ramp from semantic tokens at draw time
+  // (so a future light-mode flip picks up the override automatically).
+  function buildHeatRamp() {
+    var stops = [
+      hexToRgb(tokenColor('color.heatmap.s0', '#0EA5A5')),
+      hexToRgb(tokenColor('color.heatmap.s1', '#22C55E')),
+      hexToRgb(tokenColor('color.heatmap.s2', '#EAB308')),
+      hexToRgb(tokenColor('color.heatmap.s3', '#F97316')),
+      hexToRgb(tokenColor('color.heatmap.s4', '#EF4444'))
+    ];
+    return stops;
+  }
+
+  function colorAt(t, ramp) {
+    // t in [0, 1]. Below 0 = transparent; we'll handle alpha at the caller.
+    if (t <= 0) return [ramp[0][0], ramp[0][1], ramp[0][2]];
+    if (t >= 1) return [ramp[4][0], ramp[4][1], ramp[4][2]];
+    // Find segment.
+    var seg = Math.floor(t / 0.25);
+    if (seg > 3) seg = 3;
+    var local = (t - HEAT_STOPS_T[seg]) / (HEAT_STOPS_T[seg + 1] - HEAT_STOPS_T[seg]);
+    var a = ramp[seg];
+    var b = ramp[seg + 1];
+    return [
+      Math.round(lerp(a[0], b[0], local)),
+      Math.round(lerp(a[1], b[1], local)),
+      Math.round(lerp(a[2], b[2], local))
+    ];
+  }
+
+  // ─────────── Heat overlay (custom L.Layer) ───────────
+  //
+  // We could have shipped a precomputed heat grid from Python, but the
+  // M2 spec lets us sum per-event Gaussians on the client. That keeps
+  // forecast.json compact AND makes M3's scrubber trivial (just pick a
+  // different bucket and re-sum). The canvas covers the map pane and is
+  // redrawn on every zoom/move.
+
+  function makeHeatLayer() {
+    var Layer = L.Layer.extend({
+      onAdd: function (map) {
+        this._map = map;
+        var size = map.getSize();
+        var canvas = L.DomUtil.create('canvas', 'ef-heat-canvas');
+        canvas.width = size.x;
+        canvas.height = size.y;
+        canvas.style.position = 'absolute';
+        canvas.style.left = '0';
+        canvas.style.top = '0';
+        canvas.style.pointerEvents = 'none';
+        // Below markerPane so popups + markers stay clickable above.
+        map.getPanes().overlayPane.appendChild(canvas);
+        this._canvas = canvas;
+
+        map.on('moveend zoomend resize viewreset', this._redraw, this);
+        // Keep canvas pinned to top-left of overlayPane during moves.
+        map.on('move', this._reposition, this);
+        this._redraw();
+      },
+
+      onRemove: function (map) {
+        map.off('moveend zoomend resize viewreset', this._redraw, this);
+        map.off('move', this._reposition, this);
+        if (this._canvas && this._canvas.parentNode) {
+          this._canvas.parentNode.removeChild(this._canvas);
+        }
+        this._canvas = null;
+        this._map = null;
+      },
+
+      setData: function (events) {
+        // Each entry must carry: lat, lon, peak_intensity, sigma_m.
+        this._events = (events || []).filter(function (e) {
+          return e && typeof e.lat === 'number' && typeof e.lon === 'number' &&
+                 typeof e.peak_intensity === 'number' && e.peak_intensity > 0 &&
+                 typeof e.sigma_m === 'number' && e.sigma_m > 0;
+        });
+        this._redraw();
+      },
+
+      _reposition: function () {
+        if (!this._canvas || !this._map) return;
+        var topLeft = this._map.containerPointToLayerPoint([0, 0]);
+        L.DomUtil.setPosition(this._canvas, topLeft);
+      },
+
+      _redraw: function () {
+        if (!this._canvas || !this._map) return;
+        var map = this._map;
+        var size = map.getSize();
+        this._canvas.width = size.x;
+        this._canvas.height = size.y;
+        this._reposition();
+
+        var ctx = this._canvas.getContext('2d');
+        ctx.clearRect(0, 0, size.x, size.y);
+
+        var events = this._events || [];
+        if (events.length === 0) return;
+
+        // Pixels per meter at the map's current zoom + center latitude.
+        // This is a local linearization that's fine at city scale.
+        var center = map.getCenter();
+        var p1 = map.project(center, map.getZoom());
+        var oneMeterEast = L.latLng(
+          center.lat,
+          center.lng + (1 / 111320 / Math.cos(center.lat * Math.PI / 180))
+        );
+        var p2 = map.project(oneMeterEast, map.getZoom());
+        var pxPerMeter = Math.abs(p2.x - p1.x); // px per meter
+
+        // Heat canvas is downsampled to a ~75m grid. We accumulate floats
+        // into a typed array, then map → colors once.
+        var cellPx = Math.max(2, Math.round(HEAT_CELL_METERS * pxPerMeter));
+        var gw = Math.max(1, Math.ceil(size.x / cellPx));
+        var gh = Math.max(1, Math.ceil(size.y / cellPx));
+        var grid = new Float32Array(gw * gh);
+
+        // Per-event Gaussian splat onto the grid.
+        for (var i = 0; i < events.length; i++) {
+          var e = events[i];
+          var pt = map.latLngToContainerPoint([e.lat, e.lon]);
+          var cx = pt.x / cellPx;
+          var cy = pt.y / cellPx;
+          var sigmaCells = (e.sigma_m * pxPerMeter) / cellPx;
+          if (sigmaCells <= 0) continue;
+          var r = sigmaCells * SIGMA_TRUNCATE;
+          var x0 = Math.max(0, Math.floor(cx - r));
+          var x1 = Math.min(gw - 1, Math.ceil(cx + r));
+          var y0 = Math.max(0, Math.floor(cy - r));
+          var y1 = Math.min(gh - 1, Math.ceil(cy + r));
+          var inv2s2 = 1.0 / (2.0 * sigmaCells * sigmaCells);
+          var intensity = e.peak_intensity;
+          for (var y = y0; y <= y1; y++) {
+            for (var x = x0; x <= x1; x++) {
+              var dx = x - cx;
+              var dy = y - cy;
+              var d2 = dx * dx + dy * dy;
+              grid[y * gw + x] += intensity * Math.exp(-d2 * inv2s2);
+            }
+          }
+        }
+
+        // Normalize against this redraw's max so the legend reads as a
+        // relative ramp ("low → peak" within the day). Absolute
+        // intensity is intentionally not pinned: a Quiet day's "peak"
+        // should still light up, just at smaller radius.
+        var maxV = 0;
+        for (var k = 0; k < grid.length; k++) if (grid[k] > maxV) maxV = grid[k];
+        if (maxV <= 0) return;
+
+        var ramp = buildHeatRamp();
+
+        // Render to a small ImageData matching the grid, then blit
+        // upscaled (smooth interpolation = soft falloff for free).
+        var img = ctx.createImageData(gw, gh);
+        for (var j = 0; j < grid.length; j++) {
+          var v = grid[j] / maxV;
+          if (v < 0.01) continue;  // skip the long tail
+          var t = clamp(v, 0, 1);
+          var rgb = colorAt(t, ramp);
+          // Alpha ramps with intensity so the basemap stays readable
+          // under the cool/low end of the field.
+          var alpha = Math.round(clamp(40 + t * 170, 40, 210));
+          var idx = j * 4;
+          img.data[idx]     = rgb[0];
+          img.data[idx + 1] = rgb[1];
+          img.data[idx + 2] = rgb[2];
+          img.data[idx + 3] = alpha;
+        }
+
+        // Draw downsampled, then upscale to canvas.
+        var tmp = document.createElement('canvas');
+        tmp.width = gw; tmp.height = gh;
+        tmp.getContext('2d').putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(tmp, 0, 0, gw, gh, 0, 0, size.x, size.y);
+        ctx.globalAlpha = 1.0;
+      }
+    });
+
+    return new Layer();
+  }
+
+  // ─────────── Markers ───────────
+
+  function markerRadius(impact) {
+    var safe = isFinite(impact) ? impact : 0;
+    var t = (safe - MARKER_IMPACT_LOW) / (MARKER_IMPACT_HIGH - MARKER_IMPACT_LOW);
+    t = clamp(t, 0, 1);
+    // Sqrt scaling so visual AREA tracks impact roughly linearly — a
+    // big stadium event looks meaningfully larger than a theatre event
+    // without dwarfing it past usability.
+    var r = MARKER_MIN_PX + (MARKER_MAX_PX - MARKER_MIN_PX) * Math.sqrt(t);
+    return r;
+  }
+
+  function verdictBandColor(verdict) {
+    var key = (verdict || '').toLowerCase();
+    if (key === 'quiet')    return tokenColor('color.verdict.quiet', '#22C55E');
+    if (key === 'moderate') return tokenColor('color.verdict.moderate', '#EAB308');
+    if (key === 'busy')     return tokenColor('color.verdict.busy', '#F97316');
+    if (key === 'severe')   return tokenColor('color.verdict.severe', '#EF4444');
+    return tokenColor('color.text.accent', '#34D399');
+  }
+
+  function fmtTime(iso, tz) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var opts = { hour: 'numeric', minute: '2-digit' };
+    if (tz) opts.timeZone = tz;
+    try { return new Intl.DateTimeFormat('en-US', opts).format(d); }
+    catch (_) { return ''; }
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function buildPopupHtml(ev, tz) {
+    var time = fmtTime(ev.start_local, tz);
+    var name = escapeHtml(ev.name || '(untitled event)');
+    var venue = escapeHtml(ev.venue_name || '');
+    var html =
+      '<div class="ef-popup">' +
+        '<div class="ef-popup__name">' + name + '</div>' +
+        '<div class="ef-popup__meta">' +
+          '<span class="ef-popup__venue">' + venue + '</span>' +
+          (time ? '<span class="ef-popup__sep">·</span>' +
+                  '<span class="ef-popup__time">' + escapeHtml(time) + '</span>' : '') +
+        '</div>';
+    if (ev.ticketmaster_url) {
+      html +=
+        '<a class="ef-popup__link" href="' + escapeHtml(ev.ticketmaster_url) +
+        '" target="_blank" rel="noopener noreferrer">Tickets on Ticketmaster</a>' +
+        '<div class="ef-popup__attribution">Event powered by Ticketmaster.</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderMarkers(events, tz, verdict) {
+    if (!_markerLayer) return;
+    _markerLayer.clearLayers();
+    if (!events || events.length === 0) return;
+    var stroke = verdictBandColor(verdict);
+    for (var i = 0; i < events.length; i++) {
+      var ev = events[i];
+      if (typeof ev.lat !== 'number' || typeof ev.lon !== 'number') continue;
+      var r = markerRadius(ev.impact || 0);
+      var marker = L.circleMarker([ev.lat, ev.lon], {
+        radius: r,
+        color: stroke,
+        weight: 1.5,
+        opacity: 0.95,
+        fillColor: stroke,
+        fillOpacity: 0.25,
+        className: 'ef-marker'
+      });
+      marker.bindPopup(buildPopupHtml(ev, tz), {
+        className: 'ef-popup-wrap',
+        closeButton: true,
+        autoPan: true
+      });
+      marker.addTo(_markerLayer);
+    }
+  }
+
+  // ─────────── Legend ───────────
+
+  function buildLegendControl() {
+    var Ctl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function () {
+        var wrap = el('div', 'ef-legend');
+        wrap.setAttribute('role', 'note');
+
+        var head = el('div', 'ef-legend__head');
+        head.appendChild(el('span', 'ef-legend__eyebrow', 'Modeled estimate'));
+        head.appendChild(el('span', 'ef-legend__note', 'Not measured.'));
+        wrap.appendChild(head);
+
+        var ramp = el('div', 'ef-legend__ramp');
+        ramp.setAttribute('aria-hidden', 'true');
+        for (var i = 0; i < 5; i++) {
+          var stop = el('span', 'ef-legend__stop');
+          stop.style.background = tokenColor('color.heatmap.s' + i, '#22C55E');
+          ramp.appendChild(stop);
+        }
+        wrap.appendChild(ramp);
+
+        var scale = el('div', 'ef-legend__scale');
+        scale.appendChild(el('span', null, 'Low'));
+        scale.appendChild(el('span', null, 'Peak'));
+        wrap.appendChild(scale);
+
+        var fine = el('p', 'ef-legend__fine');
+        fine.textContent =
+          'Crowd intensity computed from event metadata (venue, capacity, ' +
+          'start time, category) and proximity. Not live crowd data.';
+        wrap.appendChild(fine);
+
+        // Block map drag/scroll while interacting with the legend.
+        L.DomEvent.disableClickPropagation(wrap);
+        L.DomEvent.disableScrollPropagation(wrap);
+        return wrap;
+      }
+    });
+    return new Ctl();
+  }
+
+  // ─────────── Public API ───────────
+
+  function ensureMap(hostEl, bbox, options) {
+    if (_map) return _map;
+    if (!hostEl) return null;
+    options = options || {};
+
+    _map = L.map(hostEl, {
+      zoomControl: true,
+      attributionControl: true,
+      worldCopyJump: false,
+      // Keep the user inside the city. A 0.5° pad lets them roam a bit
+      // without losing the basemap entirely.
+      maxBounds: bbox ? [
+        [bbox[1] - 0.5, bbox[0] - 0.5],
+        [bbox[3] + 0.5, bbox[2] + 0.5]
+      ] : null,
+      maxBoundsViscosity: 0.6
+    });
+
+    _basemap = L.tileLayer(TILE_URL, {
+      attribution: TILE_ATTRIBUTION,
+      subdomains: 'abcd',
+      maxZoom: 19,
+      detectRetina: true
+    }).addTo(_map);
+
+    _heatLayer = makeHeatLayer().addTo(_map);
+    _markerLayer = L.layerGroup().addTo(_map);
+    _legendControl = buildLegendControl().addTo(_map);
+
+    if (bbox && bbox.length === 4) {
+      _map.fitBounds([[bbox[1], bbox[0]], [bbox[3], bbox[2]]], { padding: [16, 16] });
+    } else if (options.fallbackCenter) {
+      _map.setView(options.fallbackCenter, 11);
+    } else {
+      _map.setView([0, 0], 2);
+    }
+
+    // Recompute heat after Leaflet finishes its initial fit animation.
+    setTimeout(function () { if (_heatLayer) _heatLayer._redraw(); }, 250);
+    return _map;
+  }
+
+  function setForecast(forecast, cityConfig) {
+    if (!_map) return;
+    _currentForecast = forecast || null;
+    var tz = cityConfig && cityConfig.timezone;
+    var events = (forecast && forecast.events) || [];
+    var verdict = forecast && forecast.verdict;
+
+    renderMarkers(events, tz, verdict);
+    if (_heatLayer && _heatLayer.setData) _heatLayer.setData(events);
+  }
+
+  function invalidate() {
+    if (_map) _map.invalidateSize();
+  }
+
+  window.EFMap = {
+    ensureMap: ensureMap,
+    setForecast: setForecast,
+    invalidate: invalidate
+  };
+})();

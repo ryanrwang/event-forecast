@@ -17,7 +17,8 @@
     currentCityId: null,
     cityConfig: null,
     days: [],
-    forecasts: {}
+    forecasts: {},
+    selectedDate: null
   };
 
   // ─────────── Theme ───────────
@@ -156,6 +157,10 @@
     var card = el('article', 'day-card');
     card.setAttribute('data-date', date);
     card.setAttribute('data-verdict', verdictKey(forecast && forecast.verdict));
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-pressed', state.selectedDate === date ? 'true' : 'false');
+    if (state.selectedDate === date) card.setAttribute('data-selected', 'true');
     card.style.setProperty('--i', String(index));
 
     var header = el('header', 'day-card__header');
@@ -200,7 +205,94 @@
       grid.appendChild(renderDayCard(date, state.forecasts[date], tz, i));
     });
 
+    // Single delegated listener — picks up data-date off the clicked card
+    // (no text parsing, no separate event channel — uses the M1 contract).
+    grid.addEventListener('click', function (evt) {
+      var card = evt.target && evt.target.closest && evt.target.closest('.day-card');
+      if (!card) return;
+      var d = card.getAttribute('data-date');
+      if (d) selectDate(d);
+    });
+    grid.addEventListener('keydown', function (evt) {
+      if (evt.key !== 'Enter' && evt.key !== ' ') return;
+      var card = evt.target && evt.target.closest && evt.target.closest('.day-card');
+      if (!card) return;
+      evt.preventDefault();
+      var d = card.getAttribute('data-date');
+      if (d) selectDate(d);
+    });
+
     host.appendChild(grid);
+  }
+
+  // ─────────── Selected day ───────────
+
+  function selectDate(date) {
+    if (!date || !state.forecasts[date]) return;
+    state.selectedDate = date;
+    // Update card aria/data-selected flags without rebuilding the strip.
+    var cards = document.querySelectorAll('.day-card');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var match = c.getAttribute('data-date') === date;
+      c.setAttribute('aria-pressed', match ? 'true' : 'false');
+      if (match) c.setAttribute('data-selected', 'true');
+      else c.removeAttribute('data-selected');
+    }
+    renderDetailForSelected();
+  }
+
+  // ─────────── Detail / map ───────────
+
+  function ensureDetailScaffold() {
+    // Build the detail panel's stable DOM exactly once. The Leaflet map
+    // is bound to #map-canvas; tearing the host down on every day-change
+    // would detach the map. We only update the header text + call
+    // EFMap.setForecast when the selected day changes.
+    var host = document.getElementById('forecast-detail');
+    if (!host || host.dataset.scaffolded === 'true') return;
+    host.innerHTML = '';
+
+    var header = el('div', 'forecast-detail__header');
+    var left = el('div');
+    left.appendChild(el('div', 'forecast-detail__eyebrow', 'Where the crunch lands'));
+    var title = el('div', 'forecast-detail__title');
+    title.id = 'forecast-detail-title';
+    left.appendChild(title);
+    header.appendChild(left);
+    host.appendChild(header);
+
+    var mapHost = el('div', 'forecast-detail__map');
+    mapHost.id = 'map-canvas';
+    host.appendChild(mapHost);
+
+    host.dataset.scaffolded = 'true';
+  }
+
+  function renderDetailForSelected() {
+    ensureDetailScaffold();
+    var date = state.selectedDate;
+    var forecast = date && state.forecasts[date];
+    if (!forecast) return;
+
+    var tz = state.cityConfig && state.cityConfig.timezone;
+    var title = document.getElementById('forecast-detail-title');
+    if (title) {
+      title.textContent = friendlyDate(date, tz);
+      var verdictBadge = el('span', 'forecast-detail__title-verdict', '· ' + (forecast.verdict || '—'));
+      title.appendChild(verdictBadge);
+    }
+
+    var mapHost = document.getElementById('map-canvas');
+    if (!window.EFMap || !window.L || !mapHost) {
+      if (mapHost) mapHost.textContent = 'Map unavailable (Leaflet failed to load).';
+      return;
+    }
+
+    var bbox = state.cityConfig && state.cityConfig.bbox;
+    window.EFMap.ensureMap(mapHost, bbox);
+    window.EFMap.invalidate();
+    window.EFMap.setForecast(forecast, state.cityConfig);
   }
 
   function renderEmptyState(message) {
@@ -219,12 +311,24 @@
     state.cityConfig = null;
     state.days = [];
     state.forecasts = {};
+    state.selectedDate = null;
     renderEmptyState('Loading ' + cityId + '…');
     loadCurrentCity().catch(function (err) {
       // eslint-disable-next-line no-console
       console.error(err);
       renderEmptyState('Could not load forecast for ' + cityId + '.');
     });
+  }
+
+  function pickInitialDate() {
+    // Prefer the first day that actually has events; fall back to the
+    // first day available so the map always renders something.
+    for (var i = 0; i < state.days.length; i++) {
+      var d = state.days[i];
+      var f = state.forecasts[d];
+      if (f && f.events && f.events.length > 0) return d;
+    }
+    return state.days[0] || null;
   }
 
   function loadCurrentCity() {
@@ -246,7 +350,9 @@
         state.days.forEach(function (d, i) {
           state.forecasts[d] = forecasts[i];
         });
+        state.selectedDate = pickInitialDate();
         renderForecastStrip();
+        if (state.selectedDate) renderDetailForSelected();
       });
     });
   }

@@ -73,6 +73,34 @@ function load_city_config(string $city_id): array {
     return $cfg;
 }
 
+/**
+ * Load the venue whitelist for a city, indexed by venue id.
+ *
+ * The venues file is the single source of truth for venue lat/lon and
+ * capacity. forecast.php joins per-event venue_id against this index so
+ * that the per-day forecast.json files never carry denormalized
+ * coordinates — editing a venue's lat/lon stays a one-file change in
+ * config/<city>/venues.json with no regeneration required.
+ */
+function load_venues_index(string $city_id): array {
+    $path = CONFIG_ROOT . '/' . $city_id . '/venues.json';
+    if (!is_file($path)) {
+        return [];
+    }
+    $rows = json_decode(file_get_contents($path), true);
+    if (!is_array($rows)) {
+        return [];
+    }
+    $out = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) continue;
+        $id = $row['id'] ?? null;
+        if (!is_string($id) || $id === '') continue;
+        $out[$id] = $row;
+    }
+    return $out;
+}
+
 function valid_city_id(string $id): bool {
     if (!preg_match('/^[a-z0-9_-]{1,32}$/', $id)) {
         return false;

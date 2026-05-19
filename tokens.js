@@ -72,6 +72,19 @@
         busy:     '#F97316',  // orange
         severe:   '#EF4444'   // red
       },
+      // Heatmap intensity ramp — used by the M2 map heatmap canvas
+      // overlay. Five stops from coolest (low intensity, still visible
+      // against the dark basemap) to hottest (peak intensity). The ramp
+      // is interpolated client-side. Stays consistent with the verdict
+      // palette tone (teal → amber → red) but more saturated and
+      // datavis-friendly. NOT default Leaflet colors.
+      heatmap: {
+        0: '#0EA5A5',  // teal — low
+        1: '#22C55E',  // green
+        2: '#EAB308',  // amber
+        3: '#F97316',  // orange
+        4: '#EF4444'   // red — peak
+      },
       // General-purpose status (forms, toasts).
       status: {
         info:    '#38BDF8',
@@ -233,6 +246,13 @@
         moderate: primitives.color.verdict.moderate,
         busy:     primitives.color.verdict.busy,
         severe:   primitives.color.verdict.severe
+      },
+      heatmap: {
+        s0: primitives.color.heatmap[0],
+        s1: primitives.color.heatmap[1],
+        s2: primitives.color.heatmap[2],
+        s3: primitives.color.heatmap[3],
+        s4: primitives.color.heatmap[4]
       }
     },
     spacing: {
@@ -339,6 +359,13 @@
         moderate: primitives.color.verdict.moderate,
         busy:     primitives.color.verdict.busy,
         severe:   primitives.color.verdict.severe
+      },
+      heatmap: {
+        s0: primitives.color.heatmap[0],
+        s1: primitives.color.heatmap[1],
+        s2: primitives.color.heatmap[2],
+        s3: primitives.color.heatmap[3],
+        s4: primitives.color.heatmap[4]
       }
     },
     spacing:    semanticDark.spacing,
