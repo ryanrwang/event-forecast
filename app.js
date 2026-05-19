@@ -18,8 +18,15 @@
     cityConfig: null,
     days: [],
     forecasts: {},
-    selectedDate: null
+    selectedDate: null,
+    // 15-minute bucket index [0, 95] for the day timeline / scrubber.
+    // null until a forecast is loaded; reset to the new day's peak
+    // bucket on day-change per M3 spec.
+    selectedBucket: null
   };
+
+  var BUCKETS_PER_DAY = 96;
+  var BUCKET_MIN = 15;
 
   // ─────────── Theme ───────────
 
@@ -248,7 +255,8 @@
     // Build the detail panel's stable DOM exactly once. The Leaflet map
     // is bound to #map-canvas; tearing the host down on every day-change
     // would detach the map. We only update the header text + call
-    // EFMap.setForecast when the selected day changes.
+    // EFMap.setForecast / EFTimeline.setForecast / renderRail when the
+    // selected day changes.
     var host = document.getElementById('forecast-detail');
     if (!host || host.dataset.scaffolded === 'true') return;
     host.innerHTML = '';
@@ -266,7 +274,31 @@
     mapHost.id = 'map-canvas';
     host.appendChild(mapHost);
 
+    // Timeline host (M3). EFTimeline owns the canvas + scrubber.
+    var timelineHost = el('div', 'forecast-detail__timeline');
+    timelineHost.id = 'timeline-host';
+    host.appendChild(timelineHost);
+
+    // Rail host (M3). Lists events impacting the selected bucket;
+    // M4 will populate the reserved transit slot inside each row.
+    var railHost = el('section', 'forecast-detail__rail');
+    railHost.id = 'rail-host';
+    railHost.setAttribute('aria-label', 'Events impacting the selected time');
+    host.appendChild(railHost);
+
     host.dataset.scaffolded = 'true';
+
+    // Wire the timeline's scrubber to map + rail. The scrubber is the
+    // single source of truth for state.selectedBucket.
+    if (window.EFTimeline) {
+      window.EFTimeline.ensureTimeline(timelineHost, function (bucket) {
+        state.selectedBucket = bucket;
+        if (window.EFMap && window.EFMap.setBucket) {
+          window.EFMap.setBucket(bucket);
+        }
+        renderRail();
+      });
+    }
   }
 
   function renderDetailForSelected() {
@@ -278,7 +310,8 @@
     var tz = state.cityConfig && state.cityConfig.timezone;
     var title = document.getElementById('forecast-detail-title');
     if (title) {
-      title.textContent = friendlyDate(date, tz);
+      title.textContent = '';
+      title.appendChild(document.createTextNode(friendlyDate(date, tz)));
       var verdictBadge = el('span', 'forecast-detail__title-verdict', '· ' + (forecast.verdict || '—'));
       title.appendChild(verdictBadge);
     }
@@ -292,7 +325,183 @@
     var bbox = state.cityConfig && state.cityConfig.bbox;
     window.EFMap.ensureMap(mapHost, bbox);
     window.EFMap.invalidate();
+
+    // Reset bucket selection to the new day's peak (M3 spec: "scrubber
+    // resets to the new day's peak bucket"). The timeline owns the
+    // visual reset; we just sync app state and the map.
+    var newBucket = (typeof forecast.peak_bucket === 'number')
+      ? forecast.peak_bucket : 0;
+    state.selectedBucket = newBucket;
+
+    // setForecast renders the heatmap at peak_bucket using peak_value
+    // normalization. The scrubber will override via setBucket().
     window.EFMap.setForecast(forecast, state.cityConfig);
+
+    if (window.EFTimeline) {
+      window.EFTimeline.setForecast(forecast, state.cityConfig);
+    }
+    renderRail();
+  }
+
+  // ─────────── Detail rail ───────────
+
+  function bucketToTimeLabel(bucket) {
+    var b = Math.max(0, Math.min(BUCKETS_PER_DAY - 1, bucket || 0));
+    var mins = b * BUCKET_MIN;
+    var hh = Math.floor(mins / 60);
+    var mm = mins % 60;
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    return pad(hh) + ':' + pad(mm);
+  }
+
+  // The rail shows events that have meaningful presence at the selected
+  // bucket. "Meaningful" = time_curve[bucket] above a small floor so the
+  // 10%-during-event background doesn't bury an event's peak neighbours.
+  var RAIL_PRESENCE_FLOOR = 0.05;
+
+  function eventsForBucket(forecast, bucket) {
+    var events = (forecast && forecast.events) || [];
+    var out = [];
+    for (var i = 0; i < events.length; i++) {
+      var ev = events[i];
+      var curve = ev && ev.time_curve;
+      if (!curve) continue;
+      var w = (bucket >= 0 && bucket < curve.length) ? curve[bucket] : 0;
+      if (w < RAIL_PRESENCE_FLOOR) continue;
+      out.push({ ev: ev, w: w, intensity: (ev.impact || 0) * w });
+    }
+    out.sort(function (a, b) { return b.intensity - a.intensity; });
+    return out;
+  }
+
+  // Categorize the event's presence at this bucket into a chip label.
+  // Drives both copy ("Arrival underway" vs "Dispersing") and styling.
+  function bucketPhaseLabel(ev, bucket, tz) {
+    if (!ev) return { label: '', kind: 'during' };
+    var startMin = isoMinutesOfDay(ev.start_local);
+    var endMin   = isoMinutesOfDay(ev.end_local);
+    var bucketMin = (bucket || 0) * BUCKET_MIN + BUCKET_MIN / 2;
+    // Normalize to same-day cross-midnight: if event end_local's date
+    // string differs from start_local, end straddles midnight relative
+    // to the selected day. For phase labels we treat them as monotonic.
+    var startDay = (ev.start_local || '').slice(0, 10);
+    var endDay   = (ev.end_local   || '').slice(0, 10);
+    var selDay   = state.selectedDate;
+    if (startMin == null || endMin == null || !selDay) {
+      return { label: 'During', kind: 'during' };
+    }
+    var startAbs = startMin + dayDelta(selDay, startDay) * 24 * 60;
+    var endAbs   = endMin   + dayDelta(selDay, endDay)   * 24 * 60;
+    if (bucketMin < startAbs) return { label: 'Arrival', kind: 'arrival' };
+    if (bucketMin > endAbs)   return { label: 'Dispersal', kind: 'dispersal' };
+    return { label: 'During event', kind: 'during' };
+  }
+
+  function isoMinutesOfDay(s) {
+    if (!s || typeof s !== 'string') return null;
+    var t = s.indexOf('T');
+    if (t < 0) return null;
+    var hh = parseInt(s.substr(t + 1, 2), 10);
+    var mm = parseInt(s.substr(t + 4, 2), 10);
+    if (isNaN(hh) || isNaN(mm)) return null;
+    return hh * 60 + mm;
+  }
+
+  function dayDelta(aIso, bIso) {
+    if (!aIso || !bIso) return 0;
+    var a = new Date(aIso + 'T00:00:00Z');
+    var b = new Date(bIso + 'T00:00:00Z');
+    return Math.round((b.getTime() - a.getTime()) / 86400000);
+  }
+
+  function renderRail() {
+    var host = document.getElementById('rail-host');
+    if (!host) return;
+    var date = state.selectedDate;
+    var forecast = date && state.forecasts[date];
+    var tz = state.cityConfig && state.cityConfig.timezone;
+    var bucket = (typeof state.selectedBucket === 'number')
+      ? state.selectedBucket
+      : (forecast && forecast.peak_bucket) || 0;
+
+    host.innerHTML = '';
+
+    var head = el('div', 'rail__head');
+    var eyebrow = el('span', 'rail__eyebrow', 'Impacting at');
+    var timeLabel = el('span', 'rail__time', bucketToTimeLabel(bucket));
+    head.appendChild(eyebrow);
+    head.appendChild(timeLabel);
+    host.appendChild(head);
+
+    if (!forecast) return;
+    var entries = eventsForBucket(forecast, bucket);
+
+    if (entries.length === 0) {
+      var empty = el('div', 'rail__empty',
+        'No major events drive the modeled crowd at this time.');
+      host.appendChild(empty);
+      return;
+    }
+
+    var list = el('ol', 'rail__list');
+    list.setAttribute('role', 'list');
+    for (var i = 0; i < entries.length; i++) {
+      list.appendChild(renderRailItem(entries[i], bucket, tz));
+    }
+    host.appendChild(list);
+  }
+
+  function renderRailItem(entry, bucket, tz) {
+    var ev = entry.ev;
+    var item = el('li', 'rail__item');
+    item.setAttribute('data-event-id', ev.id || '');
+
+    // Top row: phase chip + event name
+    var topRow = el('div', 'rail__row rail__row--top');
+    var phase = bucketPhaseLabel(ev, bucket, tz);
+    var chip = el('span', 'rail__phase rail__phase--' + phase.kind, phase.label);
+    var name = el('span', 'rail__name', ev.name || '(untitled event)');
+    topRow.appendChild(chip);
+    topRow.appendChild(name);
+    item.appendChild(topRow);
+
+    // Meta row: venue · category · times
+    var meta = el('div', 'rail__meta');
+    var venue = el('span', 'rail__venue', ev.venue_name || '');
+    var sep1 = el('span', 'rail__sep', '·');
+    var cat = el('span', 'rail__category', humanCategory(ev.category));
+    var sep2 = el('span', 'rail__sep', '·');
+    var times = el('span', 'rail__times',
+      friendlyTime(ev.start_local, tz) + ' – ' + friendlyTime(ev.end_local, tz));
+    meta.appendChild(venue);
+    meta.appendChild(sep1);
+    meta.appendChild(cat);
+    meta.appendChild(sep2);
+    meta.appendChild(times);
+    item.appendChild(meta);
+
+    // Reserved transit slot. M4 will populate by event id.
+    var transit = el('div', 'rail__transit');
+    transit.setAttribute('data-transit-slot', 'true');
+    transit.setAttribute('data-event-id', ev.id || '');
+    transit.appendChild(el('span', 'rail__transit-eyebrow', 'Transit'));
+    transit.appendChild(el('span', 'rail__transit-placeholder',
+      'Transit station info arrives in the next update.'));
+    item.appendChild(transit);
+
+    return item;
+  }
+
+  function humanCategory(cat) {
+    switch ((cat || '').toLowerCase()) {
+      case 'major_concert':   return 'Concert';
+      case 'arena_sports':    return 'Sports';
+      case 'performing_arts': return 'Performing arts';
+      case 'comedy':          return 'Comedy';
+      case 'festival':        return 'Festival';
+      case 'family_other':    return 'Family / other';
+      default:                return cat || '—';
+    }
   }
 
   function renderEmptyState(message) {
