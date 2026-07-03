@@ -194,3 +194,12 @@ One global file, not per-city: the rules are TM-taxonomy hygiene, identical for 
 **Not filtered:** small-but-real concerts at whitelisted venues (the operator flagged "Kes – Roots, Rock, Soca Tour" — but it plays RBC Amphitheatre, capacity ~16k; that is a major concert by this product's definition). If those ever need trimming, the honest lever is a minimum-impact floor decided against calibration data, not per-artist name patterns.
 
 **Observed effect (July 3–9 window):** 11 of 20 scored listings were excluded (the two tours, running most days). Verdicts went from Severe×5 + Busy×2 to: Jul 3/5/7 Severe→Busy, Jul 4 Severe (Lionel Richie + two more real shows — legitimately), Jul 6 and Jul 9 → Quiet with **zero** events (the "events" those days were only the tours), Jul 8 Busy→Moderate. Verdict thresholds untouched — the inputs got honest, not the scale.
+
+### UI event-type filter chips (same day)
+
+The operator also wanted a browse-time filter in the UI. Design decisions:
+
+- **Chips are Sports / Concerts / Theatre & other**, grouped by the event's own TM classification segment — the venue category can't do this job (Coca-Cola Coliseum hosts both Tempo games and concerts). `pipeline.run` now ships `segment` per forecast event; the frontend falls back to venue category for pre-`segment` day files, so stale data degrades gracefully instead of breaking the chips.
+- **Client-side view filter, not a data filter.** `filteredForecast()` in `app.js` builds a per-day view: filtered events, timeline re-summed from the survivors' time curves (mirrors `build_daily_timeline`), recomputed peak bucket/value and `peak_intensity`, filtered avoid windows + transit flags. `map.js` and `timeline.js` render the view unchanged — zero modifications to either module.
+- **The day verdict is deliberately NOT recomputed.** A hidden concert still clogs the TTC; the verdict answers "how busy will the city be", the chips answer "what do I want to browse". A mono-type note ("Verdicts still reflect all modeled events.") renders whenever a chip is off so the divergence is explained rather than discovered.
+- **Persistence is `localStorage`** (`eventforecast.typeFilter`), matching the existing theme-preference pattern. Per-browser, no server round-trip, all-on default.

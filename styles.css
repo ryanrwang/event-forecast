@@ -259,6 +259,69 @@ a:visited {
   letter-spacing: 0.04em;
 }
 
+/* ────────────── Event-type filter ────────────── */
+
+/*
+ * Chips filter the browsable view (day-card event lists, map markers +
+ * heat, timeline, rail). Day verdicts stay full-model — the note chip
+ * appears whenever a group is off so the divergence is explained.
+ */
+.event-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.event-filter__label {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.event-filter__chip {
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-caption);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-pill);
+  padding: var(--spacing-xs) var(--spacing-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast),
+              color var(--transition-fast),
+              background-color var(--transition-fast),
+              opacity var(--transition-fast);
+}
+
+.event-filter__chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.event-filter__chip[aria-pressed="true"] {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 12%, transparent), transparent 80%),
+              var(--color-bg-raised);
+}
+
+.event-filter__chip[aria-pressed="false"] {
+  color: var(--color-text-muted);
+  background: transparent;
+  opacity: var(--opacity-75);
+}
+
+.event-filter__note {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+}
+
 /* ────────────── Day card ────────────── */
 
 .day-card {

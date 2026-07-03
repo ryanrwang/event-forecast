@@ -61,7 +61,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
 | `styles.css` | Global styles, references CSS custom properties only. |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
-| `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. |
+| `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. Event-type filter chips (Sports / Concerts / Theatre & other): client-side view filter, verdicts stay full-model, persisted in localStorage. |
 | `map.js` | Leaflet map + custom canvas heat overlay + markers + legend (M2). |
 | `timeline.js` | Custom canvas day timeline + scrubber + per-event avoid bands (M3). |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |

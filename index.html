@@ -32,6 +32,12 @@
          (via the hidden attribute) by default. -->
     <div class="status-banner" id="status-banner" role="status" aria-live="polite" hidden></div>
 
+    <!-- Event-type filter chips (Sports / Concerts / Theatre & other).
+         Populated by app.js once forecasts load; selection persists in
+         localStorage. A hidden event still counts toward the day verdict
+         — the chips filter the view, not the model. -->
+    <div class="event-filter" id="event-filter" role="group" aria-label="Filter events by type" hidden></div>
+
     <section class="forecast-strip" id="forecast-strip" aria-label="Multi-day forecast">
       <div class="placeholder" role="status">
         <span class="placeholder__dot" aria-hidden="true"></span>
