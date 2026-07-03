@@ -174,6 +174,14 @@ a:visited {
   box-shadow: var(--shadow-sm);
 }
 
+/* The `hidden` attribute (set whenever there's nothing to report) must
+ * beat the display: flex above — the UA stylesheet's display: none
+ * loses to any author display rule, which left an empty bordered box
+ * above the strip when the data was fresh. */
+.status-banner[hidden] {
+  display: none;
+}
+
 .status-banner[data-kind="info"] {
   border-color: color-mix(in srgb, var(--color-status-info) 40%, transparent);
 }
