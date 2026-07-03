@@ -687,7 +687,14 @@
     _stationLayer = L.layerGroup().addTo(_map);
     _legendControl = buildLegendControl().addTo(_map);
 
-    if (bbox && bbox.length === 4) {
+    // Initial view: prefer the city config's map_default_view (e.g.
+    // Toronto opens on the downtown core where most whitelisted venues
+    // cluster — a full-bbox fit renders them as one clump). Fall back
+    // to fitting the whole bbox for cities without a configured view.
+    var dv = options.defaultView;
+    if (dv && typeof dv.lat === 'number' && typeof dv.lon === 'number') {
+      _map.setView([dv.lat, dv.lon], typeof dv.zoom === 'number' ? dv.zoom : 12);
+    } else if (bbox && bbox.length === 4) {
       _map.fitBounds([[bbox[1], bbox[0]], [bbox[3], bbox[2]]], { padding: [16, 16] });
     } else if (options.fallbackCenter) {
       _map.setView(options.fallbackCenter, 11);

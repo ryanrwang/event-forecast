@@ -24,11 +24,12 @@ if (!valid_city_id($id)) {
 $cfg = load_city_config($id);
 
 $city_payload = [
-    'id'           => $cfg['id']           ?? $id,
-    'name'         => $cfg['name']         ?? $id,
-    'timezone'     => $cfg['timezone']     ?? null,
-    'country_code' => $cfg['country_code'] ?? null,
-    'bbox'         => $cfg['bbox']         ?? null,
+    'id'               => $cfg['id']               ?? $id,
+    'name'             => $cfg['name']             ?? $id,
+    'timezone'         => $cfg['timezone']         ?? null,
+    'country_code'     => $cfg['country_code']     ?? null,
+    'bbox'             => $cfg['bbox']             ?? null,
+    'map_default_view' => $cfg['map_default_view'] ?? null,
 ];
 
 send_json([

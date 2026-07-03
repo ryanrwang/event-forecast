@@ -278,6 +278,7 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
                 continue
             start_local, end_local = scoring.event_times_local(ev, tz)
             entry = _build_forecast_event(ev, venue_entry, impact, start_local, end_local)
+            entry["proxy_contribution"] = scoring.proxy_contribution(impact, start_local)
             # Attach parsed start_local so daily_verdict can read the hour
             # without re-parsing. Stripped before JSON serialization.
             entry["_start_local"] = start_local
