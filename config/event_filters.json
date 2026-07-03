@@ -1,0 +1,19 @@
+{
+  "_comment": "Global event exclusion filter, applied by pipeline/eventfilter.py AFTER the venue whitelist. Excludes non-crowd listings (facility tours, parking, packages) that Ticketmaster attaches to major venues — without them a daily stadium tour is scored with the venue's full capacity and distorts the verdict. Rules are TM-taxonomy based, so one file covers every configured city. exclude_classifications: an event is excluded if ALL fields in a rule match its first TM classification (case-insensitive; fields: segment, genre, subGenre, type, subType). exclude_name_patterns: case-insensitive substring match on the event name.",
+  "exclude_classifications": [
+    {
+      "type": "Event Style",
+      "subType": "Sightseeing/Facility",
+      "_reason": "Venue tours (Rogers Centre Ballpark Tours, Guided Tours of Scotiabank Arena). A handful of visitors walking an empty building, not a crowd event."
+    }
+  ],
+  "exclude_name_patterns": [
+    "ballpark tour",
+    "stadium tour",
+    "guided tour",
+    "behind the scenes tour",
+    "parking",
+    "hotel package",
+    "vip package"
+  ]
+}

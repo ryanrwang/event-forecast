@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import budget, gtfs, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
+from . import budget, eventfilter, gtfs, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
@@ -221,6 +221,11 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
     )
     if unmatched:
         log.info("[whitelist] top unmatched venues: %s", unmatched.most_common(10))
+
+    # Drop non-crowd listings (facility tours, parking, packages) that
+    # TM attaches to whitelisted venues — they'd otherwise be scored
+    # with the venue's full capacity. Rules: config/event_filters.json.
+    matched = eventfilter.apply(matched)
 
     buckets = _bucket_by_local_day(matched, tz)
 
