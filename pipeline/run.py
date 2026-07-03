@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import budget, gtfs, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
+from . import budget, eventfilter, gtfs, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
@@ -105,6 +105,20 @@ def _bucket_by_local_day(events: list[dict], tz: ZoneInfo) -> dict[str, list[dic
     return buckets
 
 
+def _primary_segment(event: dict) -> str:
+    """The event's primary TM classification segment ("Music", "Sports", …).
+
+    Shipped per event so the frontend's type-filter chips can distinguish
+    a game from a concert at the same venue — the venue-level category
+    can't (Coca-Cola Coliseum hosts both). Empty string when TM ships no
+    classification; the frontend falls back to the venue category.
+    """
+    cl = (event.get("classifications") or [{}])[0]
+    if not isinstance(cl, dict):
+        return ""
+    return ((cl.get("segment") or {}).get("name") or "").strip()
+
+
 def _build_forecast_event(event: dict, venue_entry: dict, impact: float, start_local, end_local) -> dict:
     """Shape a per-day forecast event entry (the JSON consumed by the frontend)."""
     return {
@@ -113,6 +127,7 @@ def _build_forecast_event(event: dict, venue_entry: dict, impact: float, start_l
         "venue_id": venue_entry["id"],
         "venue_name": venue_entry["name"],
         "category": venue_entry.get("category") or "family_other",
+        "segment": _primary_segment(event),
         "start_local": start_local.isoformat(timespec="seconds") if start_local else None,
         "end_local": end_local.isoformat(timespec="seconds") if end_local else None,
         "impact": impact,
@@ -221,6 +236,11 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
     )
     if unmatched:
         log.info("[whitelist] top unmatched venues: %s", unmatched.most_common(10))
+
+    # Drop non-crowd listings (facility tours, parking, packages) that
+    # TM attaches to whitelisted venues — they'd otherwise be scored
+    # with the venue's full capacity. Rules: config/event_filters.json.
+    matched = eventfilter.apply(matched)
 
     buckets = _bucket_by_local_day(matched, tz)
 

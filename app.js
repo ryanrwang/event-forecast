@@ -11,8 +11,31 @@
 
   var STORAGE_KEY = 'eventforecast.theme';
   var DEFAULT_THEME = 'dark';
+  var TYPE_FILTER_KEY = 'eventforecast.typeFilter';
+
+  // Event-type filter groups. Grouping is TM-segment first (an event's
+  // own classification), venue-category fallback for forecast.json
+  // written before `segment` shipped.
+  var TYPE_GROUPS = [
+    { id: 'sports',   label: 'Sports' },
+    { id: 'concerts', label: 'Concerts' },
+    { id: 'other',    label: 'Theatre & other' }
+  ];
+
+  function loadTypeFilter() {
+    var out = { sports: true, concerts: true, other: true };
+    try {
+      var parsed = JSON.parse(localStorage.getItem(TYPE_FILTER_KEY) || '{}');
+      TYPE_GROUPS.forEach(function (g) {
+        if (parsed && parsed[g.id] === false) out[g.id] = false;
+      });
+    } catch (e) {}
+    return out;
+  }
 
   var state = {
+    // Persisted event-type chip selection. All-on means "no filtering".
+    typeFilter: loadTypeFilter(),
     cities: [],
     currentCityId: null,
     cityConfig: null,
@@ -213,11 +236,141 @@
     slot.appendChild(select);
   }
 
+  // ─────────── Event-type filter ───────────
+
+  function saveTypeFilter() {
+    try { localStorage.setItem(TYPE_FILTER_KEY, JSON.stringify(state.typeFilter)); } catch (e) {}
+  }
+
+  function eventTypeGroup(ev) {
+    var seg = ((ev && ev.segment) || '').toLowerCase();
+    if (seg === 'sports') return 'sports';
+    if (seg === 'music')  return 'concerts';
+    if (seg) return 'other';
+    // Pre-`segment` forecast.json fallback: the venue category is close
+    // enough until the next pipeline refresh rewrites the day files.
+    var cat = ((ev && ev.category) || '').toLowerCase();
+    if (cat === 'arena_sports') return 'sports';
+    if (cat === 'major_concert' || cat === 'festival') return 'concerts';
+    return 'other';
+  }
+
+  function typeFilterActive() {
+    var f = state.typeFilter;
+    return !!f && TYPE_GROUPS.some(function (g) { return f[g.id] === false; });
+  }
+
+  function eventMatchesTypeFilter(ev) {
+    var f = state.typeFilter;
+    return !f || f[eventTypeGroup(ev)] !== false;
+  }
+
+  // Client-side view of a day's forecast with the type filter applied.
+  // Recomputes the derived fields map.js + timeline.js read (timeline,
+  // peak bucket/value, per-event peak_intensity, avoid windows, transit
+  // flags) exactly the way the pipeline builds them, so both modules
+  // render the filtered view without changes. The day VERDICT is
+  // deliberately NOT recomputed: a hidden concert still clogs the TTC,
+  // so the chips filter what you browse, never what's modeled.
+  function filteredForecast(forecast) {
+    if (!forecast || !typeFilterActive()) return forecast;
+
+    var events = (forecast.events || []).filter(eventMatchesTypeFilter);
+    var keepIds = {};
+    events.forEach(function (ev) { keepIds[ev.id || ''] = true; });
+
+    // Re-sum the daily timeline from surviving events (mirrors
+    // pipeline/timecurves.build_daily_timeline).
+    var timeline = [];
+    var b;
+    for (b = 0; b < BUCKETS_PER_DAY; b++) timeline.push(0);
+    events.forEach(function (ev) {
+      var impact = ev.impact || 0;
+      var curve = ev.time_curve || [];
+      for (var i = 0; i < curve.length && i < BUCKETS_PER_DAY; i++) {
+        if (curve[i]) timeline[i] += impact * curve[i];
+      }
+    });
+    var peakBucket = 0;
+    var peakValue = 0;
+    for (b = 0; b < timeline.length; b++) {
+      if (timeline[b] > peakValue) { peakValue = timeline[b]; peakBucket = b; }
+    }
+
+    // peak_intensity is defined against the day's peak bucket, which
+    // just moved — recompute per event (mirrors annotate_peak_intensity).
+    events = events.map(function (ev) {
+      var clone = {};
+      for (var k in ev) if (Object.prototype.hasOwnProperty.call(ev, k)) clone[k] = ev[k];
+      var curve = ev.time_curve || [];
+      clone.peak_intensity = (ev.impact || 0) * (curve[peakBucket] || 0);
+      return clone;
+    });
+
+    var out = {};
+    for (var key in forecast) if (Object.prototype.hasOwnProperty.call(forecast, key)) out[key] = forecast[key];
+    out.events = events;
+    out.event_count = events.length;
+    out.timeline = timeline;
+    out.peak_bucket = peakBucket;
+    out.peak_value = peakValue;
+    out.avoid_windows = (forecast.avoid_windows || []).filter(function (w) {
+      return keepIds[w.event_id];
+    });
+    if (forecast.transit_flags) {
+      var tfOut = {};
+      for (var tk in forecast.transit_flags) {
+        if (Object.prototype.hasOwnProperty.call(forecast.transit_flags, tk)) {
+          tfOut[tk] = forecast.transit_flags[tk];
+        }
+      }
+      tfOut.events = (forecast.transit_flags.events || []).filter(function (te) {
+        return keepIds[te.event_id];
+      });
+      out.transit_flags = tfOut;
+    }
+    return out;
+  }
+
+  function renderTypeFilter() {
+    var host = document.getElementById('event-filter');
+    if (!host) return;
+    host.innerHTML = '';
+    host.hidden = false;
+
+    host.appendChild(el('span', 'event-filter__label', 'Show'));
+
+    TYPE_GROUPS.forEach(function (g) {
+      var on = state.typeFilter[g.id] !== false;
+      var chip = el('button', 'event-filter__chip', g.label);
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+      chip.setAttribute('data-group', g.id);
+      chip.addEventListener('click', function () {
+        state.typeFilter[g.id] = state.typeFilter[g.id] === false;
+        saveTypeFilter();
+        renderTypeFilter();
+        renderForecastStrip();
+        if (state.selectedDate) renderDetailForSelected();
+      });
+      host.appendChild(chip);
+    });
+
+    // The verdict chips stay full-model on purpose; say so whenever the
+    // view and the verdict can diverge.
+    if (typeFilterActive()) {
+      host.appendChild(el('span', 'event-filter__note',
+        'Verdicts still reflect all modeled events.'));
+    }
+  }
+
   // ─────────── Forecast strip ───────────
 
-  function renderEmptyEvents() {
+  function renderEmptyEvents(filteredOut) {
     var wrap = el('div', 'day-card__empty');
-    wrap.textContent = 'No major events scheduled.';
+    wrap.textContent = filteredOut
+      ? 'No events match the filter.'
+      : 'No major events scheduled.';
     return wrap;
   }
 
@@ -261,9 +414,13 @@
     card.appendChild(verdict);
 
     var eventsWrap = el('div', 'day-card__events');
-    var events = (forecast && forecast.events) || [];
+    // Card verdict above stays full-model; only the browsable event list
+    // respects the type filter.
+    var view = filteredForecast(forecast);
+    var events = (view && view.events) || [];
     if (events.length === 0) {
-      eventsWrap.appendChild(renderEmptyEvents());
+      var rawCount = ((forecast && forecast.events) || []).length;
+      eventsWrap.appendChild(renderEmptyEvents(rawCount > 0));
     } else {
       events.slice(0, 2).forEach(function (ev) {
         eventsWrap.appendChild(renderEventLine(ev, tz));
@@ -385,6 +542,9 @@
     var date = state.selectedDate;
     var forecast = date && state.forecasts[date];
     if (!forecast) return;
+    // Map, timeline, and rail all render the filtered view; the title's
+    // verdict badge stays full-model (forecast.verdict below).
+    var view = filteredForecast(forecast);
 
     var tz = state.cityConfig && state.cityConfig.timezone;
     var title = document.getElementById('forecast-detail-title');
@@ -408,8 +568,8 @@
     // Reset bucket selection to the new day's peak (M3 spec: "scrubber
     // resets to the new day's peak bucket"). The timeline owns the
     // visual reset; we just sync app state and the map.
-    var newBucket = (typeof forecast.peak_bucket === 'number')
-      ? forecast.peak_bucket : 0;
+    var newBucket = (typeof view.peak_bucket === 'number')
+      ? view.peak_bucket : 0;
     state.selectedBucket = newBucket;
 
     // M4: hand the candidate transit-station set to the map BEFORE
@@ -417,15 +577,15 @@
     // current station collection. setStations is a no-op for the same
     // station list, but a city switch can shift it.
     if (window.EFMap.setStations) {
-      window.EFMap.setStations(stationCollectionFromForecast(forecast));
+      window.EFMap.setStations(stationCollectionFromForecast(view));
     }
 
     // setForecast renders the heatmap at peak_bucket using peak_value
     // normalization. The scrubber will override via setBucket().
-    window.EFMap.setForecast(forecast, state.cityConfig);
+    window.EFMap.setForecast(view, state.cityConfig);
 
     if (window.EFTimeline) {
-      window.EFTimeline.setForecast(forecast, state.cityConfig);
+      window.EFTimeline.setForecast(view, state.cityConfig);
     }
     renderRail();
   }
@@ -533,7 +693,7 @@
     var host = document.getElementById('rail-host');
     if (!host) return;
     var date = state.selectedDate;
-    var forecast = date && state.forecasts[date];
+    var forecast = date && filteredForecast(state.forecasts[date]);
     var tz = state.cityConfig && state.cityConfig.timezone;
     var bucket = (typeof state.selectedBucket === 'number')
       ? state.selectedBucket
@@ -621,7 +781,7 @@
     }
 
     var date = state.selectedDate;
-    var forecast = date && state.forecasts[date];
+    var forecast = date && filteredForecast(state.forecasts[date]);
     if (!forecast) return;
     var tf = forecast.transit_flags;
     var transitEv = tf && tf.events
@@ -882,6 +1042,7 @@
           state.forecasts[d] = forecasts[i];
         });
         state.selectedDate = pickInitialDate();
+        renderTypeFilter();
         renderForecastStrip();
         if (state.selectedDate) renderDetailForSelected();
       });

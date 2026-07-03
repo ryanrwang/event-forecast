@@ -175,3 +175,31 @@ Each Actions run starts with no `data/` — the pipeline regenerates the whole w
 - **GTFS freshness rides in git.** `status.json` is rebuilt from scratch each run, so the GTFS section would always be the never-ran skeleton (permanent "transit data stale" banner). `pipeline.gtfs` now writes `config/<city>/stations_meta.json` (tracked) beside the station set, and `pipeline.run` copies its `refreshed_at` into `status.json` on every run. The weekly `refresh-gtfs.yml` commits the regenerated station set + meta back to `main` — commit-back, not FTP, because the station set is a pipeline input consumed from the CI checkout; nothing server-side reads it.
 
 The per-city daily TM budget counter (`data/cache/`) also resets every run in this model — acceptable, since 4 runs/day × ~10 page fetches is nowhere near the 5000/day tier. The FTP data push verifies today's `forecast.json` exists for every configured city before syncing, because the incremental sync deletes server files missing locally — an empty upload after a soft-failed run would otherwise wipe the served data.
+
+## 2026-07-03 — Non-crowd listing exclusion filter
+
+### Why
+
+Ticketmaster attaches non-event inventory to major venues, and the whitelist happily passes it through: "Rogers Centre Ballpark Tours" and "Guided Tours of Scotiabank Arena" appeared as scored events **every day** of the observed July 3–9 window. Because scoring uses venue capacity as the attendance proxy, the Rogers Centre tour scored impact ~49 daily — the single highest-impact "event" of the week, ahead of every real concert — and pushed otherwise-ordinary days to Severe. A walking tour of an empty stadium is not a crowd event.
+
+### What
+
+`pipeline/eventfilter.py` applies `config/event_filters.json` immediately after the venue whitelist. This is an *exclusion* refinement of the whitelist rule, not a discovery mechanism — "an event counts only if its venue is on the whitelist" becomes "…and the listing is an actual crowd event". Two rule kinds:
+
+- **Classification rules** (preferred): matched against the event's primary TM classification. The tours carry a crisp taxonomy — `type=Event Style, subType=Sightseeing/Facility` — so the filter is surgical, with zero risk to real concerts. Deliberately NOT excluding all of `segment=Miscellaneous`: legitimate crowd events land there too (e.g. FIFA Fan Festival is `Sports/Miscellaneous` — irrelevant today because Fort York isn't whitelisted, but the 2026 World Cup makes the caution concrete).
+- **Name patterns** (operator lever): case-insensitive substrings ("ballpark tour", "parking", "vip package", …) for inventory TM classifies inconsistently. Patterns are deliberately specific — a bare "tour" would nuke half of live music ("PCD FOREVER TOUR", "Oneness Tour 2026").
+
+One global file, not per-city: the rules are TM-taxonomy hygiene, identical for every city, so M5 cities inherit them for free. Fail-open on a missing/malformed file (an extra tour listing is a smaller error than an empty forecast), and every exclusion is logged with its matching rule.
+
+**Not filtered:** small-but-real concerts at whitelisted venues (the operator flagged "Kes – Roots, Rock, Soca Tour" — but it plays RBC Amphitheatre, capacity ~16k; that is a major concert by this product's definition). If those ever need trimming, the honest lever is a minimum-impact floor decided against calibration data, not per-artist name patterns.
+
+**Observed effect (July 3–9 window):** 11 of 20 scored listings were excluded (the two tours, running most days). Verdicts went from Severe×5 + Busy×2 to: Jul 3/5/7 Severe→Busy, Jul 4 Severe (Lionel Richie + two more real shows — legitimately), Jul 6 and Jul 9 → Quiet with **zero** events (the "events" those days were only the tours), Jul 8 Busy→Moderate. Verdict thresholds untouched — the inputs got honest, not the scale.
+
+### UI event-type filter chips (same day)
+
+The operator also wanted a browse-time filter in the UI. Design decisions:
+
+- **Chips are Sports / Concerts / Theatre & other**, grouped by the event's own TM classification segment — the venue category can't do this job (Coca-Cola Coliseum hosts both Tempo games and concerts). `pipeline.run` now ships `segment` per forecast event; the frontend falls back to venue category for pre-`segment` day files, so stale data degrades gracefully instead of breaking the chips.
+- **Client-side view filter, not a data filter.** `filteredForecast()` in `app.js` builds a per-day view: filtered events, timeline re-summed from the survivors' time curves (mirrors `build_daily_timeline`), recomputed peak bucket/value and `peak_intensity`, filtered avoid windows + transit flags. `map.js` and `timeline.js` render the view unchanged — zero modifications to either module.
+- **The day verdict is deliberately NOT recomputed.** A hidden concert still clogs the TTC; the verdict answers "how busy will the city be", the chips answer "what do I want to browse". A mono-type note ("Verdicts still reflect all modeled events.") renders whenever a chip is off so the divergence is explained rather than discovered.
+- **Persistence is `localStorage`** (`eventforecast.typeFilter`), matching the existing theme-preference pattern. Per-browser, no server round-trip, all-on default.

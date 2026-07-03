@@ -61,13 +61,14 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
 | `styles.css` | Global styles, references CSS custom properties only. |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
-| `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. |
+| `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. Event-type filter chips (Sports / Concerts / Theatre & other): client-side view filter, verdicts stay full-model, persisted in localStorage. |
 | `map.js` | Leaflet map + custom canvas heat overlay + markers + legend (M2). |
 | `timeline.js` | Custom canvas day timeline + scrubber + per-event avoid bands (M3). |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |
 | `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants. |
 | `pipeline/timecurves.py` | Per-event 96-bucket time curve + daily timeline + peak-bucket + sigma. M2-locked. |
 | `pipeline/whitelist.py` | Apply venue whitelist to Ticketmaster events (TM id, name, alias). |
+| `pipeline/eventfilter.py` | Exclusion filter for non-crowd listings at whitelisted venues (facility tours, parking, packages). Rules in `config/event_filters.json`. |
 | `pipeline/ticketmaster.py` | Discovery API client + on-disk cache. M6: jittered backoff + per-city per-day budget reservation; raises `BudgetExhausted` when the day's TM quota is hit. |
 | `pipeline/status.py` | M6: writes `data/status.json` (TM freshness, GTFS freshness, zero-event sanity flag per city). Single source of truth for "is the data fresh?". |
 | `pipeline/budget.py` | M6: per-city per-day Ticketmaster call counter (`data/cache/ticketmaster/budget.json`). |
@@ -78,6 +79,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `api/status.php` | M6: per-city cron freshness surface (TM/GTFS last success, stale flags, zero-event sanity). |
 | `DEPLOY.md` | M6: post-deploy verification runbook. |
 | `config/cities.json` | List of configured city ids. MVP: `["toronto"]`. |
+| `config/event_filters.json` | Global (all-city) exclusion rules for non-crowd TM listings: classification matches + name patterns. Operator-tunable. |
 | `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query. |
 | `config/<city>/venues.json` | Major-venue whitelist. Single source of truth for venue lat/lon + capacity. |
 | `config/<city>/stations_meta.json` | When the reduced station set was last regenerated. Written by `pipeline.gtfs`; `pipeline.run` copies it into `status.json` so GTFS freshness survives clean CI checkouts. |
