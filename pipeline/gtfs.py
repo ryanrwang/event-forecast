@@ -53,6 +53,7 @@ import shutil
 import sys
 import time
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlparse
@@ -604,12 +605,47 @@ def refresh_city(city_id: str, force_refresh: bool) -> int:
 
 
 def _write_stations(city_id: str, stations: list[dict]) -> None:
-    """Write config/<city_id>/stations_reduced.json (atomic via tmp + replace)."""
+    """Write config/<city_id>/stations_reduced.json (atomic via tmp + replace).
+
+    Also writes a sibling ``stations_meta.json`` recording WHEN the
+    station set was generated. Both files are tracked in git and consumed
+    by ``pipeline.run`` from a fresh checkout (GitHub Actions), where file
+    mtimes are just checkout times — the meta file is the durable
+    freshness record that survives the clean-checkout model.
+    """
     out_path = CONFIG_DIR / city_id / "stations_reduced.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(stations, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(out_path)
+
+    meta_path = CONFIG_DIR / city_id / "stations_meta.json"
+    meta = {
+        "refreshed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "station_count": len(stations),
+    }
+    tmp = meta_path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(meta_path)
+
+
+def load_station_meta(city_id: str) -> dict:
+    """Load config/<city_id>/stations_meta.json. Returns {} if missing.
+
+    ``pipeline.run`` copies the ``refreshed_at`` value into the GTFS
+    section of data/status.json on every run, so the served freshness
+    surface stays truthful even though each Actions run rebuilds
+    status.json from scratch.
+    """
+    path = CONFIG_DIR / city_id / "stations_meta.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError:
+        log.error("[gtfs] %s stations meta file is malformed: %s", city_id, path)
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def load_reduced_stations(city_id: str) -> list[dict]:

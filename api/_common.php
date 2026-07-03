@@ -146,6 +146,30 @@ function load_venues_index(string $city_id): array {
     return $out;
 }
 
+/**
+ * Resolve the city's IANA timezone from config/<city>/city.json.
+ *
+ * Falls back to UTC when the config or the timezone field is missing or
+ * invalid — for a serving-layer date filter a wrong-but-working clock
+ * beats a fatal error. Deliberately does NOT reuse load_city_config(),
+ * which exits with a JSON error response on a missing file.
+ */
+function city_timezone(string $city_id): DateTimeZone {
+    $path = CONFIG_ROOT . '/' . $city_id . '/city.json';
+    if (is_file($path)) {
+        $cfg = json_decode((string) file_get_contents($path), true);
+        $tz = is_array($cfg) ? ($cfg['timezone'] ?? null) : null;
+        if (is_string($tz) && $tz !== '') {
+            try {
+                return new DateTimeZone($tz);
+            } catch (Exception $e) {
+                // fall through to UTC
+            }
+        }
+    }
+    return new DateTimeZone('UTC');
+}
+
 function valid_city_id(string $id): bool {
     if (!preg_match('/^[a-z0-9_-]{1,32}$/', $id)) {
         return false;
@@ -159,23 +183,28 @@ function valid_date(string $date): bool {
 
 /**
  * Return the sorted list of YYYY-MM-DD subdirectories under
- * data/<city_id>/ that contain a forecast.json file.
+ * data/<city_id>/ that contain a forecast.json file — restricted to the
+ * current window: today (in the city's own timezone) onward, capped at
+ * 7 days. Old date folders lingering on disk are never listed, so the
+ * site can't get stuck showing a past week even if pruning misses them.
  */
 function list_forecast_days(string $city_id): array {
     $city_dir = DATA_ROOT . '/' . $city_id;
     if (!is_dir($city_dir)) {
         return [];
     }
+    $today = (new DateTime('now', city_timezone($city_id)))->format('Y-m-d');
     $days = [];
     foreach (scandir($city_dir) ?: [] as $entry) {
         if ($entry === '.' || $entry === '..') continue;
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $entry)) continue;
+        if (strcmp($entry, $today) < 0) continue;
         if (is_file($city_dir . '/' . $entry . '/forecast.json')) {
             $days[] = $entry;
         }
     }
     sort($days);
-    return $days;
+    return array_slice($days, 0, 7);
 }
 
 /**
@@ -199,9 +228,34 @@ function load_status(): array {
 }
 
 /**
+ * Age of an ISO-8601 timestamp in minutes, or null when the timestamp is
+ * missing or unparseable. The pipeline writes offset-carrying timestamps
+ * (e.g. 2026-07-03T06:12:00-04:00), so comparing epoch seconds against a
+ * UTC "now" is timezone-correct regardless of the city.
+ */
+function iso_age_minutes(?string $iso): ?float {
+    if (!is_string($iso) || $iso === '') {
+        return null;
+    }
+    try {
+        $then = new DateTime($iso);
+    } catch (Exception $e) {
+        return null;
+    }
+    $now = new DateTime('now', new DateTimeZone('UTC'));
+    return ($now->getTimestamp() - $then->getTimestamp()) / 60.0;
+}
+
+/**
  * Compute a presentation-ready freshness summary for one city. Combines
  * the raw status timestamps with the operator-facing booleans the UI
  * actually cares about (is_fresh / is_stale / zero_event_run).
+ *
+ * Staleness is recomputed against the clock on EVERY request rather than
+ * trusting the write-time 'stale' boolean baked into status.json. A
+ * stalled pipeline never rewrites the file, so the stored flag would
+ * stay false forever — exactly the silent failure this guards against.
+ * Missing or unparseable timestamps read as stale.
  */
 function city_freshness(string $city_id): array {
     $st = load_status();
@@ -218,6 +272,16 @@ function city_freshness(string $city_id): array {
     $tm   = $city['ticketmaster'] ?? null;
     $gtfs = $city['gtfs']         ?? null;
     $fc   = $city['forecast']     ?? null;
+    if (is_array($tm)) {
+        $age = iso_age_minutes($tm['last_success_at'] ?? null);
+        $max_min = (int) ($tm['max_age_minutes'] ?? 720);
+        $tm['stale'] = ($age === null) || ($age > $max_min);
+    }
+    if (is_array($gtfs)) {
+        $age = iso_age_minutes($gtfs['last_refresh_at'] ?? null);
+        $max_days = (int) ($gtfs['max_age_days'] ?? 14);
+        $gtfs['stale'] = ($age === null) || ($age > $max_days * 24 * 60);
+    }
     $tm_stale   = is_array($tm)   ? !empty($tm['stale'])   : true;
     $gtfs_stale = is_array($gtfs) ? !empty($gtfs['stale']) : false;
     return [

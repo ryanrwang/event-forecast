@@ -1,0 +1,66 @@
+name: Refresh GTFS stations (weekly)
+
+# Weekly static-GTFS refresh. Regenerates config/<city>/stations_reduced.json
+# (the reduced near-venue station set) plus its stations_meta.json
+# freshness record, and commits both back to main when anything changed.
+#
+# Why commit-back instead of FTP: stations_reduced.json is consumed ONLY
+# by the Python pipeline (as an input to per-day transit flags) — the PHP
+# layer and frontend never read it. The pipeline runs from a fresh git
+# checkout in refresh.yml, so the committed copy is the one that matters.
+# GTFS freshness reaches the server through refresh.yml: pipeline.run
+# copies stations_meta.json's refreshed_at into data/status.json on every
+# run, and that file is FTP-pushed 4x/day.
+#
+# Note: pushes made with the default GITHUB_TOKEN intentionally do not
+# trigger other workflows (so no deploy.yml run and no recursion). That
+# is fine here — no serving-layer file depends on the committed station
+# set; it only needs to be present in future refresh.yml checkouts.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 0'   # Sunday ~04:00 ET (03:00 in winter) — GitHub cron is fixed UTC
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-gtfs
+  cancel-in-progress: false
+
+jobs:
+  gtfs:
+    runs-on: ubuntu-latest
+    # The TTC static GTFS zip is ~75 MB and streaming stop_times.txt is
+    # the slow part; give it more headroom than the event refresh.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Refresh GTFS station sets
+        run: python -m pipeline.gtfs
+
+      # stations_meta.json's refreshed_at changes every run, so in normal
+      # operation this commits weekly — that timestamp IS the freshness
+      # record that keeps the GTFS-stale banner off. git status (not
+      # diff) so a brand-new city's untracked files are picked up too.
+      - name: Commit regenerated station sets (if changed)
+        run: |
+          if [ -z "$(git status --porcelain -- 'config/*/stations_reduced.json' 'config/*/stations_meta.json')" ]; then
+            echo "Station sets unchanged; nothing to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add 'config/*/stations_reduced.json' 'config/*/stations_meta.json'
+            git commit -m "chore: weekly GTFS station refresh"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
