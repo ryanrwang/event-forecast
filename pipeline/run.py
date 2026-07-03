@@ -21,6 +21,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
+import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -54,6 +56,34 @@ def _setup_logging() -> None:
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+_DAY_DIR_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _prune_old_day_dirs(out_dir: Path, tz: ZoneInfo) -> None:
+    """Delete data/<city>/<YYYY-MM-DD>/ folders dated before today (city tz).
+
+    Under GitHub Actions the checkout starts clean, so this is normally a
+    no-op; it exists so a persistent-disk deploy or a local dev run can't
+    accumulate old date folders and re-trigger the "earliest folders win"
+    serving bug. Only date-named directories are candidates — the sibling
+    raw_events.json is a file, and data/status.json + data/cache/ live
+    outside data/<city>/, so none of them can ever match.
+    """
+    if not out_dir.is_dir():
+        return
+    today = datetime.now(tz).date().isoformat()
+    for child in out_dir.iterdir():
+        if not child.is_dir() or not _DAY_DIR_RE.match(child.name):
+            continue
+        if child.name >= today:
+            continue
+        try:
+            shutil.rmtree(child)
+            log.info("[prune] removed stale day folder %s", child)
+        except OSError as exc:
+            log.warning("[prune] could not remove %s: %s", child, exc)
 
 
 def _bucket_by_local_day(events: list[dict], tz: ZoneInfo) -> dict[str, list[dict]]:
@@ -172,6 +202,15 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             "[transit] no reduced stations for %s; run `python -m pipeline.gtfs --city %s`",
             city_id, city_id,
         )
+    # Copy the committed station set's generation time into status.json
+    # on every run. In the Actions model each run rebuilds status.json
+    # from a clean checkout, so this is the only path that keeps the
+    # served GTFS freshness truthful (see mark_gtfs_from_meta).
+    status_writer.mark_gtfs_from_meta(
+        city_id,
+        refreshed_at=gtfs.load_station_meta(city_id).get("refreshed_at"),
+        tz=tz,
+    )
 
     matched, unmatched = whitelist.apply(events, venues)
     log.info(
@@ -310,6 +349,8 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         total_events=total_scored_events,
         tz=tz,
     )
+
+    _prune_old_day_dirs(out_dir, tz)
 
     return 0
 

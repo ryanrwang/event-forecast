@@ -80,7 +80,10 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `config/cities.json` | List of configured city ids. MVP: `["toronto"]`. |
 | `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query. |
 | `config/<city>/venues.json` | Major-venue whitelist. Single source of truth for venue lat/lon + capacity. |
+| `config/<city>/stations_meta.json` | When the reduced station set was last regenerated. Written by `pipeline.gtfs`; `pipeline.run` copies it into `status.json` so GTFS freshness survives clean CI checkouts. |
 | `.github/workflows/deploy.yml` | SFTP deploy to Bluehost on push to `main`. |
+| `.github/workflows/refresh.yml` | Scheduled data refresh (GitHub Actions, 4×/day): runs `pipeline.run`, FTP-pushes `data/` to Bluehost. Needs the `TICKETMASTER_API_KEY` repo secret. |
+| `.github/workflows/refresh-gtfs.yml` | Weekly GTFS refresh: runs `pipeline.gtfs`, commits the regenerated station set + meta back to `main`. |
 
 This table expands as milestones land (timeline UI, GTFS data, etc.).
 
@@ -183,7 +186,7 @@ If already on `main` with uncommitted changes AND the change qualifies as minor,
 - **Host:** Bluehost (shared PHP hosting).
 - **Repo:** [github.com/ryanrwang/event-forecast](https://github.com/ryanrwang/event-forecast)
 - **Deploy:** GitHub Actions SFTP on push to `main` → `public_html/apps/eventforecast/`.
-- **Required secrets:** `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` (same as the other Clearful apps).
+- **Required secrets:** `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` (same as the other Clearful apps) + `TICKETMASTER_API_KEY` (used by the scheduled refresh workflow).
 - **Not deployed:** all `.md` files (including `00-overview.md` and milestone docs), `cache/`, `data/cache/`, `.claude/`, Python `__pycache__/` and `.venv/`, `node_modules/`.
-- **Cron:** the Python cron is configured manually in Bluehost cPanel — deferred until M6 hardening.
+- **Data refresh:** GitHub Actions — `refresh.yml` (4×/day) runs the Python pipeline on GitHub runners and FTP-pushes the generated `data/` tree to Bluehost; `refresh-gtfs.yml` (weekly) regenerates the station set and commits it back to `main`. No Python runs on Bluehost.
 - Do not commit `cache/`, `data/cache/`, `error_log`, or any `api/config.php` / `includes/config.php` — these are gitignored.

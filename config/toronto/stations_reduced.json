@@ -490,7 +490,8 @@
     "lat": 43.636102,
     "lon": -79.416213,
     "lines": [
-      "307",
+      "309",
+      "311",
       "329",
       "363",
       "509",
@@ -507,6 +508,7 @@
     "lat": 43.636511,
     "lon": -79.41471,
     "lines": [
+      "309",
       "509"
     ],
     "venue_ids": [
@@ -515,11 +517,13 @@
     ]
   },
   {
-    "station_id": "14508",
-    "station_name": "Fleet St at Fort York Blvd",
-    "lat": 43.636339,
-    "lon": -79.406837,
+    "station_id": "14509",
+    "station_name": "Fleet Hub - FIFA World Cup",
+    "lat": 43.636422,
+    "lon": -79.407397,
     "lines": [
+      "309",
+      "311",
       "509",
       "511"
     ],
@@ -528,12 +532,15 @@
     ]
   },
   {
-    "station_id": "15500",
-    "station_name": "Fort York Blvd at Fleet St",
-    "lat": 43.636369,
-    "lon": -79.40686,
+    "station_id": "15502",
+    "station_name": "Fleet St at Fort York Blvd",
+    "lat": 43.636282,
+    "lon": -79.407391,
     "lines": [
-      "307"
+      "309",
+      "311",
+      "509",
+      "511"
     ],
     "venue_ids": [
       "coca-cola-coliseum"
@@ -561,8 +568,7 @@
     "lines": [
       "41",
       "101",
-      "341",
-      "941"
+      "341"
     ],
     "venue_ids": [
       "rogers-stadium"
@@ -590,8 +596,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "massey-hall",
@@ -606,8 +611,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "meridian-hall",
@@ -622,8 +626,7 @@
     "lon": -79.391644,
     "lines": [
       "304",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -639,8 +642,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "meridian-hall"
@@ -653,8 +655,7 @@
     "lon": -79.389714,
     "lines": [
       "304",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -669,8 +670,7 @@
     "lon": -79.39201,
     "lines": [
       "304",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -685,8 +685,7 @@
     "lon": -79.385957,
     "lines": [
       "304",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -700,8 +699,7 @@
     "lon": -79.395053,
     "lines": [
       "304",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre"
@@ -715,8 +713,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "massey-hall",
@@ -731,8 +728,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "roy-thomson-hall"
@@ -821,8 +817,8 @@
     "lat": 43.636236,
     "lon": -79.410278,
     "lines": [
-      "307",
-      "363",
+      "309",
+      "311",
       "509",
       "511"
     ],
@@ -879,18 +875,6 @@
     ],
     "venue_ids": [
       "roy-thomson-hall"
-    ]
-  },
-  {
-    "station_id": "15501",
-    "station_name": "Princes' Blvd at Strachan Ave",
-    "lat": 43.635089,
-    "lon": -79.408555,
-    "lines": [
-      "307"
-    ],
-    "venue_ids": [
-      "coca-cola-coliseum"
     ]
   },
   {
@@ -1117,6 +1101,7 @@
     "lat": 43.639697,
     "lon": -79.381542,
     "lines": [
+      "309",
       "310",
       "509",
       "510"
@@ -1131,6 +1116,7 @@
     "lat": 43.637642,
     "lon": -79.3919,
     "lines": [
+      "309",
       "310",
       "509",
       "510"
@@ -1145,6 +1131,7 @@
     "lat": 43.638753,
     "lon": -79.386978,
     "lines": [
+      "309",
       "310",
       "509",
       "510"
@@ -1159,6 +1146,7 @@
     "lat": 43.641614,
     "lon": -79.377139,
     "lines": [
+      "309",
       "310",
       "509",
       "510"
@@ -1431,6 +1419,7 @@
     "lon": -79.380129,
     "lines": [
       "1",
+      "309",
       "310",
       "509",
       "510"

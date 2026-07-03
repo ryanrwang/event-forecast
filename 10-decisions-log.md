@@ -157,3 +157,21 @@ The footer now renders three credits per the respective free-tier ToS:
 - "Transit: TTC GTFS via City of Toronto Open Data (City of Toronto Open Data Licence v1.0)" — Open Data Licence v1.0 requires source + licence disclosure.
 
 The GTFS credit is keyed by city_id; M5's NYC and Chicago expansion adds entries to `gtfs_attribution_for()` in `api/_common.php` without touching the frontend.
+
+## 2026-07-03 — Scheduled refresh moved to GitHub Actions
+
+### Why the move
+
+The Bluehost cPanel Python cron (above, "Cron cadence") was never reliably set up — the live site froze on the week of 2026-05-18 because nothing was running the pipeline. Data generation now runs on GitHub Actions (`refresh.yml`, 4×/day at 10:00/15:00/20:00/01:00 UTC, timed to land before the operator's Eastern check-ins) and FTP-pushes only the generated `data/` tree to Bluehost using the same three FTP secrets as the deploy workflow. The PHP serving layer and frontend stay on Bluehost unchanged. The Ticketmaster key moves to a `TICKETMASTER_API_KEY` repo secret (`pipeline/config.py` already preferred the env var).
+
+The old two-tier cadence (every-30-min short window + every-3h full window) is replaced by 4×/day full-window runs: GitHub cron isn't minute-precise (runs can be delayed or dropped at busy times), and event listings change at announcement cadence, not minutes. `TM_MAX_AGE_MINUTES` widened 180 → 720 accordingly (largest slot gap is 9 h; a fully missed day still flags).
+
+### Consequences of the clean-checkout model
+
+Each Actions run starts with no `data/` — the pipeline regenerates the whole window from scratch. Three code changes follow from this:
+
+- **PHP serves today-onward only.** `list_forecast_days()` filters to dates ≥ today in the city's timezone and caps at 7, so stale date folders on the server (e.g. pre-migration leftovers) are never listed. `pipeline.run` also prunes pre-today date folders after each successful city run (a no-op in CI; matters for local/persistent-disk runs).
+- **Staleness is recomputed at read time.** `city_freshness()` derives `stale` from `last_success_at` / `last_refresh_at` against the clock instead of trusting the write-time boolean frozen into `status.json` — a stalled pipeline never rewrites the file, which is exactly when the banner is needed. Thresholds still come from the values the pipeline persists into `status.json`.
+- **GTFS freshness rides in git.** `status.json` is rebuilt from scratch each run, so the GTFS section would always be the never-ran skeleton (permanent "transit data stale" banner). `pipeline.gtfs` now writes `config/<city>/stations_meta.json` (tracked) beside the station set, and `pipeline.run` copies its `refreshed_at` into `status.json` on every run. The weekly `refresh-gtfs.yml` commits the regenerated station set + meta back to `main` — commit-back, not FTP, because the station set is a pipeline input consumed from the CI checkout; nothing server-side reads it.
+
+The per-city daily TM budget counter (`data/cache/`) also resets every run in this model — acceptable, since 4 runs/day × ~10 page fetches is nowhere near the 5000/day tier. The FTP data push verifies today's `forecast.json` exists for every configured city before syncing, because the incremental sync deletes server files missing locally — an empty upload after a soft-failed run would otherwise wipe the served data.

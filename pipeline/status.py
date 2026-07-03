@@ -42,11 +42,12 @@ and atomically replaces the file. Different cron jobs (TM cron, GTFS
 cron) can stomp without losing each other's fields.
 
 Stale thresholds:
-    * Ticketmaster: TM cron should run at most every ~30 min for the
-      short window. We mark stale when last_success_at is older than
-      TM_MAX_AGE_MINUTES (default: 180 min = three short-cron cycles).
-    * GTFS: TTC publishes a fresh static zip about monthly. The pipeline
-      cron is weekly. Stale at >GTFS_MAX_AGE_DAYS (default: 14 days =
+    * Ticketmaster: the scheduled GitHub Actions refresh runs 4×/day
+      (largest gap 01:00→10:00 UTC = 9 h). We mark stale when
+      last_success_at is older than TM_MAX_AGE_MINUTES (default: 720 min
+      = 12 h — never flags normal operation, but a fully missed day does).
+    * GTFS: TTC publishes a fresh static zip about monthly. The refresh
+      workflow is weekly. Stale at >GTFS_MAX_AGE_DAYS (default: 14 days =
       two missed weekly runs).
 
 Both thresholds are also persisted in the status payload so the
@@ -71,9 +72,11 @@ log = logging.getLogger("pipeline.status")
 STATUS_PATH = REPO_ROOT / "data" / "status.json"
 SCHEMA_VERSION = 1
 
-# Ticketmaster: every short-cycle (~30min) cron tick should refresh the
-# next-24h window. Three missed ticks (~3h) is the staleness threshold.
-TM_MAX_AGE_MINUTES = 180
+# Ticketmaster: the scheduled refresh (GitHub Actions, refresh.yml) runs
+# four times a day; the largest gap between slots is 01:00→10:00 UTC = 9 h.
+# 12 h is comfortably longer than that gap so normal operation never
+# flags stale, but a fully missed day (~24 h) does.
+TM_MAX_AGE_MINUTES = 720
 
 # GTFS: the weekly cron should run once every ~7 days. Two missed cycles
 # (~14 days) is the staleness threshold; the operator should investigate
@@ -221,6 +224,27 @@ def mark_gtfs_refresh(city_id: str, *, zip_mtime_epoch: float | None,
         upd["zip_age_minutes"] = round(age_min, 1)
         upd["zip_size_bytes"]  = zip_size_bytes
         upd["stale"]           = age_min > GTFS_MAX_AGE_DAYS * 24 * 60
+    update_city(city_id, "gtfs", upd, tz=tz)
+
+
+def mark_gtfs_from_meta(city_id: str, *, refreshed_at: str | None,
+                        tz: ZoneInfo | None = None) -> None:
+    """Record GTFS freshness from the committed station-set metadata.
+
+    Under GitHub Actions every ``pipeline.run`` starts from a clean
+    checkout, so the zip-mtime bookkeeping ``mark_gtfs_refresh`` writes
+    never survives into the next run's status.json. The durable record is
+    ``config/<city>/stations_meta.json`` (tracked in git, written by
+    ``pipeline.gtfs``); ``pipeline.run`` passes its ``refreshed_at``
+    through here on every run so the served status file always carries a
+    truthful GTFS section. A missing/invalid timestamp reads as stale.
+    """
+    ts = refreshed_at if isinstance(refreshed_at, str) else None
+    upd: dict[str, Any] = {
+        "last_refresh_at": ts,
+        "stale": _is_age_over_min(ts, GTFS_MAX_AGE_DAYS * 24 * 60),
+        "max_age_days": GTFS_MAX_AGE_DAYS,
+    }
     update_city(city_id, "gtfs", upd, tz=tz)
 
 

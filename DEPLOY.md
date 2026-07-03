@@ -7,6 +7,14 @@ the value the operator should see.
 
 Replace `eventforecast.example.com` with the actual production domain.
 
+**Required GitHub Actions secrets** (repo Settings → Secrets and
+variables → Actions):
+
+| Secret | Used by | Purpose |
+|---|---|---|
+| `FTP_SERVER` / `FTP_USERNAME` / `FTP_PASSWORD` | `deploy.yml`, `refresh.yml` | SFTP to Bluehost |
+| `TICKETMASTER_API_KEY` | `refresh.yml` | Ticketmaster Discovery API (Consumer) key — server-side only, never shipped to the client |
+
 ---
 
 ## 1. Confirm the GitHub Actions deploy succeeded
@@ -22,51 +30,63 @@ If `failure`, open the run and read the SFTP step log before continuing.
 
 ## 2. Confirm the deploy did NOT upload secrets or data
 
-The deploy workflow excludes `secrets/**` and `data/**`. Re-confirm both
-excludes are still present in `.github/workflows/deploy.yml`:
+The deploy workflow excludes `secrets/*.env` / `secrets/*.key` and
+`data/**`. Re-confirm the excludes are still present in
+`.github/workflows/deploy.yml`:
 
 ```bash
 grep -E '^\s+(secrets|data|api/config\.example)' .github/workflows/deploy.yml
 ```
 
-Expect: at least these three lines:
+Expect: at least these four lines:
 
-    secrets/**
     data/**
+    secrets/*.env
+    secrets/*.key
     api/config.example.php
 
 Note: `api/config.php` (the real one) is gitignored, so it's never in
 the git tree to be uploaded. Verify on Bluehost in step 4 below.
 
-## 3. Confirm the cron entries
+## 3. Confirm the scheduled refresh workflow
 
-SSH into Bluehost or open cPanel → "Cron Jobs". The MVP needs three:
+Data generation runs on GitHub Actions, not on Bluehost. Two workflows:
 
-| Cadence | Command (replace path with your Bluehost path) |
-|---|---|
-| Every 30 minutes | `cd ~/public_html/apps/eventforecast && /home/USER/virtualenv/bin/python -m pipeline.run --window-days 1 >> ~/cron-eventforecast.log 2>&1` |
-| Every 3 hours    | `cd ~/public_html/apps/eventforecast && /home/USER/virtualenv/bin/python -m pipeline.run --window-days 7 >> ~/cron-eventforecast.log 2>&1` |
-| Weekly (Sun 03:30) | `cd ~/public_html/apps/eventforecast && /home/USER/virtualenv/bin/python -m pipeline.gtfs >> ~/cron-eventforecast.log 2>&1` |
+| Workflow | Cadence | What it does |
+|---|---|---|
+| `refresh.yml` | 4×/day (10:00, 15:00, 20:00, 01:00 UTC) + manual | Runs `pipeline.run --window-days 7`, FTP-pushes `data/` to Bluehost |
+| `refresh-gtfs.yml` | Weekly (Sun 08:00 UTC) + manual | Runs `pipeline.gtfs`, commits the regenerated station set back to `main` |
 
-After saving, tail the log to confirm it's firing:
+Check the latest refresh run:
 
 ```bash
-tail -f ~/cron-eventforecast.log
+gh run list --workflow=refresh.yml --limit 3
 ```
 
-Expect: a `[fetch] city=toronto window=...` line within the cadence
-above. If you see no new lines after 35 minutes, the cron is not
-configured correctly.
+Expect: `completed  success` within the last ~6 hours. If `failure`,
+open the run (`gh run view <run-id> --log`) and read the failing step —
+the pipeline step logs `[fetch] city=toronto window=...` lines just like
+the old cron did.
+
+To trigger a refresh immediately instead of waiting for the next slot
+(e.g. right after a deploy, or to seed fresh data):
+
+```bash
+gh workflow run refresh.yml
+```
+
+or open the repo's **Actions** tab → *Refresh forecast data* → **Run
+workflow**. Times are UTC and fixed — in winter (EST) each slot lands
+one hour earlier in Toronto local time than in summer.
 
 ## 4. Confirm the API key is server-side only and absent from client
 
-```bash
-# On Bluehost, confirm the secret file exists and is NOT world-readable.
-ls -la ~/public_html/apps/eventforecast/secrets/
-# Expect: ticketmaster.env  -rw------- (or -rw-r-----)
-```
+The Ticketmaster key lives in the `TICKETMASTER_API_KEY` GitHub Actions
+secret — the pipeline runs on GitHub runners, so Bluehost no longer
+needs `secrets/ticketmaster.env` at all (a leftover copy is harmless but
+can be deleted; the `secrets/.htaccess` deny-all stays either way).
 
-Then, from a workstation, confirm the key never reaches the browser:
+From a workstation, confirm the key never reaches the browser:
 
 ```bash
 # 1. The configured-cities endpoint must not echo any API key.
@@ -95,17 +115,22 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 # rotate the key immediately.
 ```
 
-## 5. Confirm JSON artifacts are being written for every configured city
+## 5. Confirm JSON artifacts are being uploaded for every configured city
+
+The refresh workflow FTP-pushes the generated `data/` tree after each
+run (it never uploads `data/cache/`).
 
 ```bash
 # On Bluehost
 ls -la ~/public_html/apps/eventforecast/data/toronto/
-# Expect: a raw_events.json + at least one YYYY-MM-DD/ subdir per
-# configured day. The subdirs should be from TODAY in America/Toronto.
+# Expect: a raw_events.json + a YYYY-MM-DD/ subdir per configured day,
+# starting at TODAY in America/Toronto. Older date folders may linger
+# from before the Actions migration — the PHP layer filters them out,
+# and they can be deleted via cPanel File Manager for tidiness.
 
 cat ~/public_html/apps/eventforecast/data/status.json | head -40
-# Expect: schema_version=1, cities.toronto.ticketmaster.stale=false,
-# last_success_at within the last hour.
+# Expect: schema_version=1, cities.toronto.ticketmaster.last_success_at
+# within the last several hours (the refresh cadence is 4×/day).
 ```
 
 ## 6. Confirm the PHP endpoints respond with today's data
@@ -117,8 +142,11 @@ curl -s https://eventforecast.example.com/api/cities.php | head -c 400
 # Expect: {"cities":[{"id":"toronto",...}], "attribution":..., "map_attribution":..., "gtfs_attributions":...}
 
 curl -s https://eventforecast.example.com/api/city.php?id=toronto | head -c 400
-# Expect: city, days (today's date appears), freshness.tm.stale=false,
-# freshness.gtfs.stale=false.
+# Expect: city; days STARTING AT today (America/Toronto), length ≤ 7;
+# freshness.tm.stale=false with last_success_at within the last several
+# hours; freshness.gtfs.stale=false. Staleness is recomputed against the
+# clock on every request, so a stalled refresh workflow flips these to
+# true on its own within ~12h (TM) / 14 days (GTFS).
 
 curl -s "https://eventforecast.example.com/api/forecast.php?city=toronto&date=$TODAY" \
   | jq '.verdict, .event_count, .peak_bucket, .attribution'
@@ -163,9 +191,12 @@ mv ~/public_html/apps/eventforecast/data/toronto/$TODAY/forecast.json.bak \
 ```
 
 ```bash
-# Force the stale-data banner: temporarily edit status.json to set
-# ticketmaster.stale=true, reload, confirm the banner renders with a
-# "last successful refresh at <timestamp>" message. Revert.
+# Force the stale-data banner: staleness is recomputed from timestamps
+# on every request (the stored 'stale' boolean is ignored), so edit
+# status.json to set ticketmaster.last_success_at to a few days ago,
+# reload, and confirm the banner renders with a "last good fetch at
+# <timestamp>" message. Revert (or just wait — the next scheduled
+# refresh overwrites status.json).
 ```
 
 ## 9. Post-verification hygiene
@@ -186,14 +217,17 @@ If anything is off, fix it before declaring the deploy verified.
 ## What to do if a step fails
 
 - **Step 1–2 fail:** the deploy itself didn't ship. Re-run; check secrets.
-- **Step 3 fails:** cron isn't firing. Confirm Bluehost cPanel cron is
-  enabled for the account; confirm the python path resolves (`which python`).
+- **Step 3 fails:** the refresh workflow isn't succeeding. Open the
+  failing run's log in the Actions tab. Common causes: missing/expired
+  `TICKETMASTER_API_KEY` secret (pipeline step fails fast with a
+  readable message), FTP secret drift, or a Ticketmaster outage.
 - **Step 4 fails:** **stop everything**. Rotate the Ticketmaster key
-  via the developer portal, redeploy with the new key in
-  `secrets/ticketmaster.env` (server-side only), then re-verify.
-- **Step 5–6 fail:** data isn't being written. Run the pipeline by hand
-  (`python -m pipeline.run --city toronto --refresh`) and inspect the
-  log; look for whitelist mismatches or fetch failures.
+  via the developer portal, update the `TICKETMASTER_API_KEY` GitHub
+  secret, then re-verify.
+- **Step 5–6 fail:** data isn't being generated or uploaded. Trigger
+  `gh workflow run refresh.yml` and read the run log; or run the
+  pipeline by hand locally (`python -m pipeline.run --city toronto
+  --refresh`) and look for whitelist mismatches or fetch failures.
 - **Step 7 fails:** attribution copy regressed. Restore it before
   announcing — Ticketmaster, OSM, and the GTFS licence are contractual.
 - **Step 8 surfaces an issue:** the relevant designed state needs work.

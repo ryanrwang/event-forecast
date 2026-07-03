@@ -1,0 +1,84 @@
+name: Refresh forecast data
+
+# Scheduled data generation for the live site. Runs the Python pipeline
+# on GitHub-hosted runners (the Bluehost shared-hosting Python cron was
+# never reliably set up) and FTP-pushes only the generated data/ tree to
+# Bluehost. The PHP serving layer and frontend deploy separately via
+# deploy.yml on push to main.
+#
+# GitHub cron is fixed UTC. Times below target the owner's Eastern-time
+# check-ins; in winter (EST, UTC-5) each fires one hour earlier in local
+# time than the EDT labels — acceptable.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * *'   # ~06:00 ET (05:00 in winter) — before morning
+    - cron: '0 15 * * *'   # ~11:00 ET (10:00 in winter) — before noon
+    - cron: '0 20 * * *'   # ~16:00 ET (15:00 in winter) — before end of workday
+    - cron: '0 1  * * *'   # ~21:00 ET (20:00 in winter) — night
+
+# A manual dispatch overlapping a scheduled run would race the FTP
+# upload; queue instead of running concurrently.
+concurrency:
+  group: refresh-forecast-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # The checkout has no data/ (gitignored), so the pipeline generates
+      # the current rolling window from scratch every run.
+      - name: Refresh forecast data
+        env:
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: python -m pipeline.run --window-days 7
+
+      # Safety gate: refuse to sync if the pipeline exited 0 without
+      # actually writing the window (e.g. the BudgetExhausted soft-fail
+      # path returns 0 by design). The FTP action does incremental sync
+      # WITH deletions, so uploading a near-empty data/ tree would delete
+      # the server's good forecast folders. City-config-driven — no
+      # hardcoded city ids.
+      - name: Verify generated data before upload
+        run: |
+          python - <<'EOF'
+          import datetime, json, pathlib, sys, zoneinfo
+          cities = json.loads(pathlib.Path("config/cities.json").read_text(encoding="utf-8-sig"))
+          missing = []
+          for cid in cities:
+              cfg = json.loads(pathlib.Path(f"config/{cid}/city.json").read_text(encoding="utf-8-sig"))
+              today = datetime.datetime.now(zoneinfo.ZoneInfo(cfg["timezone"])).date().isoformat()
+              if not pathlib.Path(f"data/{cid}/{today}/forecast.json").is_file():
+                  missing.append(f"data/{cid}/{today}/forecast.json")
+          if missing:
+              sys.exit("refusing to upload — missing freshly generated files: " + ", ".join(missing))
+          print("verified: today's forecast.json present for all configured cities")
+          EOF
+
+      # Upload only the generated data tree. data/cache/ (TM response
+      # cache + budget counter) is ephemeral runtime state the PHP layer
+      # never reads — don't ship it. This step only runs if the prior
+      # steps succeeded (default step behavior), so a failed run never
+      # overwrites good data on the server.
+      - name: Upload data to Bluehost
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./data/
+          server-dir: ./apps/eventforecast/data/
+          exclude: |
+            **/cache/**
