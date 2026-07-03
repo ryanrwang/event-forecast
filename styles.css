@@ -330,6 +330,63 @@ a:visited {
   color: var(--color-text-tertiary);
 }
 
+/* Right-side switch: re-bucket day verdicts from only the shown events.
+ * Knob geometry mirrors .status-banner__dot's fixed-pixel precedent —
+ * 40×20 track, 12px knob, 4px inset (all on the 4px grid). */
+.event-filter__toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-left: auto;
+  cursor: pointer;
+}
+
+.event-filter__toggle-label {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.event-filter__toggle {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-raised);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.event-filter__toggle:hover {
+  border-color: var(--color-border-strong);
+}
+
+.event-filter__toggle-knob {
+  position: absolute;
+  top: 50%;
+  left: var(--spacing-xs);
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text-tertiary);
+  transition: left var(--transition-fast), background-color var(--transition-fast);
+}
+
+.event-filter__toggle[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
+  background: color-mix(in srgb, var(--color-action-primary) 20%, transparent);
+}
+
+.event-filter__toggle[aria-checked="true"] .event-filter__toggle-knob {
+  left: 24px; /* track 40 − knob 12 − inset 4 */
+  background: var(--color-action-primary);
+}
+
 /* ────────────── Day card ────────────── */
 
 .day-card {

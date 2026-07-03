@@ -33,9 +33,23 @@
     return out;
   }
 
+  var VERDICT_MODE_KEY = 'eventforecast.verdictMode';
+
+  function loadVerdictMode() {
+    try {
+      return localStorage.getItem(VERDICT_MODE_KEY) === 'filtered' ? 'filtered' : 'all';
+    } catch (e) {
+      return 'all';
+    }
+  }
+
   var state = {
     // Persisted event-type chip selection. All-on means "no filtering".
     typeFilter: loadTypeFilter(),
+    // 'all': day verdicts reflect every modeled event (default).
+    // 'filtered': verdicts re-bucket from only the events the type
+    // filter shows — "how busy because of the stuff I care about".
+    verdictMode: loadVerdictMode(),
     cities: [],
     currentCityId: null,
     cityConfig: null,
@@ -332,6 +346,40 @@
     return out;
   }
 
+  // ─────────── Verdict display (all-events vs filtered) ───────────
+
+  function bucketVerdict(peak, thresholds) {
+    var t = thresholds || {};
+    var t1 = typeof t.T1 === 'number' ? t.T1 : 5;
+    var t2 = typeof t.T2 === 'number' ? t.T2 : 15;
+    var t3 = typeof t.T3 === 'number' ? t.T3 : 30;
+    if (peak < t1) return 'Quiet';
+    if (peak < t2) return 'Moderate';
+    if (peak < t3) return 'Busy';
+    return 'Severe';
+  }
+
+  // The verdict shown for a day. Default: the server's full-model
+  // verdict — a hidden concert still clogs the TTC. In 'filtered' mode
+  // (opt-in toggle) the day re-buckets from only the visible events'
+  // proxy_contribution (impact × time-of-day weight, shipped per event)
+  // against the same thresholds the pipeline used. Falls back to raw
+  // impact for pre-`proxy_contribution` day files.
+  function displayVerdict(forecast) {
+    if (!forecast) return '—';
+    if (state.verdictMode !== 'filtered' || !typeFilterActive()) {
+      return forecast.verdict || '—';
+    }
+    var events = ((filteredForecast(forecast) || {}).events) || [];
+    var peak = 0;
+    events.forEach(function (ev) {
+      peak += (typeof ev.proxy_contribution === 'number')
+        ? ev.proxy_contribution
+        : (ev.impact || 0);
+    });
+    return bucketVerdict(peak, forecast.thresholds);
+  }
+
   function renderTypeFilter() {
     var host = document.getElementById('event-filter');
     if (!host) return;
@@ -339,6 +387,12 @@
     host.hidden = false;
 
     host.appendChild(el('span', 'event-filter__label', 'Show'));
+
+    function rerender() {
+      renderTypeFilter();
+      renderForecastStrip();
+      if (state.selectedDate) renderDetailForSelected();
+    }
 
     TYPE_GROUPS.forEach(function (g) {
       var on = state.typeFilter[g.id] !== false;
@@ -349,19 +403,41 @@
       chip.addEventListener('click', function () {
         state.typeFilter[g.id] = state.typeFilter[g.id] === false;
         saveTypeFilter();
-        renderTypeFilter();
-        renderForecastStrip();
-        if (state.selectedDate) renderDetailForSelected();
+        rerender();
       });
       host.appendChild(chip);
     });
 
-    // The verdict chips stay full-model on purpose; say so whenever the
-    // view and the verdict can diverge.
+    // Say what the verdict chips mean whenever the view and the full
+    // model can diverge (any chip off).
     if (typeFilterActive()) {
       host.appendChild(el('span', 'event-filter__note',
-        'Verdicts still reflect all modeled events.'));
+        state.verdictMode === 'filtered'
+          ? 'Verdicts reflect shown events only.'
+          : 'Verdicts still reflect all modeled events.'));
     }
+
+    // Right side: opt-in switch that re-buckets day verdicts from only
+    // the visible events. Rendered even when no chip is off (the
+    // preference persists) — it just has no visible effect until the
+    // filter hides something.
+    var toggleWrap = el('label', 'event-filter__toggle-wrap');
+    var toggle = el('button', 'event-filter__toggle');
+    toggle.type = 'button';
+    toggle.id = 'verdict-mode-toggle';
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-checked', state.verdictMode === 'filtered' ? 'true' : 'false');
+    toggle.setAttribute('aria-label', 'Busyness from shown events only');
+    toggle.appendChild(el('span', 'event-filter__toggle-knob'));
+    toggle.addEventListener('click', function () {
+      state.verdictMode = state.verdictMode === 'filtered' ? 'all' : 'filtered';
+      try { localStorage.setItem(VERDICT_MODE_KEY, state.verdictMode); } catch (e) {}
+      rerender();
+    });
+    var toggleLabel = el('span', 'event-filter__toggle-label', 'Busyness from shown only');
+    toggleWrap.appendChild(toggleLabel);
+    toggleWrap.appendChild(toggle);
+    host.appendChild(toggleWrap);
   }
 
   // ─────────── Forecast strip ───────────
@@ -393,9 +469,10 @@
   }
 
   function renderDayCard(date, forecast, tz, index) {
+    var verdictLabelText = displayVerdict(forecast);
     var card = el('article', 'day-card');
     card.setAttribute('data-date', date);
-    card.setAttribute('data-verdict', verdictKey(forecast && forecast.verdict));
+    card.setAttribute('data-verdict', verdictKey(verdictLabelText));
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
     card.setAttribute('aria-pressed', state.selectedDate === date ? 'true' : 'false');
@@ -409,7 +486,7 @@
     card.appendChild(header);
 
     var verdict = el('div', 'day-card__verdict');
-    var verdictLabel = el('span', 'day-card__verdict-label', (forecast && forecast.verdict) || '—');
+    var verdictLabel = el('span', 'day-card__verdict-label', verdictLabelText);
     verdict.appendChild(verdictLabel);
     card.appendChild(verdict);
 
@@ -551,7 +628,7 @@
     if (title) {
       title.textContent = '';
       title.appendChild(document.createTextNode(friendlyDate(date, tz)));
-      var verdictBadge = el('span', 'forecast-detail__title-verdict', '· ' + (forecast.verdict || '—'));
+      var verdictBadge = el('span', 'forecast-detail__title-verdict', '· ' + displayVerdict(forecast));
       title.appendChild(verdictBadge);
     }
 
@@ -562,7 +639,9 @@
     }
 
     var bbox = state.cityConfig && state.cityConfig.bbox;
-    window.EFMap.ensureMap(mapHost, bbox);
+    window.EFMap.ensureMap(mapHost, bbox, {
+      defaultView: state.cityConfig && state.cityConfig.map_default_view
+    });
     window.EFMap.invalidate();
 
     // Reset bucket selection to the new day's peak (M3 spec: "scrubber

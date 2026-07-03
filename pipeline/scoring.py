@@ -116,6 +116,20 @@ def score_event(event: dict, venue: dict, tz: ZoneInfo) -> float | None:
     return round(capacity_factor * category_weight * day_weight * late_weight, 3)
 
 
+def proxy_contribution(impact: float | None, start_local) -> float:
+    """One event's share of the daily peak_proxy (impact × TOD weight).
+
+    Shipped per event in forecast.json so the frontend's
+    verdict-follows-filter toggle can re-bucket a filtered day against
+    THRESHOLDS without duplicating the TOD weighting in JS. Uses the
+    same defaults as daily_verdict (missing start → prime time).
+    """
+    if impact is None:
+        return 0.0
+    hour = start_local.hour if isinstance(start_local, datetime) else 19
+    return round(float(impact) * _tod_weight(hour), 3)
+
+
 def daily_verdict(day_events: list[dict]) -> tuple[str, float]:
     """Return (verdict_label, peak_proxy) for one day's scored events.
 

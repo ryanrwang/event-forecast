@@ -5,6 +5,7 @@
   "state_code": "ON",
   "timezone": "America/Toronto",
   "bbox": [-79.6393, 43.5810, -79.1152, 43.8555],
+  "map_default_view": { "lat": 43.6420, "lon": -79.3950, "zoom": 13 },
   "ticketmaster": {
     "city_query": "Toronto"
   },
