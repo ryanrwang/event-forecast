@@ -99,7 +99,9 @@
     "lat": 43.655673,
     "lon": -79.38371,
     "lines": [
-      "19"
+      "19",
+      "306",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -112,7 +114,9 @@
     "lat": 43.657262,
     "lon": -79.384347,
     "lines": [
-      "19"
+      "19",
+      "306",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -141,7 +145,9 @@
     "lat": 43.65869,
     "lon": -79.384942,
     "lines": [
-      "19"
+      "19",
+      "306",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre"
@@ -330,7 +336,9 @@
     "lon": -79.377175,
     "lines": [
       "305",
-      "505"
+      "306",
+      "505",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -344,7 +352,9 @@
     "lon": -79.374542,
     "lines": [
       "305",
-      "505"
+      "306",
+      "505",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -358,7 +368,9 @@
     "lon": -79.380755,
     "lines": [
       "305",
-      "505"
+      "306",
+      "505",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -372,7 +384,9 @@
     "lon": -79.383753,
     "lines": [
       "305",
-      "505"
+      "306",
+      "505",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -400,7 +414,9 @@
     "lon": -79.38119,
     "lines": [
       "305",
-      "505"
+      "306",
+      "505",
+      "506"
     ],
     "venue_ids": [
       "ed-mirvish-theatre",
@@ -490,8 +506,7 @@
     "lat": 43.636102,
     "lon": -79.416213,
     "lines": [
-      "309",
-      "311",
+      "307",
       "329",
       "363",
       "509",
@@ -508,7 +523,6 @@
     "lat": 43.636511,
     "lon": -79.41471,
     "lines": [
-      "309",
       "509"
     ],
     "venue_ids": [
@@ -517,13 +531,12 @@
     ]
   },
   {
-    "station_id": "14509",
-    "station_name": "Fleet Hub - FIFA World Cup",
-    "lat": 43.636422,
-    "lon": -79.407397,
+    "station_id": "14508",
+    "station_name": "Fleet St at Fort York Blvd",
+    "lat": 43.63632,
+    "lon": -79.407022,
     "lines": [
-      "309",
-      "311",
+      "307",
       "509",
       "511"
     ],
@@ -532,15 +545,12 @@
     ]
   },
   {
-    "station_id": "15502",
-    "station_name": "Fleet St at Fort York Blvd",
-    "lat": 43.636282,
-    "lon": -79.407391,
+    "station_id": "15500",
+    "station_name": "Fort York Blvd at Fleet St",
+    "lat": 43.636519,
+    "lon": -79.406992,
     "lines": [
-      "309",
-      "311",
-      "509",
-      "511"
+      "307"
     ],
     "venue_ids": [
       "coca-cola-coliseum"
@@ -762,19 +772,6 @@
     ]
   },
   {
-    "station_id": "16678",
-    "station_name": "Lake Shore Blvd East at Northern Dancer Blvd",
-    "lat": 43.66339,
-    "lon": -79.309757,
-    "lines": [
-      "22",
-      "92"
-    ],
-    "venue_ids": [
-      "history"
-    ]
-  },
-  {
     "station_id": "14539",
     "station_name": "Liberty St at Atlantic Ave",
     "lat": 43.638351,
@@ -817,8 +814,7 @@
     "lat": 43.636236,
     "lon": -79.410278,
     "lines": [
-      "309",
-      "311",
+      "307",
       "509",
       "511"
     ],
@@ -875,6 +871,18 @@
     ],
     "venue_ids": [
       "roy-thomson-hall"
+    ]
+  },
+  {
+    "station_id": "15501",
+    "station_name": "Princes' Blvd at Strachan Ave",
+    "lat": 43.635089,
+    "lon": -79.408555,
+    "lines": [
+      "307"
+    ],
+    "venue_ids": [
+      "coca-cola-coliseum"
     ]
   },
   {
@@ -1101,7 +1109,6 @@
     "lat": 43.639697,
     "lon": -79.381542,
     "lines": [
-      "309",
       "310",
       "509",
       "510"
@@ -1116,7 +1123,6 @@
     "lat": 43.637642,
     "lon": -79.3919,
     "lines": [
-      "309",
       "310",
       "509",
       "510"
@@ -1131,7 +1137,6 @@
     "lat": 43.638753,
     "lon": -79.386978,
     "lines": [
-      "309",
       "310",
       "509",
       "510"
@@ -1146,7 +1151,6 @@
     "lat": 43.641614,
     "lon": -79.377139,
     "lines": [
-      "309",
       "310",
       "509",
       "510"
@@ -1419,7 +1423,6 @@
     "lon": -79.380129,
     "lines": [
       "1",
-      "309",
       "310",
       "509",
       "510"
