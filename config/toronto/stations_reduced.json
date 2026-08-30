@@ -426,11 +426,10 @@
   {
     "station_id": "14538",
     "station_name": "East Liberty St at Lynn Williams St",
-    "lat": 43.638615,
-    "lon": -79.416904,
+    "lat": 43.638683,
+    "lon": -79.416984,
     "lines": [
-      "63",
-      "329"
+      "63"
     ],
     "venue_ids": [
       "coca-cola-coliseum"
@@ -439,11 +438,10 @@
   {
     "station_id": "14537",
     "station_name": "East Liberty St at Pirandello St",
-    "lat": 43.638609,
-    "lon": -79.414255,
+    "lat": 43.638634,
+    "lon": -79.414425,
     "lines": [
-      "63",
-      "329"
+      "63"
     ],
     "venue_ids": [
       "coca-cola-coliseum"
@@ -507,7 +505,6 @@
     "lon": -79.416213,
     "lines": [
       "307",
-      "329",
       "363",
       "509",
       "511"
@@ -533,10 +530,9 @@
   {
     "station_id": "14508",
     "station_name": "Fleet St at Fort York Blvd",
-    "lat": 43.63632,
-    "lon": -79.407022,
+    "lat": 43.636339,
+    "lon": -79.406837,
     "lines": [
-      "307",
       "509",
       "511"
     ],
@@ -547,8 +543,8 @@
   {
     "station_id": "15500",
     "station_name": "Fort York Blvd at Fleet St",
-    "lat": 43.636519,
-    "lon": -79.406992,
+    "lat": 43.636369,
+    "lon": -79.40686,
     "lines": [
       "307"
     ],
@@ -578,7 +574,8 @@
     "lines": [
       "41",
       "101",
-      "341"
+      "341",
+      "941"
     ],
     "venue_ids": [
       "rogers-stadium"
@@ -606,7 +603,8 @@
     "lines": [
       "304",
       "503",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "massey-hall",
@@ -621,7 +619,8 @@
     "lines": [
       "304",
       "503",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "meridian-hall",
@@ -636,7 +635,8 @@
     "lon": -79.391644,
     "lines": [
       "304",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -652,7 +652,8 @@
     "lines": [
       "304",
       "503",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "meridian-hall"
@@ -665,7 +666,8 @@
     "lon": -79.389714,
     "lines": [
       "304",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -680,7 +682,8 @@
     "lon": -79.39201,
     "lines": [
       "304",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -695,7 +698,8 @@
     "lon": -79.385957,
     "lines": [
       "304",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -709,7 +713,8 @@
     "lon": -79.395053,
     "lines": [
       "304",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "princess-of-wales-theatre"
@@ -723,7 +728,8 @@
     "lines": [
       "304",
       "503",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "massey-hall",
@@ -738,7 +744,8 @@
     "lines": [
       "304",
       "503",
-      "504"
+      "504",
+      "508"
     ],
     "venue_ids": [
       "roy-thomson-hall"
@@ -774,11 +781,10 @@
   {
     "station_id": "14539",
     "station_name": "Liberty St at Atlantic Ave",
-    "lat": 43.638351,
-    "lon": -79.420244,
+    "lat": 43.638372,
+    "lon": -79.420366,
     "lines": [
-      "63",
-      "329"
+      "63"
     ],
     "venue_ids": [
       "bmo-field"
@@ -809,6 +815,43 @@
     ]
   },
   {
+    "station_id": "14308",
+    "station_name": "Manitoba Dr at Nova Scotia Ave - Exhibition GO Station",
+    "lat": 43.635269,
+    "lon": -79.419004,
+    "lines": [
+      "29"
+    ],
+    "venue_ids": [
+      "bmo-field",
+      "coca-cola-coliseum"
+    ]
+  },
+  {
+    "station_id": "14362",
+    "station_name": "Manitoba Dr at Quebec St",
+    "lat": 43.63344,
+    "lon": -79.421804,
+    "lines": [
+      "29"
+    ],
+    "venue_ids": [
+      "bmo-field"
+    ]
+  },
+  {
+    "station_id": "15237",
+    "station_name": "Manitoba Dr at Saskatchewan Rd",
+    "lat": 43.632907,
+    "lon": -79.422304,
+    "lines": [
+      "29"
+    ],
+    "venue_ids": [
+      "bmo-field"
+    ]
+  },
+  {
     "station_id": "1062",
     "station_name": "Manitoba Dr at Strachan Ave",
     "lat": 43.636236,
@@ -819,6 +862,32 @@
       "511"
     ],
     "venue_ids": [
+      "coca-cola-coliseum"
+    ]
+  },
+  {
+    "station_id": "16285",
+    "station_name": "Nova Scotia Ave at Manitoba Dr - Exhibition GO Station",
+    "lat": 43.635203,
+    "lon": -79.41849,
+    "lines": [
+      "329"
+    ],
+    "venue_ids": [
+      "bmo-field",
+      "coca-cola-coliseum"
+    ]
+  },
+  {
+    "station_id": "14309",
+    "station_name": "Nunavut Rd - Horse Palace",
+    "lat": 43.634699,
+    "lon": -79.416659,
+    "lines": [
+      "329"
+    ],
+    "venue_ids": [
+      "bmo-field",
       "coca-cola-coliseum"
     ]
   },
@@ -874,12 +943,62 @@
     ]
   },
   {
+    "station_id": "9919",
+    "station_name": "Princes Blvd at Ontario Dr",
+    "lat": 43.6326,
+    "lon": -79.4199,
+    "lines": [
+      "329"
+    ],
+    "venue_ids": [
+      "bmo-field"
+    ]
+  },
+  {
+    "station_id": "14930",
+    "station_name": "Princes' Blvd at Newfoundland Rd - Enercare Centre",
+    "lat": 43.633954,
+    "lon": -79.412826,
+    "lines": [
+      "329"
+    ],
+    "venue_ids": [
+      "bmo-field",
+      "coca-cola-coliseum"
+    ]
+  },
+  {
+    "station_id": "16284",
+    "station_name": "Princes' Blvd at Ontario Dr",
+    "lat": 43.632147,
+    "lon": -79.419285,
+    "lines": [
+      "329"
+    ],
+    "venue_ids": [
+      "bmo-field"
+    ]
+  },
+  {
     "station_id": "15501",
     "station_name": "Princes' Blvd at Strachan Ave",
     "lat": 43.635089,
     "lon": -79.408555,
     "lines": [
       "307"
+    ],
+    "venue_ids": [
+      "coca-cola-coliseum"
+    ]
+  },
+  {
+    "station_id": "14363",
+    "station_name": "Princes' Gates Loop at Canada Blvd - CNE East Entrance",
+    "lat": 43.635575,
+    "lon": -79.409889,
+    "lines": [
+      "29",
+      "329"
     ],
     "venue_ids": [
       "coca-cola-coliseum"
@@ -1188,6 +1307,19 @@
     ]
   },
   {
+    "station_id": "14469",
+    "station_name": "Saskatchewan Rd at Dufferin St",
+    "lat": 43.632707,
+    "lon": -79.424469,
+    "lines": [
+      "29",
+      "329"
+    ],
+    "venue_ids": [
+      "bmo-field"
+    ]
+  },
+  {
     "station_id": "16559",
     "station_name": "Sheppard Ave West at John Drury Dr",
     "lat": 43.748185,
@@ -1346,7 +1478,6 @@
     "lat": 43.636556,
     "lon": -79.40975,
     "lines": [
-      "329",
       "363"
     ],
     "venue_ids": [
@@ -1431,19 +1562,6 @@
       "meridian-hall",
       "roy-thomson-hall",
       "scotiabank-arena"
-    ]
-  },
-  {
-    "station_id": "15838",
-    "station_name": "University Ave at Adelaide St West",
-    "lat": 43.648966,
-    "lon": -79.385738,
-    "lines": [
-      "503"
-    ],
-    "venue_ids": [
-      "princess-of-wales-theatre",
-      "roy-thomson-hall"
     ]
   },
   {
