@@ -464,8 +464,8 @@
         // for the rotated-square markers — arrival (info hue),
         // dispersal (warning hue), multi-event (severe accent).
         var stationsRow = el('div', 'ef-legend__stations');
-        stationsRow.appendChild(_legendStationGlyph('arrival',   'Heading in'));
-        stationsRow.appendChild(_legendStationGlyph('dispersal', 'Letting out'));
+        stationsRow.appendChild(_legendStationGlyph('arrival',   'In'));
+        stationsRow.appendChild(_legendStationGlyph('dispersal', 'Out'));
         stationsRow.appendChild(_legendStationGlyph('multi',     'Several events'));
         wrap.appendChild(stationsRow);
 

@@ -510,10 +510,10 @@
     var legend = el('div', 'ef-timeline__legend');
     var lg1 = el('span', 'ef-timeline__legend-item');
     lg1.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--arrival'));
-    lg1.appendChild(document.createTextNode('Heading in'));
+    lg1.appendChild(document.createTextNode('In'));
     var lg2 = el('span', 'ef-timeline__legend-item');
     lg2.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--dispersal'));
-    lg2.appendChild(document.createTextNode('Letting out'));
+    lg2.appendChild(document.createTextNode('Out'));
     var lg3 = el('span', 'ef-timeline__legend-item');
     lg3.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--peak'));
     lg3.appendChild(document.createTextNode('Busiest'));

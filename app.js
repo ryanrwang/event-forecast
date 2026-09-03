@@ -945,9 +945,9 @@
   function phaseWord(phases) {
     var hasIn = phases.indexOf('arrival') >= 0;
     var hasOut = phases.indexOf('dispersal') >= 0;
-    if (hasIn && hasOut) return 'Heading in + letting out';
-    if (hasOut) return 'Letting out';
-    return 'Heading in';
+    if (hasIn && hasOut) return 'In + out';
+    if (hasOut) return 'Out';
+    return 'In';
   }
 
   function renderStations() {
@@ -1132,8 +1132,8 @@
     }
     var startAbs = startMin + dayDelta(selDay, startDay) * 24 * 60;
     var endAbs   = endMin   + dayDelta(selDay, endDay)   * 24 * 60;
-    if (bucketMin < startAbs) return { label: 'Heading in', kind: 'arrival' };
-    if (bucketMin > endAbs)   return { label: 'Letting out', kind: 'dispersal' };
+    if (bucketMin < startAbs) return { label: 'In', kind: 'arrival' };
+    if (bucketMin > endAbs)   return { label: 'Out', kind: 'dispersal' };
     return { label: 'During', kind: 'during' };
   }
 
