@@ -604,6 +604,37 @@
     return s;
   }
 
+  // Agency line colour from city config (line_colors: subway line id →
+  // hex, plus "streetcar" / "go" per kind). Brand data, not a design
+  // token — the MTA's or CTA's palette lands in its own city.json.
+  function lineColor(line, kind) {
+    var colors = (state.cityConfig && state.cityConfig.line_colors) || {};
+    var key = kind === 'subway' ? String(line) : kind;
+    var c = colors[key];
+    return (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c)) ? c : null;
+  }
+
+  // Dark or light text on a coloured pill, from the token text colours.
+  function contrastTextFor(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    var lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+    var t = window.TOKENS && window.TOKENS.semantic && window.TOKENS.semantic.color.text;
+    if (lum > 0.55) return (t && t.inverse) || '#020617';
+    return (t && t.primary) || '#F8FAFC';
+  }
+
+  function linePill(line, kind) {
+    var pill = el('span', 'line-pill line-pill--' + kind, lineLabel(line, kind));
+    var c = lineColor(line, kind);
+    if (c) {
+      pill.style.background = c;
+      pill.style.borderColor = c;
+      pill.style.color = contrastTextFor(c);
+      pill.setAttribute('data-colored', 'true');
+    }
+    return pill;
+  }
+
   function joinNames(names) {
     if (names.length <= 1) return names.join('');
     if (names.length === 2) return names[0] + ' and ' + names[1];
@@ -984,7 +1015,7 @@
       headRow.appendChild(el('span', 'station-row__name', row.name));
       var lines = el('span', 'station-row__lines');
       row.lines.slice(0, 4).forEach(function (l) {
-        lines.appendChild(el('span', 'line-pill line-pill--' + row.kind, lineLabel(l, row.kind)));
+        lines.appendChild(linePill(l, row.kind));
       });
       headRow.appendChild(lines);
       if (row.kind !== 'subway') {
@@ -1036,7 +1067,12 @@
             kind: s.kind,
             lat: s.lat,
             lon: s.lon,
-            lines: (s.lines || []).map(function (l) { return lineLabel(l, s.kind); })
+            lines: (s.lines || []).map(function (l) { return lineLabel(l, s.kind); }),
+            lineColors: (s.lines || []).map(function (l) { return lineColor(l, s.kind); }),
+            lineText: (s.lines || []).map(function (l) {
+              var c = lineColor(l, s.kind);
+              return c ? contrastTextFor(c) : null;
+            })
           };
         }
       }

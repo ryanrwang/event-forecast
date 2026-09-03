@@ -516,8 +516,14 @@
     var lines = (station.lines || []);
     var linesHtml = lines.length
       ? '<span class="ef-popup__lines">' +
-          lines.map(function (l) {
-            return '<span class="ef-popup__line">' + escapeHtml(l) + '</span>';
+          lines.map(function (l, i) {
+            var c = station.lineColors && station.lineColors[i];
+            var t = station.lineText && station.lineText[i];
+            var style = c
+              ? ' style="background:' + escapeHtml(c) + ';border-color:' + escapeHtml(c) +
+                (t ? ';color:' + escapeHtml(t) : '') + '"'
+              : '';
+            return '<span class="ef-popup__line"' + style + '>' + escapeHtml(l) + '</span>';
           }).join('') +
         '</span>'
       : '<span class="ef-popup__lines-empty">No lines listed</span>';

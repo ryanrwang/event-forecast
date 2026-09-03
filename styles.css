@@ -765,13 +765,17 @@ a:visited {
   gap: var(--spacing-xs);
 }
 
+/* Line pills. With a configured agency colour (city.json line_colors)
+   the pill is painted inline as a line badge; the class colours below
+   are the fallback for cities without one. */
 .line-pill {
   display: inline-block;
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
+  font-weight: var(--typography-weight-semibold);
+  letter-spacing: 0.02em;
   line-height: 1.4;
-  padding: 1px var(--spacing-xs);
+  padding: 1px var(--spacing-sm);
   border-radius: var(--radius-pill);
   border: 1px solid var(--color-border-base);
   color: var(--color-text-secondary);
@@ -1618,7 +1622,8 @@ a:visited {
 .ef-popup__line {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
+  font-weight: var(--typography-weight-semibold);
+  letter-spacing: 0.02em;
   padding: 1px var(--spacing-xs);
   border-radius: var(--radius-pill);
   border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, transparent);

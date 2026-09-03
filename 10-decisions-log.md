@@ -328,3 +328,15 @@ literals became the 12 px micro token. The timeline canvas follows the
 same tokens. This retires the M1 "characterful display + technical
 mono" pairing on readability grounds; overview §7's "no Inter / Roboto /
 Arial / system default" guidance still holds (Plex is none of those).
+
+### Line pills carry the agency's line colours
+
+Line pills ("Line 1", "504", "Lakeshore West") are painted in the
+transit agency's own colours, read from `transit.line_colors` in
+`config/<city>/city.json` and echoed by `api/city.php`. These are brand
+data, not design tokens: a Toronto rider reads yellow as Line 1 on
+sight, and the MTA's or CTA's palette will live in its own city file.
+Text on each pill flips between the token text colours by luminance.
+Lines 1, 2, 4 and 5 use the TTC Brand Standards values (Pantone 123 C,
+347 C, 234 C, Orange 021 as RGB); Line 6 grey, the streetcar red and the
+GO green are typed from memory and flagged unverified in the config.
