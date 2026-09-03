@@ -1193,6 +1193,91 @@ a:visited {
   background: color-mix(in srgb, var(--color-status-success) 10%, transparent);
 }
 
+/* Range brush: a miniature of the whole day above the chart with two
+   handles. Same side margins as the plot so it lines up. */
+.ef-brush {
+  position: relative;
+  height: 48px;
+  margin: 0 0 var(--spacing-xs);
+  touch-action: none;
+  user-select: none;
+}
+
+.ef-brush__canvas {
+  display: block;
+  width: 100%;
+  height: 28px;
+}
+
+.ef-brush__sel {
+  position: absolute;
+  top: 0;
+  height: 28px;
+  cursor: grab;
+  background: color-mix(in srgb, var(--color-text-accent) 6%, transparent);
+}
+
+.ef-brush--dragging .ef-brush__sel {
+  cursor: grabbing;
+}
+
+.ef-brush__handle {
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 28px;
+  margin-left: -10px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.ef-brush__grip {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 6px;
+  width: 8px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-overlay);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.ef-brush__handle:hover .ef-brush__grip,
+.ef-brush__handle:focus-visible .ef-brush__grip {
+  background: var(--color-bg-modal);
+  border-color: var(--color-text-secondary);
+}
+
+.ef-brush__handle:focus-visible {
+  outline: none;
+}
+
+.ef-brush__handle:focus-visible .ef-brush__grip {
+  box-shadow: 0 0 0 2px var(--color-interactive-focus);
+}
+
+.ef-brush__label {
+  position: absolute;
+  top: 30px;
+  left: 10px;
+  transform: translateX(-50%);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Handles close together: push the labels outward so they don't touch. */
+.ef-brush__handle--tight:first-of-type .ef-brush__label { transform: translateX(-100%); }
+.ef-brush__handle--tight:last-of-type  .ef-brush__label { transform: translateX(0); }
+
 /* Station lanes: one row per station, a chip anchored at each busy
    window. Side margins match the canvas plot margins (16px) so chips
    line up with the axis. Positions are percentages of the visible

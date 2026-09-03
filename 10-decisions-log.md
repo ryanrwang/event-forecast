@@ -371,3 +371,22 @@ The visible range hides midnight to 9 AM by default (persisted
 "Overnight" chip shows the full 26 hours), so the axis reads
 9 AM → 2 AM. A day with real early activity, above 10 % of its peak
 before 9 AM (a 6 AM marathon), expands on its own down to that hour.
+
+### Range brush, smooth curve, badge-first chips
+
+- **Range brush.** The "Overnight" on/off chip became a proper range
+  control: a miniature of the whole 26-hour day above the chart with
+  two draggable handles (15-minute steps, 2-hour minimum span; drag the
+  window to slide it; arrow keys on a handle). The main chart, the
+  lanes, and the scrubber follow the range, and the axis picks finer
+  ticks (down to 15 minutes) as the range narrows. The range persists;
+  "All day" toggles the full 26 hours, and clearing it returns to the
+  default (9 AM → 2 AM, or earlier on a day with early activity).
+  Operator-requested: "slide between very specific times".
+- **Smooth curve.** The busyness curve is drawn with monotone cubic
+  (Fritsch–Carlson) interpolation through the bucket centres instead of
+  15-minute steps. Monotone so it never dips below zero or invents a
+  bump between two buckets; the underlying numbers are unchanged.
+- **Badge first, number only.** Line badges read "1" instead of
+  "Line 1" (the coloured badge already says it's a line) and sit before
+  the station name: [1] Union, [504] King St West at Bay St.

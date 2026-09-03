@@ -596,10 +596,10 @@
     }
   }
 
+  // Badge text for a line. The coloured badge already says "line", so a
+  // subway line is just its number ("1"), a streetcar its route ("504").
   function lineLabel(line, kind) {
-    var s = String(line == null ? '' : line);
-    if (kind === 'subway' && /^\d+$/.test(s)) return 'Line ' + s;
-    return s;
+    return String(line == null ? '' : line);
   }
 
   // Agency line colour from city config (line_colors: subway line id →
