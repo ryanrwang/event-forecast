@@ -511,8 +511,6 @@
     host.innerHTML = '';
     host.hidden = false;
 
-    host.appendChild(el('span', 'event-filter__label', 'Show'));
-
     TYPE_GROUPS.forEach(function (g) {
       var on = state.typeFilter[g.id] !== false;
       var chip = el('button', 'event-filter__chip', g.label);

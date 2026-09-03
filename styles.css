@@ -318,14 +318,6 @@ a:visited {
   margin: 0;
 }
 
-.event-filter__label {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
 .event-filter__chip {
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
