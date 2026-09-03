@@ -1269,11 +1269,14 @@ a:visited {
 }
 
 /* Phones: the axis is short, so chips drop their line badge and keep
-   the name tight; the popover still carries the lines. */
+   the name tight (the popover still carries the lines), and each lane
+   splits into two rows so a station's In and Out chips never overlap. */
 @media (max-width: 720px) {
+  .ef-lane { height: 52px; }
+  .ef-lane__chip { padding: 0 var(--spacing-xs); }
+  .ef-lane__chip[data-phase="dispersal"] { top: 28px; }
   .ef-lane__chip .line-pill { display: none; }
   .ef-lane__name { max-width: 120px; }
-  .ef-lane__chip { padding: 0 var(--spacing-xs); }
 }
 
 .ef-lanes__scrub {
