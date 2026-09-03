@@ -285,18 +285,23 @@ than seeded 2026 dates, because those dates could not be verified at
 build time. Manual events always render regardless of the type chips
 (they are days, not a type) and carry `source: "manual"`.
 
-### Today-first layout, one sentence per day, smaller venues hidden
+### Today-first layout, times lead the station cards, smaller venues hidden
 
 The detail panel order is now: date + verdict + "Because …" driver
-line, a one-paragraph takeaway (what's on, busiest windows heading in
-and letting out, which stations), the stations panel, the timeline,
-the map, then the events at the scrubbed time. Same order on every
+line, the stations panel, the timeline, the map, then the events at
+the scrubbed time. A one-paragraph takeaway sat between the header and
+the stations in the first cut; the operator reviewed it and asked for
+the station cards to carry that message instead, with the time as the
+loudest element. Each card now leads with its busy windows in
+title-size mono digits ("10:07–11:22 PM · letting out"), and the cause
+prints once under the card. The day pills gained a "Busiest 10:00 PM"
+line for the same reason. Same order on every
 screen size. The 7-day strip is a row of compact verdict pills (Today /
 Tomorrow / weekday, verdict, top event). Events at venues under 5,000
 seats are hidden from the browsable view by default (a persisted
 "Smaller venues" chip shows them); they still count toward the verdict.
-The takeaway is generated client-side from data already in the day
-file — no new pipeline output.
+All of this is client-side over data already in the day file — no new
+pipeline output.
 
 ### Absolute heat scale; wording; 12-hour times
 

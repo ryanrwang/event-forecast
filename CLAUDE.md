@@ -61,7 +61,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
 | `styles.css` | Global styles, references CSS custom properties only. |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
-| `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip, drives day selection, and renders the selected day today-first: "Because …" driver line, one-paragraph takeaway, stations-likely-packed panel (subway by default; Streetcar / GO toggles), then timeline, map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
+| `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip, drives day selection, and renders the selected day today-first: "Because …" driver line, stations-likely-packed cards with the busy windows as the loudest element (subway by default; Streetcar / GO toggles), then timeline, map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
 | `map.js` | Leaflet map + custom canvas heat overlay (absolute scale: normalized to the Severe threshold) + markers + kind-aware station markers + legend (M2). |
 | `timeline.js` | Custom canvas day timeline + scrubber + per-event avoid bands (M3). |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |

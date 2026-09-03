@@ -8,9 +8,10 @@
  *   1. the 7-day outlook strip (one compact verdict pill per day),
  *   2. the view filters (event-type chips, "smaller venues" chip,
  *      verdict-follows-filter switch),
- *   3. the selected day in today-first order: a plain-English takeaway,
- *      the stations likely packed and when, the busyness timeline, the
- *      map, and the events active at the scrubbed time.
+ *   3. the selected day in today-first order: the "Because …" driver
+ *      line, the stations likely packed and when (times lead), the
+ *      busyness timeline, the map, and the events active at the
+ *      scrubbed time.
  *
  * Map + timeline modules are owned by map.js / timeline.js; this file
  * fans state out to them.
@@ -585,36 +586,6 @@
     return sortedEvents(forecast && forecast.events).filter(isSmallVenue);
   }
 
-  function isSports(ev) {
-    return eventTypeGroup(ev) === 'sports' || (ev && ev.category === 'arena_sports');
-  }
-
-  function isFestival(ev) {
-    return !!ev && (ev.source === 'manual' || ev.category === 'festival');
-  }
-
-  // "after the game" / "after the show" / "as it winds down"
-  function letOutPhrase(ev) {
-    if (isSports(ev)) return 'after the game';
-    if (isFestival(ev)) return 'as it winds down';
-    return 'after the show';
-  }
-
-  function windowsForEvent(forecast, eventId) {
-    return (forecast && forecast.avoid_windows || []).filter(function (w) {
-      return w.event_id === eventId;
-    });
-  }
-
-  function transitForEvent(forecast, eventId) {
-    var tf = forecast && forecast.transit_flags;
-    var list = (tf && tf.events) || [];
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].event_id === eventId) return list[i].stations || [];
-    }
-    return [];
-  }
-
   function humanCategory(cat) {
     switch ((cat || '').toLowerCase()) {
       case 'major_concert':   return 'Concert';
@@ -673,6 +644,13 @@
     pill.appendChild(when);
 
     pill.appendChild(el('span', 'day-pill__verdict', verdictLabelText));
+
+    // The "when" in the headline strip: the busiest 15 minutes of the
+    // browsable view, so it moves with the filters like the sub-line.
+    var view = filteredForecast(forecast);
+    if (view && view.events && view.events.length && typeof view.peak_bucket === 'number') {
+      pill.appendChild(el('span', 'day-pill__peak', 'Busiest ' + clockFromBucket(view.peak_bucket)));
+    }
 
     var sub = pillSubline(forecast);
     var subNode = el('span', 'day-pill__sub' + (sub.muted ? ' day-pill__sub--muted' : ''), sub.text);
@@ -744,10 +722,6 @@
     header.appendChild(left);
     host.appendChild(header);
 
-    var takeaway = el('p', 'forecast-detail__takeaway');
-    takeaway.id = 'takeaway';
-    host.appendChild(takeaway);
-
     var stationsHost = el('section', 'forecast-detail__stations');
     stationsHost.id = 'stations-host';
     stationsHost.setAttribute('aria-label', 'Stations likely packed');
@@ -791,7 +765,7 @@
     var forecast = date && state.forecasts[date];
     if (!forecast) return;
     // Map, timeline, stations, and rail render the filtered view; the
-    // header verdict, driver, and takeaway stay full-model.
+    // header verdict and driver line stay full-model.
     var view = filteredForecast(forecast);
     var tz = state.cityConfig && state.cityConfig.timezone;
 
@@ -805,11 +779,6 @@
     }
     var driver = document.getElementById('forecast-detail-driver');
     if (driver) driver.textContent = driverText(forecast, tz);
-    var takeaway = document.getElementById('takeaway');
-    if (takeaway) {
-      takeaway.innerHTML = '';
-      takeaway.appendChild(el('span', 'forecast-detail__takeaway-text', takeawayText(forecast, tz)));
-    }
 
     // Reset bucket selection to the new day's peak (M3 spec).
     var newBucket = (typeof view.peak_bucket === 'number') ? view.peak_bucket : 0;
@@ -837,7 +806,7 @@
     renderRail();
   }
 
-  // ─────────── Driver + takeaway copy ───────────
+  // ─────────── Driver line ───────────
 
   // "Because Toronto Blue Jays vs. New York Yankees at Rogers Centre
   // (about 39,000 people)." Full-model, so it explains the verdict.
@@ -856,79 +825,6 @@
     if (people) text += ' (about ' + people + ' people)';
     if (major.length > 1) text += ', plus ' + (major.length - 1) + ' more';
     return text + '.';
-  }
-
-  // The one-paragraph answer: what's on, when it's busiest, which
-  // stations fill up. Everything here is already in the day's JSON.
-  function takeawayText(forecast, tz) {
-    var major = majorEvents(forecast);
-    var small = smallEvents(forecast);
-    if (major.length === 0) {
-      if (small.length === 0) return 'Nothing major on. Downtown should move normally.';
-      return 'Only smaller shows tonight. Downtown should move normally.';
-    }
-    var top = major[0];
-    var parts = [];
-
-    // Sentence 1: what and when.
-    var lead = top.name + (top.source === 'manual' ? ', ' : ' at ' + top.venue_name + ', ') +
-      friendlyTime(top.start_local, tz);
-    if (isFestival(top) && top.end_local) lead += ' to ' + friendlyTime(top.end_local, tz);
-    if (major.length > 1) {
-      var others = major.slice(1, 3).map(function (ev) {
-        return ev.name + ' (' + friendlyTime(ev.start_local, tz) + ')';
-      });
-      lead += '. Also ' + joinNames(others) + (major.length > 3 ? ' and ' + (major.length - 3) + ' more' : '');
-    }
-    parts.push(lead + '.');
-
-    // Sentence 2: busiest windows, from the top event's avoid windows.
-    var wins = windowsForEvent(forecast, top.id);
-    var arrival = null, dispersal = null;
-    wins.forEach(function (w) {
-      if (w.kind === 'arrival' && !arrival) arrival = w;
-      if (w.kind === 'dispersal' && !dispersal) dispersal = w;
-    });
-    if (isFestival(top)) {
-      var from = arrival ? arrival.from_minute : null;
-      var to = dispersal ? dispersal.to_minute : null;
-      if (from != null && to != null) {
-        parts.push('Crowds from ' + clockFromMinutes(from) + ' to ' + clockFromMinutes(to) + '.');
-      }
-    } else if (arrival && dispersal) {
-      parts.push('Busiest ' + rangeLabel(arrival.from_minute, arrival.to_minute) + ' heading in and ' +
-        rangeLabel(dispersal.from_minute, dispersal.to_minute) + ' letting out.');
-    } else if (dispersal) {
-      parts.push('Busiest ' + rangeLabel(dispersal.from_minute, dispersal.to_minute) + ' letting out.');
-    } else if (arrival) {
-      parts.push('Busiest ' + rangeLabel(arrival.from_minute, arrival.to_minute) + ' heading in.');
-    }
-
-    // Sentence 3: stations, subway first; fall back to GO + streetcar.
-    var stations = transitForEvent(forecast, top.id);
-    var subway = stations.filter(function (s) { return s.kind === 'subway'; });
-    var direct = subway.filter(function (s) { return !s.via; });
-    var pick = (direct.length ? direct : subway).slice(0, 2).map(function (s) { return s.station_name; });
-    if (pick.length) {
-      parts.push('Expect ' + joinNames(pick) + ' to be packed ' + letOutPhrase(top) +
-        (direct.length === 0 && subway.length ? ' (via ' + subway[0].via + ')' : '') + '.');
-    } else {
-      var go = stations.filter(function (s) { return s.kind === 'go'; }).map(function (s) { return s.station_name; });
-      var lines = {};
-      stations.forEach(function (s) {
-        if (s.kind === 'streetcar') (s.lines || []).forEach(function (l) { lines[l] = true; });
-      });
-      var lineList = Object.keys(lines).filter(function (l) { return /^5\d\d$/.test(l); }).sort().slice(0, 3);
-      var bits = [];
-      if (go.length) bits.push(joinNames(go.slice(0, 2)));
-      if (lineList.length) bits.push('the ' + lineList.join('/') + ' streetcar' + (lineList.length > 1 ? 's' : ''));
-      if (bits.length) {
-        parts.push('No subway within walking distance. Expect ' + joinNames(bits) + ' to be packed ' + letOutPhrase(top) + '.');
-      } else if (stations.length === 0 && top.source !== 'manual') {
-        parts.push('No subway within walking distance of ' + top.venue_name + '.');
-      }
-    }
-    return parts.join(' ');
   }
 
   // ─────────── Stations panel ───────────
@@ -1096,19 +992,27 @@
       }
       item.appendChild(headRow);
 
+      // Times lead. The cause (event name) prints once under the card
+      // when every window shares it, which is the common case; only a
+      // card mixing events labels each window.
+      var causeTexts = row.spans.map(function (s) {
+        var c = s.causes.slice(0, 2).join(', ') + (s.causes.length > 2 ? ' +' + (s.causes.length - 2) : '');
+        if (s.via) c += ' · via ' + s.via;
+        return c;
+      });
+      var sameCause = causeTexts.every(function (c) { return c === causeTexts[0]; });
       var spans = el('ul', 'station-row__windows');
-      row.spans.forEach(function (s) {
+      row.spans.forEach(function (s, i) {
         var inSpan = nowMin >= s.from && nowMin < s.to;
         var li = el('li', 'station-window' + (inSpan ? ' station-window--active' : ''));
         li.setAttribute('data-phase', s.phases.length > 1 ? 'both' : s.phases[0]);
         li.appendChild(el('span', 'station-window__time', rangeLabel(s.from, s.to)));
         li.appendChild(el('span', 'station-window__phase', phaseWord(s.phases)));
-        var cause = s.causes.slice(0, 2).join(', ') + (s.causes.length > 2 ? ' +' + (s.causes.length - 2) : '');
-        if (s.via) cause += ' · via ' + s.via;
-        li.appendChild(el('span', 'station-window__cause', cause));
+        if (!sameCause) li.appendChild(el('span', 'station-window__cause', causeTexts[i]));
         spans.appendChild(li);
       });
       item.appendChild(spans);
+      if (sameCause && causeTexts[0]) item.appendChild(el('div', 'station-row__cause', causeTexts[0]));
       list.appendChild(item);
     });
     host.appendChild(list);

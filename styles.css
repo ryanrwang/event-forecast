@@ -275,6 +275,10 @@ a:visited {
     scroll-snap-align: start;
   }
 
+  .day-pill__peak {
+    font-size: var(--typography-micro);
+  }
+
   .forecast-strip::after {
     content: "";
     position: absolute;
@@ -500,6 +504,15 @@ a:visited {
   margin-top: var(--spacing-xs);
 }
 
+.day-pill__peak {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-caption);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
 .day-pill__sub {
   width: 100%;
   font-size: var(--typography-caption);
@@ -547,8 +560,8 @@ a:visited {
 
 /*
  * Today-first order, top to bottom: header (date + verdict + driver),
- * the one-paragraph takeaway, stations likely packed, the busyness
- * timeline, the map, then the events active at the scrubbed time.
+ * stations likely packed (times lead), the busyness timeline, the map,
+ * then the events active at the scrubbed time.
  */
 .forecast-detail {
   padding: 0;
@@ -612,23 +625,6 @@ a:visited {
   line-height: 1.4;
 }
 
-.forecast-detail__takeaway {
-  margin: 0;
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-family: var(--typography-font-display);
-  font-size: var(--typography-title);
-  line-height: 1.35;
-  color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 5%, transparent), transparent 90%),
-              var(--color-bg-surface);
-}
-
-.forecast-detail__takeaway-text {
-  display: block;
-  max-width: 72ch;
-}
-
 .forecast-detail__map-wrap {
   border-top: 1px solid var(--color-border-subtle);
 }
@@ -643,7 +639,6 @@ a:visited {
 
 @media (max-width: 720px) {
   .forecast-detail__map { height: 320px; }
-  .forecast-detail__takeaway { font-size: var(--typography-body); }
 }
 
 /* ────────────── Stations likely packed ────────────── */
@@ -810,19 +805,20 @@ a:visited {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-xs);
 }
 
+/* Time is the loudest thing on the card: mono, title size, tabular
+   digits. The phase word sits after it and wraps underneath when the
+   card is narrow. */
 .station-window {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--spacing-sm);
-  padding: 2px var(--spacing-xs);
+  gap: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-xs);
   margin: 0 calc(-1 * var(--spacing-xs));
   border-radius: var(--radius-xs);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
 }
 
 .station-window--active {
@@ -830,14 +826,20 @@ a:visited {
 }
 
 .station-window__time {
-  color: var(--color-text-primary);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-title);
   font-weight: var(--typography-weight-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--color-text-primary);
   white-space: nowrap;
 }
 
 .station-window__phase {
+  font-family: var(--typography-font-mono);
   font-size: 10px;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-status-info);
   white-space: nowrap;
@@ -846,12 +848,21 @@ a:visited {
 .station-window[data-phase="dispersal"] .station-window__phase { color: var(--color-status-warning); }
 .station-window[data-phase="both"] .station-window__phase      { color: var(--color-verdict-severe); }
 
-.station-window__cause {
-  grid-column: 1 / -1;
+.station-window__cause,
+.station-row__cause {
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
   color: var(--color-text-tertiary);
   line-height: 1.3;
+}
+
+.station-window__cause {
+  flex-basis: 100%;
+}
+
+.station-row__cause {
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border-subtle);
 }
 
 .stations__empty {
