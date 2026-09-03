@@ -48,7 +48,7 @@ from .gtfs import STATION_RADIUS_M, haversine_m
 log = logging.getLogger("pipeline.transit")
 
 STATION_KINDS = ("subway", "go", "streetcar", "bus")
-_KIND_ORDER = {"subway": 0, "go": 1, "streetcar": 2, "bus": 3}
+_KIND_ORDER = {"subway": 0, "streetcar": 1, "go": 2, "bus": 3}
 _DEFAULT_KEEP_KINDS = ("subway", "streetcar")
 _CURATED_ID_PREFIX = "st:"
 # Streetcar stops are dense (a theatre block can have 15 within 600 m).
@@ -256,7 +256,7 @@ def build_transit_flags(
       3. GTFS-derived subway stations as a fallback ONLY when the venue
          has no curated entries — so a venue the operator forgot still
          gets something.
-    Bus stops never ship. Stations sort subway → GO → streetcar, then by
+    Bus stops never ship. Stations sort subway → streetcar → GO, then by
     distance.
 
     Returns {"events": [...], "radius_m": <int>, "kinds": [...]} so the

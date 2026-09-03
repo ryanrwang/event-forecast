@@ -931,9 +931,13 @@
       rec.first = spans.length ? spans[0].from : Infinity;
       rows.push(rec);
     });
-    var order = { subway: 0, go: 1, streetcar: 2 };
+    // Subway first, then streetcar, then GO; within a kind, earliest
+    // window first. Kind wins over time so the toggles append groups
+    // below the subway rows instead of shuffling them.
+    var order = { subway: 0, streetcar: 1, go: 2 };
+    function rank(kind) { return Object.prototype.hasOwnProperty.call(order, kind) ? order[kind] : 9; }
     rows.sort(function (a, b) {
-      return (a.first - b.first) || ((order[a.kind] || 9) - (order[b.kind] || 9)) || a.name.localeCompare(b.name);
+      return (rank(a.kind) - rank(b.kind)) || (a.first - b.first) || a.name.localeCompare(b.name);
     });
     return { rows: rows, hiddenKinds: hiddenKinds };
   }
