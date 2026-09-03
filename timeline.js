@@ -692,16 +692,17 @@
 
   // ─────────── Readout / chips ───────────
 
-  function updateReadout() {
+  // Title: "Busiest at 10:00 PM" (the day's peak), or "Quiet all day".
+  function updateTitle() {
     if (!_readout || !_forecast) return;
-    var b = (typeof _bucket === 'number') ? _bucket : _forecast.peak_bucket || 0;
-    var v = (_forecast.timeline && _forecast.timeline[b]) || 0;
-    var peakValue = _forecast.peak_value || 0;
-    var pct = peakValue > 0 ? Math.round((v / peakValue) * 100) : 0;
     _readout.innerHTML = '';
-    _readout.appendChild(el('span', 'ef-timeline__readout-time', bucketLabel(b)));
-    _readout.appendChild(el('span', 'ef-timeline__readout-sep', '·'));
-    _readout.appendChild(el('span', 'ef-timeline__readout-pct', pct + "% of the day's peak"));
+    var peakValue = _forecast.peak_value || 0;
+    if (peakValue > 0 && typeof _forecast.peak_bucket === 'number') {
+      _readout.appendChild(document.createTextNode('Busiest at '));
+      _readout.appendChild(el('strong', 'ef-timeline__title-time', bucketLabel(_forecast.peak_bucket)));
+    } else {
+      _readout.appendChild(document.createTextNode('Quiet all day'));
+    }
   }
 
   function updateNowChip() {
@@ -946,7 +947,6 @@
     if (bucket === _bucket) return;
     _bucket = bucket;
     draw();
-    updateReadout();
     applyActiveChips();
     if (fire && typeof _onBucketChange === 'function') {
       _onBucketChange(bucket);
@@ -976,7 +976,7 @@
     draw();
     drawBrush();
     updateAllDayChip();
-    updateReadout();
+    updateTitle();
     updateNowChip();
     layoutLanes();
   }
@@ -1026,8 +1026,7 @@
     _wrap = el('div', 'ef-timeline');
 
     var head = el('div', 'ef-timeline__head');
-    head.appendChild(el('span', 'ef-timeline__eyebrow', "When it's busiest"));
-    _readout = el('span', 'ef-timeline__readout');
+    _readout = el('span', 'ef-timeline__title');
     head.appendChild(_readout);
 
     _chips = el('div', 'ef-timeline__chips');

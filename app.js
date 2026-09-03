@@ -744,7 +744,6 @@
     host.appendChild(timelineHost);
 
     var mapWrap = el('div', 'forecast-detail__map-wrap');
-    mapWrap.appendChild(el('div', 'forecast-detail__section-eyebrow', 'Where it lands'));
     var mapHost = el('div', 'forecast-detail__map');
     mapHost.id = 'map-canvas';
     mapWrap.appendChild(mapHost);

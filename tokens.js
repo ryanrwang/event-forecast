@@ -118,6 +118,7 @@
     },
 
     fontSize: {
+      xxs: '11px',
       xs:  '12px',
       sm:  '14px',
       md:  '16px',
@@ -281,6 +282,8 @@
       body:     primitives.fontSize.md,
       caption:  primitives.fontSize.sm,
       micro:    primitives.fontSize.xs,
+      // Badge-only size (line numbers inside lane chips). Never body copy.
+      tiny:     primitives.fontSize.xxs,
       font: {
         display: primitives.fontFamily.display,
         mono:    primitives.fontFamily.mono,
