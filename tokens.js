@@ -142,13 +142,16 @@
       relaxed: '1.7'
     },
 
-    // Chosen in M1 per overview §7 (characterful display + clean technical/mono,
-    // no Inter/Roboto/Arial/system defaults). Loaded via Google Fonts <link>
-    // in index.html. See 10-decisions-log.md for rationale.
+    // Operator decision 2026-09-03 (see 10-decisions-log.md): one natural
+    // sans for every role. The italic serif display face and the mono data
+    // face were hard to read. The three roles stay as tokens (display /
+    // mono / body) so the cascade keeps its hierarchy — now by weight and
+    // figure style rather than by family. Loaded via Google Fonts <link>
+    // in index.html.
     fontFamily: {
-      display: '"Instrument Serif", Georgia, serif',
-      mono:    '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace',
-      body:    '"Space Grotesk", "Helvetica Neue", sans-serif'
+      display: '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif',
+      mono:    '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif',
+      body:    '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif'
     },
 
     radius: {

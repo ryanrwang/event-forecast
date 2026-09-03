@@ -327,8 +327,8 @@
 
     // ── 7. Time labels along the bottom.
     var tertiary = tokenColor('color.text.tertiary', '#94A3B8');
-    var monoFont = '10px ' + (tokenColor('typography.font.mono',
-      '"JetBrains Mono", ui-monospace, monospace'));
+    var monoFont = '12px ' + (tokenColor('typography.font.mono',
+      '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif'));
     _ctx.fillStyle = tertiary;
     _ctx.font = monoFont;
     _ctx.textBaseline = 'top';
@@ -340,11 +340,11 @@
       _ctx.fillText(hourLabel12(hh), lx, plotBot + 6);
     }
 
-    // ── 8. Peak label above the peak band (display face, italic).
+    // ── 8. Peak label above the peak band (display face, semibold).
     var displayFont = '13px ' + (tokenColor('typography.font.display',
-      '"Instrument Serif", Georgia, serif'));
+      '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif'));
     _ctx.fillStyle = verdictRgb;
-    _ctx.font = 'italic ' + displayFont;
+    _ctx.font = '600 ' + displayFont;
     _ctx.textAlign = 'left';
     _ctx.textBaseline = 'alphabetic';
     var peakLabel = 'Busiest · ' + bucketLabel(peakBucket);

@@ -312,3 +312,19 @@ The visibility floor rose from 1% to 3% of scale so the blob is
 honestly sized. "Arrival" / "Dispersal" became "Heading in" /
 "Letting out", "Impacting at" became "Events at", and every time in the
 UI is 12-hour (timeline axis, readout, windows, cards).
+
+### One sans for everything — IBM Plex Sans (operator veto of the type direction)
+
+The operator found the type hard to read: the italic serif verdicts and
+titles (Instrument Serif) and the wide-tracked uppercase monospace
+labels and times (JetBrains Mono) at 10–12 px on a dark ground. Every
+text role now resolves to IBM Plex Sans, loaded from Google Fonts. The
+three font tokens (`display` / `mono` / `body`) are kept so nothing in
+the cascade changes structurally; hierarchy now comes from weight
+(semibold verdicts, titles, and the times on station cards) and from
+tabular figures, not from switching families. All italics were removed,
+letter-spacing on uppercase labels was capped at 0.06em, and the 10–11 px
+literals became the 12 px micro token. The timeline canvas follows the
+same tokens. This retires the M1 "characterful display + technical
+mono" pairing on readability grounds; overview §7's "no Inter / Roboto /
+Arial / system default" guidance still holds (Plex is none of those).
