@@ -6,7 +6,9 @@ City-config driven from the top:
     (URL pointing at the agency's static GTFS zip, or a local zip path).
   * Download (with on-disk cache; 24h TTL) or open the local zip.
   * Reduce to stops within ~600m of any whitelist venue.
-  * Aggregate routes (lines) that serve each surviving stop.
+  * Aggregate routes (lines) that serve each surviving stop, classify
+    each station's kind from GTFS route_type (subway / streetcar / bus)
+    and drop kinds the city config doesn't keep (bus, by default).
   * Write config/<city_id>/stations_reduced.json.
 
 The output shape is intentionally minimal + agency-agnostic:
@@ -16,6 +18,7 @@ The output shape is intentionally minimal + agency-agnostic:
       "station_name": "...",
       "lat": 43.65,
       "lon": -79.38,
+      "kind": "subway",              # from GTFS route_type; "streetcar" | "bus"
       "lines": ["1", "504"],         # route_short_name, deduped + sorted
       "venue_ids": ["scotiabank-arena", ...]
     },
@@ -299,6 +302,38 @@ def parse_routes(zf: zipfile.ZipFile) -> dict[str, str]:
     return out
 
 
+def parse_route_types(zf: zipfile.ZipFile) -> dict[str, int | None]:
+    """Return {route_id -> GTFS route_type} (0 tram/streetcar, 1 subway,
+    2 rail, 3 bus). None when the column is missing or blank."""
+    out: dict[str, int | None] = {}
+    with _open_gtfs_text(zf, "routes.txt") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            rid = (row.get("route_id") or "").strip()
+            if not rid:
+                continue
+            raw = (row.get("route_type") or "").strip()
+            try:
+                out[rid] = int(raw) if raw != "" else None
+            except ValueError:
+                out[rid] = None
+    return out
+
+
+# GTFS route_type → station kind. Precedence subway > streetcar > bus so a
+# stop served by both a subway and a bus reads as a subway station.
+_ROUTE_TYPE_KIND = {0: "streetcar", 1: "subway", 2: "subway", 3: "bus"}
+_KIND_RANK = {"subway": 0, "streetcar": 1, "bus": 2}
+DEFAULT_KEEP_KINDS = ("subway", "streetcar")
+
+
+def station_kind_for_route_types(types: set[int | None]) -> str:
+    kinds = {_ROUTE_TYPE_KIND.get(t, "bus") for t in types if t is not None}
+    if not kinds:
+        return "bus"
+    return min(kinds, key=lambda k: _KIND_RANK.get(k, 9))
+
+
 def parse_trips_route_map(zf: zipfile.ZipFile) -> dict[str, str]:
     """Return {trip_id -> route_id}."""
     out: dict[str, str] = {}
@@ -487,11 +522,23 @@ def cluster_stations(grouped: dict[str, dict]) -> list[dict]:
 def finalize_stations(
     grouped: dict[str, dict],
     route_names: dict[str, str],
+    route_types: dict[str, int | None] | None = None,
+    keep_kinds: Iterable[str] | None = None,
 ) -> list[dict]:
-    """Cluster, then sort + dedup line names, sort station list deterministically."""
+    """Cluster, classify each station's kind from its routes' GTFS
+    route_type, drop kinds not in ``keep_kinds`` (bus stops by default),
+    then sort + dedup line names and sort the list deterministically."""
     clustered = cluster_stations(grouped)
+    keep = set(keep_kinds) if keep_kinds is not None else set(DEFAULT_KEEP_KINDS)
     out: list[dict] = []
+    dropped = 0
     for c in clustered:
+        kind = station_kind_for_route_types(
+            {(route_types or {}).get(rid) for rid in c["route_ids"] if rid}
+        )
+        if kind not in keep:
+            dropped += 1
+            continue
         lines = sorted(
             {route_names.get(rid, rid) for rid in c["route_ids"] if rid},
             key=_route_sort_key,
@@ -504,12 +551,15 @@ def finalize_stations(
         out.append({
             "station_id": station_id,
             "station_name": c["display_name"],
+            "kind": kind,
             "lat": round(c["lat"], 6),
             "lon": round(c["lon"], 6),
             "lines": lines,
             "venue_ids": venue_ids,
         })
     out.sort(key=lambda s: (s["station_name"], s["station_id"]))
+    if dropped:
+        log.info("[gtfs] dropped %d stations whose kind is not in %s", dropped, sorted(keep))
     return out
 
 
@@ -580,6 +630,7 @@ def refresh_city(city_id: str, force_refresh: bool) -> int:
 
             stops = parse_stops(zf)
             routes = parse_routes(zf)
+            route_types = parse_route_types(zf)
             trip_to_route = parse_trips_route_map(zf)
 
             candidate_to_venues = build_candidate_stops(stops, venues, STATION_RADIUS_M)
@@ -594,7 +645,11 @@ def refresh_city(city_id: str, force_refresh: bool) -> int:
         return 1
 
     grouped = group_to_parents(candidate_to_venues, stops, stop_routes)
-    stations = finalize_stations(grouped, routes)
+    # Which station kinds to ship is city config (transit.keep_kinds);
+    # the default drops bus stops, which is what turned a 12-venue city
+    # into 135 "stations" before this field existed.
+    keep_kinds = ((city_cfg.get("transit") or {}).get("keep_kinds")) or list(DEFAULT_KEEP_KINDS)
+    stations = finalize_stations(grouped, routes, route_types, keep_kinds)
     _write_stations(city_id, stations)
     log.info(
         "[gtfs] %s: wrote %d reduced stations (radius=%dm)",

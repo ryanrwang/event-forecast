@@ -22,12 +22,15 @@ CATEGORY_WEIGHT = {
 }
 _DEFAULT_CATEGORY = "family_other"
 
-# Verdict thresholds. PLACEHOLDERS — to be calibrated against a
-# representative Toronto week. See 10-decisions-log.md.
-T1 = 5.0   # < T1            -> Quiet
-T2 = 15.0  # T1..T2          -> Moderate
-T3 = 30.0  # T2..T3          -> Busy
-           # >= T3           -> Severe
+# Verdict thresholds. Calibrated 2026-09-03 against observed Toronto
+# weeks (see 10-decisions-log.md, "Verdict recalibration"): a single
+# arena game (~20k) lands Moderate, a single stadium game (~30-45k)
+# lands Busy, and Severe is reserved for stacked nights — two
+# stadium-scale events, or a stadium plus an arena the same evening.
+T1 = 5.0   # < T1            -> Quiet     (theatre-only nights)
+T2 = 30.0  # T1..T2          -> Moderate  (one arena game / mid-size show)
+T3 = 65.0  # T2..T3          -> Busy      (one stadium game or concert)
+           # >= T3           -> Severe    (stacked stadium-scale nights)
 
 # Time-of-day concentration weights for the M1 verdict proxy. The real
 # 15-minute busyness timeline lands in M3; until then, we sum impacts

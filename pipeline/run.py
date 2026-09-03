@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import budget, eventfilter, gtfs, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
+from . import budget, eventfilter, gtfs, manual_events, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
@@ -128,6 +128,7 @@ def _build_forecast_event(event: dict, venue_entry: dict, impact: float, start_l
         "venue_name": venue_entry["name"],
         "category": venue_entry.get("category") or "family_other",
         "segment": _primary_segment(event),
+        "source": "ticketmaster",
         "start_local": start_local.isoformat(timespec="seconds") if start_local else None,
         "end_local": end_local.isoformat(timespec="seconds") if end_local else None,
         "impact": impact,
@@ -226,6 +227,15 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         refreshed_at=gtfs.load_station_meta(city_id).get("refreshed_at"),
         tz=tz,
     )
+    # Curated venue → subway/GO station map (the source of the "stations
+    # likely packed" list) and the operator's hand-maintained crowd days
+    # (parades, marathons, festivals) that Ticketmaster never lists.
+    venue_stations = transit.load_venue_stations(city_id)
+    if not venue_stations["venues"]:
+        log.info("[transit] no venue_stations.json for %s; falling back to GTFS stations", city_id)
+    manual = manual_events.load_manual_events(city_id)
+    if manual:
+        log.info("[manual] %d dated manual crowd-day entries for %s", len(manual), city_id)
 
     matched, unmatched = whitelist.apply(events, venues)
     log.info(
@@ -284,6 +294,9 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             entry["_start_local"] = start_local
             forecast_events.append(entry)
 
+        # Operator-curated crowd days for this date (see pipeline.manual_events).
+        forecast_events.extend(manual_events.forecast_entries_for_day(manual, day_key, tz))
+
         forecast_events.sort(key=lambda e: e["impact"], reverse=True)
         verdict, peak_proxy = scoring.daily_verdict(forecast_events)
 
@@ -304,7 +317,10 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         # transit flags. Both are keyed by event_id; the frontend joins
         # them when scrubbing.
         avoid_windows = timecurves.build_avoid_windows(forecast_events, day_key, tz)
-        transit_flags = transit.build_transit_flags(forecast_events, venues, stations)
+        transit_flags = transit.build_transit_flags(
+            forecast_events, venues, stations,
+            city_cfg=city_cfg, venue_stations=venue_stations,
+        )
 
         forecast_payload = {
             "date": day_key,

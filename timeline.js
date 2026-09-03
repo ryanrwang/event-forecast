@@ -93,13 +93,26 @@
 
   // ─────────── time / bucket helpers ───────────
 
+  // 12-hour clock — the one time format the whole UI uses.
+  function clock12(mins) {
+    var m = ((Math.round(mins) % (24 * 60)) + 24 * 60) % (24 * 60);
+    var hh = Math.floor(m / 60);
+    var mm = m % 60;
+    var h12 = hh % 12;
+    if (h12 === 0) h12 = 12;
+    return h12 + ':' + (mm < 10 ? '0' : '') + mm + ' ' + (hh >= 12 ? 'PM' : 'AM');
+  }
+
+  function hourLabel12(hh) {
+    var h = hh % 24;
+    var h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    return h12 + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+
   function bucketLabel(bucket) {
     var b = clamp(bucket || 0, 0, BUCKETS - 1);
-    var mins = b * BUCKET_MIN;
-    var hh = Math.floor(mins / 60);
-    var mm = mins % 60;
-    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-    return pad(hh) + ':' + pad(mm);
+    return clock12(b * BUCKET_MIN);
   }
 
   // Current local bucket in the city's tz, or null if the selected day
@@ -324,7 +337,7 @@
       var hh = labels[li];
       var lx = bucketToX((hh / 24) * BUCKETS, size);
       _ctx.textAlign = (hh === 0) ? 'left' : (hh === 24) ? 'right' : 'center';
-      _ctx.fillText(pad2(hh) + ':00', lx, plotBot + 6);
+      _ctx.fillText(hourLabel12(hh), lx, plotBot + 6);
     }
 
     // ── 8. Peak label above the peak band (display face, italic).
@@ -334,12 +347,10 @@
     _ctx.font = 'italic ' + displayFont;
     _ctx.textAlign = 'left';
     _ctx.textBaseline = 'alphabetic';
-    var peakLabel = 'Peak · ' + bucketLabel(peakBucket);
-    var labelX = clamp(px0 + 4, ML, W - MR - 110);
+    var peakLabel = 'Busiest · ' + bucketLabel(peakBucket);
+    var labelX = clamp(px0 + 4, ML, W - MR - 120);
     _ctx.fillText(peakLabel, labelX, plotTop - 4);
   }
-
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
   // ─────────── Readout / chips ───────────
 
@@ -352,7 +363,7 @@
     _readout.innerHTML = '';
     var time = el('span', 'ef-timeline__readout-time', bucketLabel(b));
     var sep  = el('span', 'ef-timeline__readout-sep', '·');
-    var pctNode = el('span', 'ef-timeline__readout-pct', pct + '% of peak');
+    var pctNode = el('span', 'ef-timeline__readout-pct', pct + "% of the day's peak");
     _readout.appendChild(time);
     _readout.appendChild(sep);
     _readout.appendChild(pctNode);
@@ -465,12 +476,12 @@
     _wrap = el('div', 'ef-timeline');
 
     var head = el('div', 'ef-timeline__head');
-    var eyebrow = el('span', 'ef-timeline__eyebrow', 'When the spike hits');
+    var eyebrow = el('span', 'ef-timeline__eyebrow', "When it's busiest");
     var readout = el('span', 'ef-timeline__readout');
     _readout = readout;
 
     var chips = el('div', 'ef-timeline__chips');
-    _peakChip = el('button', 'ef-timeline__chip', 'Jump to peak');
+    _peakChip = el('button', 'ef-timeline__chip', 'Busiest');
     _peakChip.type = 'button';
     _peakChip.addEventListener('click', function () {
       if (_forecast) setBucket(_forecast.peak_bucket || 0, true);
@@ -493,19 +504,19 @@
     _canvas = el('canvas', 'ef-timeline__canvas');
     _canvas.tabIndex = 0;
     _canvas.setAttribute('role', 'slider');
-    _canvas.setAttribute('aria-label', 'Day busyness timeline. Drag to scrub through 15-minute buckets.');
+    _canvas.setAttribute('aria-label', 'Day busyness timeline. Drag to scrub through the day in 15-minute steps.');
     _wrap.appendChild(_canvas);
 
     var legend = el('div', 'ef-timeline__legend');
     var lg1 = el('span', 'ef-timeline__legend-item');
     lg1.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--arrival'));
-    lg1.appendChild(document.createTextNode('Arrival window'));
+    lg1.appendChild(document.createTextNode('Heading in'));
     var lg2 = el('span', 'ef-timeline__legend-item');
     lg2.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--dispersal'));
-    lg2.appendChild(document.createTextNode('Dispersal'));
+    lg2.appendChild(document.createTextNode('Letting out'));
     var lg3 = el('span', 'ef-timeline__legend-item');
     lg3.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--peak'));
-    lg3.appendChild(document.createTextNode('Peak window'));
+    lg3.appendChild(document.createTextNode('Busiest'));
     var lg4 = el('span', 'ef-timeline__legend-note', 'Modeled estimate, not measured.');
     legend.appendChild(lg1);
     legend.appendChild(lg2);

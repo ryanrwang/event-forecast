@@ -1,0 +1,35 @@
+{
+  "_comment": "Hand-maintained crowd days that Ticketmaster never lists: parades, street festivals, marathons, road closures. Each entry with a real date becomes a modeled event like any other (verdict, map, timeline, station list). Set 'date' to a YYYY-MM-DD string (or a list of them for multi-day events) to activate an entry; null keeps it as a template and it is skipped. 'stations' are ids from venue_stations.json. 'crowd_estimate' is people on the street at the peak, order of magnitude is enough (150000 for the Pride parade, 40000 for a marathon). 'category' picks the crowd shape: 'festival' spreads the crowd over the window and lingers about two hours after; 'arena_sports' or 'major_concert' model a sharp start and a sharp exit. Keep the two examples below as templates and copy them.",
+  "events": [
+    {
+      "id": "pride-parade",
+      "name": "Pride Parade",
+      "date": null,
+      "start": "14:00",
+      "end": "17:00",
+      "area": "Church-Wellesley to Yonge-Dundas",
+      "lat": 43.6595,
+      "lon": -79.3820,
+      "crowd_estimate": 150000,
+      "category": "festival",
+      "stations": ["bloor-yonge", "wellesley", "college", "dundas"],
+      "note": "Yonge St closed from Bloor to Dundas; the crowd drains south toward Dundas after the parade.",
+      "source_url": ""
+    },
+    {
+      "id": "waterfront-marathon",
+      "name": "Toronto Waterfront Marathon",
+      "date": null,
+      "start": "07:00",
+      "end": "13:00",
+      "area": "University Ave, Bay St and the waterfront",
+      "lat": 43.6480,
+      "lon": -79.3850,
+      "crowd_estimate": 40000,
+      "category": "festival",
+      "stations": ["queens-park", "st-andrew", "osgoode", "union"],
+      "note": "Road closures on University, Bay, Lake Shore and the Gardiner ramps until early afternoon.",
+      "source_url": ""
+    }
+  ]
+}

@@ -239,20 +239,52 @@ a:visited {
   line-height: 1.45;
 }
 
-/* ────────────── Forecast strip ────────────── */
+/* ────────────── 7-day outlook strip ────────────── */
+
+/*
+ * One compact verdict pill per day, today first. Seven columns on wide
+ * screens; on narrow screens the row scrolls sideways with snap points
+ * and a right-edge fade so it's obvious more days sit off-screen.
+ */
+.forecast-strip {
+  padding: var(--spacing-md);
+}
 
 .forecast-strip__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
 @media (max-width: 980px) {
+  .forecast-strip {
+    padding: var(--spacing-sm);
+  }
+
   .forecast-strip__grid {
-    grid-template-columns: repeat(7, minmax(160px, 1fr));
+    display: flex;
     overflow-x: auto;
-    padding-bottom: var(--spacing-sm);
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--spacing-xs);
     scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .forecast-strip__grid .day-pill {
+    flex: 0 0 152px;
+    scroll-snap-align: start;
+  }
+
+  .forecast-strip::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--spacing-xl);
+    pointer-events: none;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    background: linear-gradient(90deg, transparent, var(--color-bg-surface));
   }
 }
 
@@ -279,7 +311,7 @@ a:visited {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  margin: 0;
 }
 
 .event-filter__label {
@@ -387,29 +419,36 @@ a:visited {
   background: var(--color-action-primary);
 }
 
-/* ────────────── Day card ────────────── */
+/* ────────────── Day pill ────────────── */
 
-.day-card {
+.day-pill {
   --verdict-color: var(--color-text-tertiary);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--typography-font-body);
+  color: var(--color-text-primary);
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast),
               box-shadow var(--transition-base);
   opacity: 0;
   transform: translateY(8px);
-  animation: day-card-in var(--duration-slow) var(--easing-decelerate) forwards;
-  animation-delay: calc(var(--i, 0) * 60ms);
+  animation: day-pill-in var(--duration-slow) var(--easing-decelerate) forwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
 }
 
-.day-card::before {
+.day-pill::before {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
@@ -418,142 +457,99 @@ a:visited {
   opacity: 0.85;
 }
 
-.day-card[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
-.day-card[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
-.day-card[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
-.day-card[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
+.day-pill[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
+.day-pill[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
+.day-pill[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
+.day-pill[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
 
-.day-card:hover {
+.day-pill:hover {
   transform: translateY(-2px);
   border-color: var(--color-border-base);
   box-shadow: var(--shadow-md);
 }
 
-.day-card__header {
+.day-pill__when {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-}
-
-.day-card__date {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.day-card__verdict {
-  display: flex;
   align-items: baseline;
   gap: var(--spacing-xs);
-  margin-top: var(--spacing-xs);
-}
-
-.day-card__verdict-label {
-  font-family: var(--typography-font-display);
-  font-size: var(--typography-display1);
-  line-height: 1;
-  color: var(--verdict-color);
-  letter-spacing: -0.01em;
-  font-style: italic;
-}
-
-.day-card__events {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-xs);
-}
-
-.day-card__event {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-}
-
-.day-card__event-name {
-  font-size: var(--typography-caption);
-  font-weight: var(--typography-weight-semibold);
-  color: var(--color-text-primary);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.day-card__event-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.02em;
-}
-
-.day-card__event-venue {
-  color: var(--color-text-secondary);
-}
-
-.day-card__event-sep {
-  opacity: 0.5;
-}
-
-.day-card__empty {
-  font-size: var(--typography-caption);
-  color: var(--color-text-muted);
-  font-style: italic;
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-}
-
-.day-card__more {
+  width: 100%;
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
   letter-spacing: 0.08em;
-  color: var(--color-text-tertiary);
   text-transform: uppercase;
-  padding-top: var(--spacing-xs);
+  color: var(--color-text-tertiary);
 }
 
-@keyframes day-card-in {
+.day-pill__day,
+.day-pill__date {
+  white-space: nowrap;
+}
+
+.day-pill__day {
+  color: var(--color-text-secondary);
+}
+
+.day-pill__verdict {
+  font-family: var(--typography-font-display);
+  font-size: var(--typography-heading);
+  font-style: italic;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--verdict-color);
+  margin-top: var(--spacing-xs);
+}
+
+.day-pill__sub {
+  width: 100%;
+  font-size: var(--typography-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-pill__sub--muted {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.day-pill[data-selected="true"] {
+  border-color: var(--verdict-color);
+  box-shadow: 0 0 0 1px var(--verdict-color), var(--shadow-md);
+}
+
+.day-pill[data-selected="true"]::before {
+  height: 5px;
+  opacity: 1;
+}
+
+.day-pill:focus-visible {
+  outline: 2px solid var(--color-interactive-focus);
+  outline-offset: 2px;
+}
+
+@keyframes day-pill-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .day-card {
+  .day-pill {
     animation: none;
     opacity: 1;
     transform: none;
   }
 }
 
-/* ────────────── Day card — selected state ────────────── */
+/* ────────────── Forecast detail — selected day ────────────── */
 
-.day-card[data-selected="true"] {
-  border-color: var(--verdict-color);
-  box-shadow: 0 0 0 1px var(--verdict-color), var(--shadow-md);
-}
-
-.day-card[data-selected="true"]::before {
-  height: 5px;
-  opacity: 1;
-}
-
-.day-card { cursor: pointer; }
-
-.day-card:focus-visible {
-  outline: 2px solid var(--color-interactive-focus);
-  outline-offset: 2px;
-}
-
-/* ────────────── Forecast detail (M2 map host) ────────────── */
-
+/*
+ * Today-first order, top to bottom: header (date + verdict + driver),
+ * the one-paragraph takeaway, stations likely packed, the busyness
+ * timeline, the map, then the events active at the scrubbed time.
+ */
 .forecast-detail {
   padding: 0;
   overflow: hidden;
@@ -570,7 +566,15 @@ a:visited {
               var(--color-bg-surface);
 }
 
-.forecast-detail__eyebrow {
+.forecast-detail__header-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.forecast-detail__eyebrow,
+.forecast-detail__section-eyebrow {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
   letter-spacing: 0.18em;
@@ -578,30 +582,293 @@ a:visited {
   color: var(--color-text-tertiary);
 }
 
+.forecast-detail__section-eyebrow {
+  padding: var(--spacing-md) var(--spacing-lg) 0;
+}
+
 .forecast-detail__title {
+  --verdict-color: var(--color-text-secondary);
   font-family: var(--typography-font-display);
-  font-size: var(--typography-title);
+  font-size: var(--typography-heading);
   line-height: 1;
   color: var(--color-text-primary);
   letter-spacing: -0.005em;
   font-style: italic;
 }
 
+.forecast-detail__title[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
+.forecast-detail__title[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
+.forecast-detail__title[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
+.forecast-detail__title[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
+
 .forecast-detail__title-verdict {
+  color: var(--verdict-color);
+  margin-left: var(--spacing-sm);
+}
+
+.forecast-detail__driver {
+  font-size: var(--typography-caption);
   color: var(--color-text-secondary);
-  font-style: normal;
-  margin-left: var(--spacing-xs);
+  line-height: 1.4;
+}
+
+.forecast-detail__takeaway {
+  margin: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-family: var(--typography-font-display);
+  font-size: var(--typography-title);
+  line-height: 1.35;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 5%, transparent), transparent 90%),
+              var(--color-bg-surface);
+}
+
+.forecast-detail__takeaway-text {
+  display: block;
+  max-width: 72ch;
+}
+
+.forecast-detail__map-wrap {
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .forecast-detail__map {
   width: 100%;
   height: 480px;
+  margin-top: var(--spacing-sm);
   background: var(--color-bg-page);
   position: relative;
 }
 
 @media (max-width: 720px) {
-  .forecast-detail__map { height: 360px; }
+  .forecast-detail__map { height: 320px; }
+  .forecast-detail__takeaway { font-size: var(--typography-body); }
+}
+
+/* ────────────── Stations likely packed ────────────── */
+
+.forecast-detail__stations {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+}
+
+.stations__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-sm);
+}
+
+.stations__eyebrow {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.stations__toggles {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.stations__toggles-label,
+.stations__chip {
+  font-family: var(--typography-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  border-radius: var(--radius-pill);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-raised);
+  color: var(--color-text-secondary);
+  line-height: 1;
+}
+
+/* "Subway" is always on — rendered as a pressed, non-interactive chip
+   so the row reads as one control group. */
+.stations__toggles-label {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 12%, transparent), transparent 80%),
+              var(--color-bg-raised);
+}
+
+.stations__chip {
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast),
+              background var(--transition-fast), opacity var(--transition-fast);
+}
+
+.stations__chip:hover,
+.stations__chip:focus-visible {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.stations__chip[aria-pressed="true"] {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 12%, transparent), transparent 80%),
+              var(--color-bg-raised);
+}
+
+.stations__chip[aria-pressed="false"] {
+  color: var(--color-text-muted);
+  background: transparent;
+  opacity: var(--opacity-75);
+}
+
+.stations__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.station-row {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.station-row[data-active="true"] {
+  border-color: color-mix(in srgb, var(--color-status-info) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-info) 25%, transparent);
+}
+
+.station-row__head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.station-row__name {
+  font-size: var(--typography-body);
+  font-weight: var(--typography-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.station-row__lines {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.line-pill {
+  display: inline-block;
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-base);
+  color: var(--color-text-secondary);
+}
+
+.line-pill--subway {
+  color: var(--color-status-info);
+  border-color: color-mix(in srgb, var(--color-status-info) 40%, transparent);
+  background: color-mix(in srgb, var(--color-status-info) 10%, transparent);
+}
+
+.line-pill--go {
+  color: var(--color-status-success);
+  border-color: color-mix(in srgb, var(--color-status-success) 40%, transparent);
+  background: color-mix(in srgb, var(--color-status-success) 10%, transparent);
+}
+
+.kind-tag {
+  margin-left: auto;
+  font-family: var(--typography-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.station-row__windows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.station-window {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  padding: 2px var(--spacing-xs);
+  margin: 0 calc(-1 * var(--spacing-xs));
+  border-radius: var(--radius-xs);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+}
+
+.station-window--active {
+  background: color-mix(in srgb, var(--color-highlight) 5%, transparent);
+}
+
+.station-window__time {
+  color: var(--color-text-primary);
+  font-weight: var(--typography-weight-medium);
+  white-space: nowrap;
+}
+
+.station-window__phase {
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--color-status-info);
+  white-space: nowrap;
+}
+
+.station-window[data-phase="dispersal"] .station-window__phase { color: var(--color-status-warning); }
+.station-window[data-phase="both"] .station-window__phase      { color: var(--color-verdict-severe); }
+
+.station-window__cause {
+  grid-column: 1 / -1;
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-caption);
+  color: var(--color-text-tertiary);
+  line-height: 1.3;
+}
+
+.stations__empty {
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  font-size: var(--typography-caption);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.stations__fine {
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--typography-micro);
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 /* ────────────── Forecast detail — placeholder before selection ────────────── */
@@ -977,7 +1244,6 @@ a:visited {
 
 .forecast-detail__timeline {
   padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
-  border-top: 1px solid var(--color-border-subtle);
   background: linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 1.5%, transparent), transparent 50%),
               var(--color-bg-surface);
 }
@@ -1215,106 +1481,22 @@ a:visited {
 .rail__sep      { opacity: 0.45; }
 .rail__category { text-transform: uppercase; letter-spacing: 0.10em; }
 
-/* Reserved transit slot — M4 populates this; M3 reserves the space so
-   M3 → M4 transitions don't reflow the rail items. */
-.rail__transit {
-  margin-top: var(--spacing-xs);
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 36px;
-}
+.rail__people { color: var(--color-text-tertiary); }
 
-.rail__transit-eyebrow {
-  font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.rail__transit-placeholder {
-  font-size: var(--typography-micro);
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-/* M4: populated transit slot. Visual hierarchy in three lines, all
-   monospace + muted to read as "metadata", not chart copy.
-
-   Row 1: lines (pills) + station count summary
-   Row 2: dispersal/arrival window time text
-   Row 3: modeled-not-measured fine print */
-
-.rail__transit-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
+.rail__note {
+  font-size: var(--typography-caption);
   color: var(--color-text-secondary);
-  letter-spacing: 0.04em;
-}
-
-.rail__transit-count {
-  color: var(--color-text-primary);
-  font-weight: var(--typography-weight-medium);
-}
-
-.rail__transit-lines {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.rail__transit-line {
-  display: inline-block;
-  padding: 1px var(--spacing-xs);
-  border-radius: var(--radius-pill);
-  border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, transparent);
-  color: var(--color-status-info);
-  background: color-mix(in srgb, var(--color-status-info) 8%, transparent);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-style: italic;
   line-height: 1.4;
 }
 
-.rail__transit-windows {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-  margin-top: 2px;
+.rail__link {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.rail__transit-window {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.rail__transit-window--arrival   { color: var(--color-status-info); }
-.rail__transit-window--dispersal { color: var(--color-status-warning); }
-.rail__transit-window-active     { color: var(--color-text-primary); }
-
-.rail__transit-fine {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  font-style: italic;
-  letter-spacing: 0.02em;
-  margin-top: 2px;
-}
-
-.rail__transit-empty {
   font-size: var(--typography-micro);
-  color: var(--color-text-muted);
-  font-style: italic;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border-subtle);
 }
 
 /* ────────────── M4 Transit station markers ────────────── */
@@ -1329,8 +1511,8 @@ a:visited {
 
 .ef-station-marker__dot {
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   /* Rotated square reads as "this is not the same shape as an event
      marker" without going pictogram. */
   transform: rotate(45deg);
@@ -1384,8 +1566,35 @@ a:visited {
               0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
+/* Shape per station kind: subway keeps the rotated square, GO reads as
+   a ring, streetcar stops are smaller squares. */
+.ef-station-marker__dot[data-transit="go"] {
+  border-radius: var(--radius-pill);
+}
+
+.ef-station-marker__dot[data-transit="streetcar"] {
+  width: 12px;
+  height: 12px;
+  margin: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ef-station-marker__dot { transition: none; }
+}
+
+/* Phones: keep the legend to its eyebrow + ramp so it doesn't sit on
+   top of the heat field. The full wording lives under the map in the
+   stations panel and the footer disclaimer. */
+@media (max-width: 720px) {
+  .ef-legend {
+    max-width: 168px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  .ef-legend__fine,
+  .ef-legend__stations,
+  .ef-legend__fine--transit {
+    display: none;
+  }
 }
 
 /* Popup specifics for stations */

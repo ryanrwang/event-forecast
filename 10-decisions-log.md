@@ -210,3 +210,100 @@ Two operator-requested refinements:
 
 - **"Busyness from shown only" switch** (right side of the filter row, persisted as `eventforecast.verdictMode`). Default stays full-model — the verdict answers "how busy will the city be" and a hidden concert still clogs the TTC. The opt-in mode answers the *other* question ("how busy because of what I care about") by re-bucketing the day from only the visible events. To keep one source of truth for the modeling math, the pipeline now ships `proxy_contribution` per event (impact × time-of-day weight, computed by `scoring.proxy_contribution` — the same weighting `daily_verdict` uses), and the client sums the survivors against the `thresholds` already shipped in forecast.json. No TOD-band constants duplicated in JS; pre-`proxy_contribution` day files fall back to raw impact. The filter-active note switches copy ("Verdicts reflect shown events only.") so the chip's meaning is always declared.
 - **`map_default_view` in city config** (`config/<city>/city.json`, echoed by `api/city.php`). The initial full-bbox fit rendered ~90% of Toronto's whitelisted venues as one downtown clump. The map now opens on a configured center/zoom (Toronto: 43.642, −79.395 @ z13 — downtown core through Exhibition Place) and falls back to the bbox fit for cities without the key. Config-driven per the no-hardcoded-city rule; `maxBounds` still comes from the bbox so panning stays inside the city.
+
+## 2026-09-03 — UX rebuild after the usability audit
+
+The audit found the product polished but not actionable: most days read
+Severe, the transit rail listed dozens of bus stops with route numbers,
+and the answer to "which stations, when" was spread across four panels.
+Eight changes landed together on one branch; each is recorded here.
+
+### Verdict recalibration — T1/T2/T3 = 5 / 30 / 65
+
+The M1 placeholders (5 / 15 / 30) put a single ordinary Blue Jays game
+(impact ≈ 43) at Severe, so four of seven days in a normal week read
+Severe and the word carried no information. New thresholds target:
+
+- **Quiet** (< 5): theatre-only nights.
+- **Moderate** (5–30): one arena game or a mid-size show (Scotiabank
+  Arena ≈ 22, Coca-Cola Coliseum ≈ 8 + theatres).
+- **Busy** (30–65): one stadium game or stadium concert (Rogers Centre
+  baseball ≈ 37–43, BMO Field ≈ 33, Rogers Stadium concert ≈ 63).
+- **Severe** (≥ 65): stacked nights — two stadium-scale events, or a
+  stadium plus an arena the same evening.
+
+`peak_proxy` is still the time-of-day-weighted sum of impacts (not the
+timeline max), so an afternoon game plus an evening concert stack into
+Severe even though they don't overlap; that matches "how busy is the
+day" and is left as is. `bucketVerdict()` in `app.js` carries the same
+defaults for pre-threshold day files.
+
+### Curated venue → station map replaces the transit radius
+
+`config/<city>/venue_stations.json` is now the source of the "stations
+likely packed" list: a station catalogue (subway + GO, with lat/lon and
+lines) and a per-venue list of one to three stations, optionally `via` a
+surface route ("Union via 509 Harbourfront streetcar" for BMO Field).
+Rationale: with ~12 venues a hand list is shorter and more honest than a
+600 m radius, which either missed the real stations (Rogers Centre, BMO
+Field, Rogers Stadium have no subway inside the circle) or dragged in
+forty bus stops. Coordinates typed from memory are marked
+`verified: false` in the file; the seven downtown Line 1 stations were
+copied from the GTFS-derived set.
+
+**GO stations are included** (Union GO, Exhibition GO, Downsview Park
+GO) behind an off-by-default toggle. This deviates from the "Toronto
+(TTC) only" decision in a narrow way: three hand-typed catalogue rows,
+no GO feed is ingested. Operator-requested.
+
+### Station kinds; bus stops dropped; streetcar behind a toggle
+
+`pipeline.gtfs` now reads GTFS `route_type` and writes a `kind`
+(subway / streetcar / bus) per reduced station; `transit.keep_kinds` in
+city.json (default subway + streetcar) drops bus-only stops at
+generation time. Until the weekly GTFS job regenerates the committed
+station file, `pipeline.transit` classifies the old file from line
+names using the city config's `subway_lines` and
+`streetcar_route_pattern`, so the fallback is still config-driven.
+GTFS subway stations are used only when a venue has no curated entry.
+Streetcar stops are capped at the nearest four per event and show only
+their 5xx routes (not the night buses that share the pole). The
+frontend shows subway by default; Streetcar and GO are persisted
+toggles, off by default (operator's choice).
+
+### Manual crowd days — `config/<city>/manual_events.json`
+
+Parades, street festivals, marathons and road closures are the biggest
+"avoid downtown" days and none are ticketed, so the whitelist can never
+see them. The operator-maintained file lists them with a date, window,
+area, crowd estimate, category and station ids; each dated entry is
+fully modeled (impact via `scoring.score_event` on a synthetic venue,
+time curve, avoid windows, heat splat, station list, verdict). This is
+NOT discovery logic: nothing is inferred, the operator types every
+entry. Shipped with two template entries (`date: null`, skipped) rather
+than seeded 2026 dates, because those dates could not be verified at
+build time. Manual events always render regardless of the type chips
+(they are days, not a type) and carry `source: "manual"`.
+
+### Today-first layout, one sentence per day, smaller venues hidden
+
+The detail panel order is now: date + verdict + "Because …" driver
+line, a one-paragraph takeaway (what's on, busiest windows heading in
+and letting out, which stations), the stations panel, the timeline,
+the map, then the events at the scrubbed time. Same order on every
+screen size. The 7-day strip is a row of compact verdict pills (Today /
+Tomorrow / weekday, verdict, top event). Events at venues under 5,000
+seats are hidden from the browsable view by default (a persisted
+"Smaller venues" chip shows them); they still count toward the verdict.
+The takeaway is generated client-side from data already in the day
+file — no new pipeline output.
+
+### Absolute heat scale; wording; 12-hour times
+
+The heatmap now normalizes against the Severe threshold (`thresholds.T3`)
+instead of the day's own peak, so a quiet day paints a faint smudge and
+only a stacked night reaches full red; the legend reads Quiet → Severe.
+The visibility floor rose from 1% to 3% of scale so the blob is
+honestly sized. "Arrival" / "Dispersal" became "Heading in" /
+"Letting out", "Impacting at" became "Events at", and every time in the
+UI is 12-hour (timeline axis, readout, windows, cards).
