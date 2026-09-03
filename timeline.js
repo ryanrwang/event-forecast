@@ -1,56 +1,72 @@
 /*
- * Event Forecast — Day timeline (M3).
+ * Event Forecast — Day timeline (M3, reworked 2026-09-03).
  *
  * Hand-built canvas. NOT a charting library — the timeline is part of
- * the product's identity (overview §7). Renders the day's 96-bucket
- * summed-busyness curve, peak window, per-event arrival + dispersal
- * "avoid" bands, and a draggable scrubber that emits bucket changes
- * via the onBucketChange callback set on ensureTimeline().
+ * the product's identity (overview §7). Renders the day's busyness
+ * curve, the busiest window, per-event In / Out bands, and a draggable
+ * scrubber that emits bucket changes via the onBucketChange callback.
  *
- * The map module owns the heatmap re-render; this module just emits the
- * selected bucket so app.js can fan it out to map + rail.
+ * Under the curve sit the STATION LANES: one row per station likely
+ * packed, with a compact chip anchored at each busy window (name + line
+ * badge, no times — the axis above says when). Hover or focus a chip
+ * for the full details; click it to move the scrubber to that window.
+ *
+ * The visible range hides the overnight hours (12 AM–9 AM) by default,
+ * so the axis reads morning → 2 AM; a persisted "Overnight" chip shows
+ * the whole modeled day, and a day with real early activity (a marathon
+ * at 6 AM) expands on its own. A modeled day is 26 hours (104 buckets):
+ * 12:00 AM through 2:00 AM next morning, so late shows keep their tails.
  *
  *   window.EFTimeline.ensureTimeline(hostEl, onBucketChange)
  *   window.EFTimeline.setForecast(forecast, cityConfig)   // resets bucket
+ *   window.EFTimeline.setStations(rows, options)          // lanes + toggles
  *   window.EFTimeline.setBucket(bucket)                   // external set
  *   window.EFTimeline.getBucket() -> int|null
  */
 (function () {
   'use strict';
 
-  var BUCKETS = 96;
   var BUCKET_MIN = 15;
+  var DEFAULT_BUCKETS = 96;
+  // Overnight = midnight to 9 AM. Hidden by default (persisted).
+  var OVERNIGHT_END_BUCKET = 9 * 4;
+  var OVERNIGHT_KEY = 'eventforecast.showOvernight';
+  // Early activity above this share of the day's peak un-hides the
+  // overnight hours down to that hour, so a 6 AM marathon still shows.
+  var EARLY_ACTIVITY_FRAC = 0.10;
 
-  // Avoid windows are now SERVER-COMPUTED — see
-  // pipeline/timecurves.py `build_avoid_windows`. The per-day forecast
-  // JSON carries `avoid_windows[]` with {event_id, kind, from_bucket,
-  // to_bucket, from_minute, to_minute}, the single source of truth for
-  // the timeline bands AND the M4 transit-station flagging windows. The
-  // dispersal-tail-per-category constants (45/75/120) live in Python
-  // (timecurves.DISPERSAL_TAIL_MIN); we never need them on the client
-  // anymore. The pre-M4 client-side recomputation is gone.
+  // Avoid windows are SERVER-COMPUTED — see pipeline/timecurves.py
+  // `build_avoid_windows`. forecast.avoid_windows[] carries {event_id,
+  // kind, from_bucket, to_bucket, from_minute, to_minute}, the single
+  // source of truth for the bands here AND the station flags.
 
-  // Layout (CSS pixels). Off-grid values are intentional ONLY where the
-  // 4px grid leaves a curve plot too thin; otherwise we stay on grid.
+  // Layout (CSS pixels). The lanes below the canvas use the same side
+  // margins so chips line up with the plot.
   var ML = 16, MR = 16, MT = 16, MB = 24;
-  // Above the canvas: 4px gap, then the readout/chip row.
-  var HEADER_HEIGHT_HINT = 32;
 
   // Module-private state
   var _host = null;
   var _wrap = null;
   var _readout = null;
+  var _chips = null;
   var _peakChip = null;
   var _nowChip = null;
+  var _overnightChip = null;
+  var _toggleHost = null;
   var _canvas = null;
   var _ctx = null;
+  var _lanes = null;
+  var _scrubLine = null;
+  var _pop = null;
+  var _pinnedChip = null;
   var _ro = null;
   var _onBucketChange = null;
   var _forecast = null;
   var _cityConfig = null;
+  var _rows = [];
   var _bucket = null;
   var _dragging = false;
-  var _dpr = 1;
+  var _showOvernight = loadShowOvernight();
 
   // ─────────── small utils ───────────
 
@@ -62,6 +78,14 @@
   }
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  function loadShowOvernight() {
+    try { return localStorage.getItem(OVERNIGHT_KEY) === 'true'; } catch (_) { return false; }
+  }
+
+  function saveShowOvernight(v) {
+    try { localStorage.setItem(OVERNIGHT_KEY, v ? 'true' : 'false'); } catch (_) {}
+  }
 
   function tokenColor(path, fallback) {
     try {
@@ -93,7 +117,13 @@
 
   // ─────────── time / bucket helpers ───────────
 
-  // 12-hour clock — the one time format the whole UI uses.
+  function bucketCount() {
+    var n = _forecast && _forecast.timeline ? _forecast.timeline.length : 0;
+    return n > 0 ? n : DEFAULT_BUCKETS;
+  }
+
+  // 12-hour clock — the one time format the whole UI uses. Minutes past
+  // 1440 are the next morning (bucket 96+).
   function clock12(mins) {
     var m = ((Math.round(mins) % (24 * 60)) + 24 * 60) % (24 * 60);
     var hh = Math.floor(m / 60);
@@ -111,12 +141,13 @@
   }
 
   function bucketLabel(bucket) {
-    var b = clamp(bucket || 0, 0, BUCKETS - 1);
+    var b = clamp(bucket || 0, 0, bucketCount() - 1);
     return clock12(b * BUCKET_MIN);
   }
 
-  // Current local bucket in the city's tz, or null if the selected day
-  // isn't "today" there. Uses Intl rather than Date math to avoid DST land mines.
+  // Current bucket for the displayed day, or null if "now" isn't inside
+  // the day's 26-hour span in the city's tz. Uses Intl rather than Date
+  // math to avoid DST land mines.
   function nowBucketForDate(dateIso, tz) {
     if (!dateIso || !tz) return null;
     var parts;
@@ -131,18 +162,20 @@
     var bag = {};
     for (var i = 0; i < parts.length; i++) bag[parts[i].type] = parts[i].value;
     var todayIso = bag.year + '-' + bag.month + '-' + bag.day;
-    if (todayIso !== dateIso) return null;
     var hh = parseInt(bag.hour, 10);
     var mm = parseInt(bag.minute, 10);
     if (isNaN(hh) || isNaN(mm)) return null;
-    // Intl returns "24:00" for midnight in some browsers; clamp.
     if (hh === 24) hh = 0;
-    return Math.min(BUCKETS - 1, Math.floor((hh * 60 + mm) / BUCKET_MIN));
+    var deltaDays = Math.round(
+      (new Date(todayIso + 'T00:00:00Z') - new Date(dateIso + 'T00:00:00Z')) / 86400000
+    );
+    var minutes = deltaDays * 24 * 60 + hh * 60 + mm;
+    if (minutes < 0 || minutes >= bucketCount() * BUCKET_MIN) return null;
+    return Math.floor(minutes / BUCKET_MIN);
   }
 
   // Group the server-emitted forecast.avoid_windows[] by kind for the
-  // band-drawing loop. Each entry already carries from_bucket/to_bucket
-  // intersected with the displayed day, so no client-side window math.
+  // band-drawing loop.
   function bucketsFromWindow(w) {
     if (!w) return null;
     var from = (typeof w.from_bucket === 'number') ? w.from_bucket : null;
@@ -151,9 +184,8 @@
     return { from: from, to: to };
   }
 
-  // Find the contiguous run around the peak bucket where the timeline
-  // stays above PEAK_BAND_FRAC × peak_value. Used to draw the "peak
-  // window" band (not just the single argmax bucket).
+  // Contiguous run around the peak bucket where the timeline stays
+  // above PEAK_BAND_FRAC × peak_value — the "busiest window" band.
   var PEAK_BAND_FRAC = 0.85;
   function peakWindow(timeline, peakBucket, peakValue) {
     if (!timeline || !timeline.length || peakValue <= 0) {
@@ -166,7 +198,29 @@
     return { from: lo, to: hi + 1 };  // exclusive end for half-open range
   }
 
-  // ─────────── Canvas drawing ───────────
+  // ─────────── Visible range ───────────
+
+  // {from, to} bucket range (to exclusive) currently drawn. With the
+  // overnight hours hidden the axis starts at 9 AM, or earlier if the
+  // day has real activity before that.
+  function visibleRange() {
+    var n = bucketCount();
+    if (_showOvernight || !_forecast) return { from: 0, to: n };
+    var start = Math.min(OVERNIGHT_END_BUCKET, n);
+    var timeline = _forecast.timeline || [];
+    var peak = _forecast.peak_value || 0;
+    if (peak > 0) {
+      for (var b = 0; b < start; b++) {
+        if (timeline[b] >= peak * EARLY_ACTIVITY_FRAC) {
+          start = Math.floor(b / 4) * 4;  // round down to the hour
+          break;
+        }
+      }
+    }
+    return { from: start, to: n };
+  }
+
+  // ─────────── Canvas geometry ───────────
 
   function fitCanvas() {
     if (!_canvas) return null;
@@ -179,19 +233,18 @@
       _canvas.height = h * dpr;
     }
     _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    _dpr = dpr;
     return { w: w, h: h };
   }
 
-  function bucketToX(b, size) {
+  function bucketToX(b, size, vis) {
     var inner = size.w - ML - MR;
-    return ML + (b / BUCKETS) * inner;
+    return ML + ((b - vis.from) / (vis.to - vis.from)) * inner;
   }
 
-  function xToBucket(x, size) {
+  function xToBucket(x, size, vis) {
     var inner = size.w - ML - MR;
-    var raw = Math.floor(((x - ML) / inner) * BUCKETS);
-    return clamp(raw, 0, BUCKETS - 1);
+    var raw = vis.from + Math.floor(((x - ML) / inner) * (vis.to - vis.from));
+    return clamp(raw, vis.from, vis.to - 1);
   }
 
   function valueToY(v, size, maxV) {
@@ -201,10 +254,19 @@
     return plotBot - t * (plotBot - plotTop);
   }
 
+  // Fraction [0, 1] of the visible axis for a bucket position — the
+  // lanes are laid out in percentages so they never need a re-measure.
+  function bucketToFrac(b, vis) {
+    return clamp((b - vis.from) / (vis.to - vis.from), 0, 1);
+  }
+
+  // ─────────── Canvas drawing ───────────
+
   function draw() {
     if (!_ctx || !_forecast) return;
     var size = fitCanvas();
     if (!size) return;
+    var vis = visibleRange();
 
     var timeline = _forecast.timeline || [];
     var peakValue = _forecast.peak_value || 0;
@@ -216,46 +278,60 @@
 
     _ctx.clearRect(0, 0, W, H);
 
-    // ── 1. Hour grid (every 6h: 00, 06, 12, 18). Quiet.
-    // Fallback is a near-equivalent solid hex (bg.3) for the unreachable
-    // TOKENS-missing case; canvas can't parse color-mix() so we can't
-    // route through a token expression here.
+    // Hour grid. 3-hour ticks when the visible span is 18 h or less and
+    // the plot is wide enough for the labels; 6-hour ticks otherwise.
+    // The range ends get a label only when it won't collide with the
+    // nearest regular tick (phones: "12 AM" and "2 AM" would overlap).
+    var spanHours = (vis.to - vis.from) / 4;
+    var inner = W - ML - MR;
+    var pxPerHour = inner / spanHours;
+    var step = (spanHours <= 18 && inner >= 560) ? 3 : 6;
+    var startHour = vis.from / 4;
+    var lastHour = vis.to / 4;
+    var firstHour = Math.ceil(startHour / step) * step;
+    var ticks = [];
+    for (var hr = firstHour; hr <= lastHour; hr += step) ticks.push(hr);
+    var MIN_LABEL_PX = 48;
+    if (ticks.length === 0 || (ticks[0] - startHour) * pxPerHour >= MIN_LABEL_PX) {
+      if (ticks[0] !== startHour) ticks.unshift(startHour);
+    }
+    if ((lastHour - ticks[ticks.length - 1]) * pxPerHour >= MIN_LABEL_PX) {
+      ticks.push(lastHour);
+    }
+
     _ctx.strokeStyle = tokenColor('color.border.subtle', '#1C232E');
     _ctx.lineWidth = 1;
-    for (var hr = 0; hr <= 24; hr += 6) {
-      var bx = bucketToX((hr / 24) * BUCKETS, size);
+    for (var t = 0; t < ticks.length; t++) {
+      var bx = bucketToX(ticks[t] * 4, size, vis);
       _ctx.beginPath();
-      _ctx.moveTo(bx + 0.5, plotTop);
-      _ctx.lineTo(bx + 0.5, plotBot);
+      _ctx.moveTo(Math.round(bx) + 0.5, plotTop);
+      _ctx.lineTo(Math.round(bx) + 0.5, plotBot);
       _ctx.stroke();
     }
 
-    // ── 2. Per-event arrival + dispersal bands. Aggregate the alpha so
-    // overlapping events darken naturally. avoid_windows[] is
-    // pre-intersected with the displayed day by the pipeline.
+    // Per-event In / Out bands. Aggregate the alpha so overlapping
+    // events darken naturally.
     var arrivalFill   = tokenColor('color.status.info',    '#38BDF8');
     var dispersalFill = tokenColor('color.status.warning', '#EAB308');
     var avoidWindows = _forecast.avoid_windows || [];
     for (var i = 0; i < avoidWindows.length; i++) {
       var rng = bucketsFromWindow(avoidWindows[i]);
-      if (!rng) continue;
+      if (!rng || rng.to <= vis.from || rng.from >= vis.to) continue;
       var kind = avoidWindows[i].kind;
-      var fill = (kind === 'arrival') ? arrivalFill : dispersalFill;
-      var alpha = (kind === 'arrival') ? 0.12 : 0.10;
-      _ctx.fillStyle = hexToRgba(fill, alpha);
-      var bx0 = bucketToX(rng.from, size);
-      var bx1 = bucketToX(rng.to,   size);
+      _ctx.fillStyle = hexToRgba(kind === 'arrival' ? arrivalFill : dispersalFill,
+                                 kind === 'arrival' ? 0.12 : 0.10);
+      var bx0 = bucketToX(Math.max(rng.from, vis.from), size, vis);
+      var bx1 = bucketToX(Math.min(rng.to, vis.to),   size, vis);
       _ctx.fillRect(bx0, plotTop, Math.max(1, bx1 - bx0), plotBot - plotTop);
     }
 
-    // ── 3. Peak window band. Uses verdict color, stronger than avoid bands.
+    // Busiest window band, in the verdict colour.
     var peakWin = peakWindow(timeline, peakBucket, peakValue);
     var verdictRgb = verdictColor(verdict);
+    var px0 = bucketToX(clamp(peakWin.from, vis.from, vis.to), size, vis);
+    var px1 = bucketToX(clamp(peakWin.to,   vis.from, vis.to), size, vis);
     _ctx.fillStyle = hexToRgba(verdictRgb, 0.10);
-    var px0 = bucketToX(peakWin.from, size);
-    var px1 = bucketToX(peakWin.to,   size);
     _ctx.fillRect(px0, plotTop, Math.max(2, px1 - px0), plotBot - plotTop);
-    // Top tick line for the peak band — quiet but readable.
     _ctx.strokeStyle = hexToRgba(verdictRgb, 0.55);
     _ctx.lineWidth = 1;
     _ctx.beginPath();
@@ -263,7 +339,7 @@
     _ctx.lineTo(px1, plotTop + 0.5);
     _ctx.stroke();
 
-    // ── 4. Curve fill (gradient down to plot bottom).
+    // Curve fill (gradient down to plot bottom), stepwise — buckets are discrete.
     var accentRgb = tokenColor('color.text.accent', '#34D399');
     var grad = _ctx.createLinearGradient(0, plotTop, 0, plotBot);
     grad.addColorStop(0, hexToRgba(accentRgb, 0.45));
@@ -271,85 +347,74 @@
     _ctx.fillStyle = grad;
     _ctx.beginPath();
     _ctx.moveTo(ML, plotBot);
-    for (var b = 0; b < BUCKETS; b++) {
+    for (var b = vis.from; b < vis.to; b++) {
       var v = timeline[b] || 0;
-      var xL = bucketToX(b, size);
-      var xR = bucketToX(b + 1, size);
-      var y  = valueToY(v, size, peakValue);
-      _ctx.lineTo(xL, y);
-      _ctx.lineTo(xR, y);
+      var y = valueToY(v, size, peakValue);
+      _ctx.lineTo(bucketToX(b, size, vis), y);
+      _ctx.lineTo(bucketToX(b + 1, size, vis), y);
     }
     _ctx.lineTo(W - MR, plotBot);
     _ctx.closePath();
     _ctx.fill();
 
-    // ── 5. Curve stroke (stepwise — buckets are discrete).
     _ctx.strokeStyle = hexToRgba(accentRgb, 0.95);
     _ctx.lineWidth = 1.5;
     _ctx.lineJoin = 'round';
     _ctx.beginPath();
-    for (var b2 = 0; b2 < BUCKETS; b2++) {
-      var v2 = timeline[b2] || 0;
-      var xL2 = bucketToX(b2, size);
-      var xR2 = bucketToX(b2 + 1, size);
-      var y2 = valueToY(v2, size, peakValue);
-      if (b2 === 0) _ctx.moveTo(xL2, y2);
+    for (var b2 = vis.from; b2 < vis.to; b2++) {
+      var y2 = valueToY(timeline[b2] || 0, size, peakValue);
+      var xL2 = bucketToX(b2, size, vis);
+      if (b2 === vis.from) _ctx.moveTo(xL2, y2);
       else _ctx.lineTo(xL2, y2);
-      _ctx.lineTo(xR2, y2);
+      _ctx.lineTo(bucketToX(b2 + 1, size, vis), y2);
     }
     _ctx.stroke();
 
-    // ── 6. Scrubber. Vertical line + handle dot at curve height.
+    // Scrubber: vertical line + handle dot at curve height.
     var bIdx = (typeof _bucket === 'number') ? _bucket : peakBucket;
-    var sxL = bucketToX(bIdx, size);
-    var sxR = bucketToX(bIdx + 1, size);
-    var sxC = (sxL + sxR) / 2;
     var scrubColor = tokenColor('color.text.primary', '#F8FAFC');
-    // Highlight the selected bucket column behind the line.
-    _ctx.fillStyle = hexToRgba(scrubColor, 0.06);
-    _ctx.fillRect(sxL, plotTop, Math.max(1, sxR - sxL), plotBot - plotTop);
-    _ctx.strokeStyle = hexToRgba(scrubColor, 0.85);
-    _ctx.lineWidth = 1;
-    _ctx.beginPath();
-    _ctx.moveTo(Math.round(sxC) + 0.5, plotTop - 4);
-    _ctx.lineTo(Math.round(sxC) + 0.5, plotBot + 4);
-    _ctx.stroke();
-    // Handle dot at the curve's value for this bucket.
-    var sv = (timeline[bIdx] || 0);
-    var syHandle = valueToY(sv, size, peakValue);
-    _ctx.fillStyle = scrubColor;
-    _ctx.beginPath();
-    _ctx.arc(sxC, syHandle, 4, 0, Math.PI * 2);
-    _ctx.fill();
-    _ctx.strokeStyle = tokenColor('color.bg.surface', '#0D1117');
-    _ctx.lineWidth = 1.5;
-    _ctx.stroke();
+    if (bIdx >= vis.from && bIdx < vis.to) {
+      var sxL = bucketToX(bIdx, size, vis);
+      var sxR = bucketToX(bIdx + 1, size, vis);
+      var sxC = (sxL + sxR) / 2;
+      _ctx.fillStyle = hexToRgba(scrubColor, 0.06);
+      _ctx.fillRect(sxL, plotTop, Math.max(1, sxR - sxL), plotBot - plotTop);
+      _ctx.strokeStyle = hexToRgba(scrubColor, 0.85);
+      _ctx.lineWidth = 1;
+      _ctx.beginPath();
+      _ctx.moveTo(Math.round(sxC) + 0.5, plotTop - 4);
+      _ctx.lineTo(Math.round(sxC) + 0.5, plotBot + 4);
+      _ctx.stroke();
+      var syHandle = valueToY(timeline[bIdx] || 0, size, peakValue);
+      _ctx.fillStyle = scrubColor;
+      _ctx.beginPath();
+      _ctx.arc(sxC, syHandle, 4, 0, Math.PI * 2);
+      _ctx.fill();
+      _ctx.strokeStyle = tokenColor('color.bg.surface', '#0D1117');
+      _ctx.lineWidth = 1.5;
+      _ctx.stroke();
+    }
 
-    // ── 7. Time labels along the bottom.
-    var tertiary = tokenColor('color.text.tertiary', '#94A3B8');
-    var monoFont = '12px ' + (tokenColor('typography.font.mono',
-      '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif'));
-    _ctx.fillStyle = tertiary;
-    _ctx.font = monoFont;
+    // Time labels along the bottom.
+    _ctx.fillStyle = tokenColor('color.text.tertiary', '#94A3B8');
+    _ctx.font = '12px ' + tokenColor('typography.font.mono', '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif');
     _ctx.textBaseline = 'top';
-    var labels = [0, 6, 12, 18, 24];
-    for (var li = 0; li < labels.length; li++) {
-      var hh = labels[li];
-      var lx = bucketToX((hh / 24) * BUCKETS, size);
-      _ctx.textAlign = (hh === 0) ? 'left' : (hh === 24) ? 'right' : 'center';
+    for (var li = 0; li < ticks.length; li++) {
+      var hh = ticks[li];
+      var lx = bucketToX(hh * 4, size, vis);
+      _ctx.textAlign = (li === 0) ? 'left' : (li === ticks.length - 1) ? 'right' : 'center';
       _ctx.fillText(hourLabel12(hh), lx, plotBot + 6);
     }
 
-    // ── 8. Peak label above the peak band (display face, semibold).
-    var displayFont = '13px ' + (tokenColor('typography.font.display',
-      '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif'));
+    // Busiest label above the band (display face, semibold).
     _ctx.fillStyle = verdictRgb;
-    _ctx.font = '600 ' + displayFont;
+    _ctx.font = '600 13px ' + tokenColor('typography.font.display', '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif');
     _ctx.textAlign = 'left';
     _ctx.textBaseline = 'alphabetic';
-    var peakLabel = 'Busiest · ' + bucketLabel(peakBucket);
     var labelX = clamp(px0 + 4, ML, W - MR - 120);
-    _ctx.fillText(peakLabel, labelX, plotTop - 4);
+    _ctx.fillText('Busiest · ' + bucketLabel(peakBucket), labelX, plotTop - 4);
+
+    positionScrubLine(vis);
   }
 
   // ─────────── Readout / chips ───────────
@@ -361,12 +426,9 @@
     var peakValue = _forecast.peak_value || 0;
     var pct = peakValue > 0 ? Math.round((v / peakValue) * 100) : 0;
     _readout.innerHTML = '';
-    var time = el('span', 'ef-timeline__readout-time', bucketLabel(b));
-    var sep  = el('span', 'ef-timeline__readout-sep', '·');
-    var pctNode = el('span', 'ef-timeline__readout-pct', pct + "% of the day's peak");
-    _readout.appendChild(time);
-    _readout.appendChild(sep);
-    _readout.appendChild(pctNode);
+    _readout.appendChild(el('span', 'ef-timeline__readout-time', bucketLabel(b)));
+    _readout.appendChild(el('span', 'ef-timeline__readout-sep', '·'));
+    _readout.appendChild(el('span', 'ef-timeline__readout-pct', pct + "% of the day's peak"));
   }
 
   function updateNowChip() {
@@ -380,14 +442,185 @@
     }
   }
 
+  function updateOvernightChip() {
+    if (!_overnightChip) return;
+    _overnightChip.setAttribute('aria-pressed', _showOvernight ? 'true' : 'false');
+    _overnightChip.title = _showOvernight ? 'Hide midnight to 9 AM' : 'Show midnight to 9 AM';
+  }
+
+  // ─────────── Station lanes ───────────
+
+  function positionScrubLine(vis) {
+    if (!_scrubLine || !_forecast) return;
+    var b = (typeof _bucket === 'number') ? _bucket : (_forecast.peak_bucket || 0);
+    vis = vis || visibleRange();
+    if (b < vis.from || b >= vis.to || !_rows.length) {
+      _scrubLine.hidden = true;
+      return;
+    }
+    _scrubLine.hidden = false;
+    _scrubLine.style.left = (bucketToFrac(b + 0.5, vis) * 100) + '%';
+  }
+
+  function applyActiveChips() {
+    if (!_lanes) return;
+    var b = (typeof _bucket === 'number') ? _bucket : null;
+    var chips = _lanes.querySelectorAll('.ef-lane__chip');
+    for (var i = 0; i < chips.length; i++) {
+      var c = chips[i];
+      var from = parseFloat(c.getAttribute('data-from'));
+      var to = parseFloat(c.getAttribute('data-to'));
+      var active = b != null && b + 0.5 >= from && b + 0.5 < to;
+      if (active) c.setAttribute('data-active', 'true');
+      else c.removeAttribute('data-active');
+    }
+  }
+
+  function buildChip(row, span) {
+    var chip = el('button', 'ef-lane__chip');
+    chip.type = 'button';
+    chip.setAttribute('data-phase', span.phase || 'arrival');
+    chip.setAttribute('data-kind', row.kind || 'subway');
+    chip.setAttribute('data-from', String(span.fromBucket));
+    chip.setAttribute('data-to', String(span.toBucket));
+    chip.setAttribute('aria-label', row.name + ', ' + span.time + ', ' + span.phaseWord);
+    chip.appendChild(el('span', 'ef-lane__name', row.name));
+    (row.lines || []).slice(0, 2).forEach(function (l) {
+      var pill = el('span', 'line-pill line-pill--' + (row.kind || 'subway'), l.label);
+      if (l.color) {
+        pill.style.background = l.color;
+        pill.style.borderColor = l.color;
+        if (l.text) pill.style.color = l.text;
+      }
+      chip.appendChild(pill);
+    });
+    chip._row = row;
+    chip._span = span;
+
+    chip.addEventListener('mouseenter', function () { if (!_pinnedChip) showPop(chip); });
+    chip.addEventListener('mouseleave', function () { if (!_pinnedChip) hidePop(); });
+    chip.addEventListener('focus', function () { showPop(chip); });
+    chip.addEventListener('blur', function () { if (_pinnedChip !== chip) hidePop(); });
+    chip.addEventListener('click', function (evt) {
+      evt.stopPropagation();
+      // Click: jump the scrubber to the window start and pin the details.
+      setBucket(Math.floor(span.fromBucket), true);
+      if (_pinnedChip === chip) {
+        _pinnedChip = null;
+        hidePop();
+      } else {
+        _pinnedChip = chip;
+        showPop(chip);
+      }
+    });
+    return chip;
+  }
+
+  function layoutLanes() {
+    if (!_lanes) return;
+    _lanes.innerHTML = '';
+    _pinnedChip = null;
+    hidePop();
+    if (!_forecast) return;
+    var vis = visibleRange();
+
+    _scrubLine = el('span', 'ef-lanes__scrub');
+    _scrubLine.setAttribute('aria-hidden', 'true');
+    _lanes.appendChild(_scrubLine);
+
+    if (!_rows.length) {
+      if (_emptyText) _lanes.appendChild(el('div', 'ef-lanes__empty', _emptyText));
+      positionScrubLine(vis);
+      return;
+    }
+
+    _rows.forEach(function (row) {
+      var lane = el('div', 'ef-lane');
+      lane.setAttribute('data-kind', row.kind || 'subway');
+      var any = false;
+      (row.spans || []).forEach(function (span) {
+        if (span.toBucket <= vis.from || span.fromBucket >= vis.to) return;
+        var chip = buildChip(row, span);
+        var f0 = bucketToFrac(span.fromBucket, vis);
+        var f1 = bucketToFrac(span.toBucket, vis);
+        chip.style.left = (f0 * 100) + '%';
+        chip.style.minWidth = ((f1 - f0) * 100) + '%';
+        lane.appendChild(chip);
+        any = true;
+      });
+      if (any) _lanes.appendChild(lane);
+    });
+    // A chip is at least as wide as its label, so one near the right
+    // edge can run past the axis. Measure once and anchor those to the
+    // window's END instead, so the chip grows leftwards.
+    var laneWidth = _lanes.clientWidth;
+    var chips = _lanes.querySelectorAll('.ef-lane__chip');
+    for (var i = 0; i < chips.length; i++) {
+      var c = chips[i];
+      if (c.offsetLeft + c.offsetWidth > laneWidth + 1) {
+        var f1 = bucketToFrac(parseFloat(c.getAttribute('data-to')), vis);
+        c.style.left = 'auto';
+        c.style.right = ((1 - f1) * 100) + '%';
+      }
+    }
+    applyActiveChips();
+    positionScrubLine(vis);
+  }
+
+  // ─────────── Details popover ───────────
+
+  function showPop(chip) {
+    if (!_pop || !chip || !chip._row) return;
+    var row = chip._row, span = chip._span;
+    _pop.innerHTML = '';
+
+    var head = el('div', 'ef-pop__head');
+    head.appendChild(el('span', 'ef-pop__name', row.name));
+    (row.lines || []).forEach(function (l) {
+      var pill = el('span', 'line-pill line-pill--' + (row.kind || 'subway'), l.label);
+      if (l.color) {
+        pill.style.background = l.color;
+        pill.style.borderColor = l.color;
+        if (l.text) pill.style.color = l.text;
+      }
+      head.appendChild(pill);
+    });
+    head.appendChild(el('span', 'ef-pop__kind', row.kindLabel || ''));
+    _pop.appendChild(head);
+
+    var when = el('div', 'ef-pop__when');
+    when.appendChild(el('span', 'ef-pop__time', span.time));
+    var phase = el('span', 'ef-pop__phase', span.phaseWord);
+    phase.setAttribute('data-phase', span.phase || 'arrival');
+    when.appendChild(phase);
+    _pop.appendChild(when);
+
+    if (span.cause) _pop.appendChild(el('div', 'ef-pop__cause', span.cause));
+    if (span.via) _pop.appendChild(el('div', 'ef-pop__via', 'via ' + span.via));
+    _pop.appendChild(el('div', 'ef-pop__fine', 'Modeled from venue proximity and event timing, not measured.'));
+
+    _pop.hidden = false;
+    // Position under the chip, left-aligned, kept inside the lanes box.
+    var lanesRect = _lanes.getBoundingClientRect();
+    var chipRect = chip.getBoundingClientRect();
+    var left = chipRect.left - lanesRect.left;
+    var top = chipRect.bottom - lanesRect.top + 4;
+    var maxLeft = Math.max(0, lanesRect.width - _pop.offsetWidth);
+    _pop.style.left = clamp(left, 0, maxLeft) + 'px';
+    _pop.style.top = top + 'px';
+  }
+
+  function hidePop() {
+    if (_pop) _pop.hidden = true;
+  }
+
   // ─────────── Pointer interaction ───────────
 
   function onPointer(evt) {
     var rect = _canvas.getBoundingClientRect();
     var size = { w: rect.width, h: rect.height };
     var x = evt.clientX - rect.left;
-    var b = xToBucket(x, size);
-    setBucket(b, true);
+    setBucket(xToBucket(x, size, visibleRange()), true);
   }
 
   function attachPointerEvents() {
@@ -409,27 +642,37 @@
     _canvas.addEventListener('pointercancel', stop);
     _canvas.addEventListener('lostpointercapture', function () { _dragging = false; });
 
-    // Keyboard: ←/→ to step; Home/End to jump to start/end of day.
+    // Keyboard: ←/→ to step (Shift = 1 h); Home/End = start/end of the
+    // visible range; P = busiest.
     _canvas.addEventListener('keydown', function (evt) {
       if (!_forecast) return;
+      var vis = visibleRange();
       var b = (typeof _bucket === 'number') ? _bucket : _forecast.peak_bucket || 0;
       var step = evt.shiftKey ? 4 : 1;
       if (evt.key === 'ArrowLeft') {
         evt.preventDefault();
-        setBucket(clamp(b - step, 0, BUCKETS - 1), true);
+        setBucket(clamp(b - step, vis.from, vis.to - 1), true);
       } else if (evt.key === 'ArrowRight') {
         evt.preventDefault();
-        setBucket(clamp(b + step, 0, BUCKETS - 1), true);
+        setBucket(clamp(b + step, vis.from, vis.to - 1), true);
       } else if (evt.key === 'Home') {
         evt.preventDefault();
-        setBucket(0, true);
+        setBucket(vis.from, true);
       } else if (evt.key === 'End') {
         evt.preventDefault();
-        setBucket(BUCKETS - 1, true);
+        setBucket(vis.to - 1, true);
       } else if (evt.key === 'p' || evt.key === 'P') {
         evt.preventDefault();
         setBucket(_forecast.peak_bucket || 0, true);
       }
+    });
+
+    // A click anywhere else unpins the details popover.
+    document.addEventListener('click', function (evt) {
+      if (!_pinnedChip) return;
+      if (_pop && _pop.contains(evt.target)) return;
+      _pinnedChip = null;
+      hidePop();
     });
   }
 
@@ -437,11 +680,12 @@
 
   function setBucket(bucket, fire) {
     if (typeof bucket !== 'number') return;
-    bucket = clamp(Math.round(bucket), 0, BUCKETS - 1);
+    bucket = clamp(Math.round(bucket), 0, bucketCount() - 1);
     if (bucket === _bucket) return;
     _bucket = bucket;
     draw();
     updateReadout();
+    applyActiveChips();
     if (fire && typeof _onBucketChange === 'function') {
       _onBucketChange(bucket);
     }
@@ -452,16 +696,49 @@
   function setForecast(forecast, cityConfig) {
     _forecast = forecast || null;
     _cityConfig = cityConfig || null;
+    _pinnedChip = null;
+    hidePop();
     if (!_forecast) {
       _bucket = null;
+      _rows = [];
       if (_ctx) _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+      if (_lanes) _lanes.innerHTML = '';
       return;
     }
-    // Reset scrubber to the new day's peak bucket (M3 spec).
-    _bucket = (typeof _forecast.peak_bucket === 'number') ? _forecast.peak_bucket : 0;
+    // Reset scrubber to the new day's peak bucket (M3 spec). A view with
+    // nothing in it has no peak; park the scrubber at the visible start.
+    _bucket = (_forecast.peak_value > 0 && typeof _forecast.peak_bucket === 'number')
+      ? _forecast.peak_bucket : visibleRange().from;
     draw();
     updateReadout();
     updateNowChip();
+    updateOvernightChip();
+    layoutLanes();
+  }
+
+  var _emptyText = '';
+
+  // rows: [{id, name, kind, kindLabel, lines: [{label, color, text}],
+  //         spans: [{fromBucket, toBucket, phase, phaseWord, time, cause, via}]}]
+  // options.toggles: [{id, label, pressed, onToggle}] rendered in the
+  // chip row (station-kind switches owned by the app); options.emptyText
+  // shows when there are no rows.
+  function setStations(rows, options) {
+    _rows = rows || [];
+    options = options || {};
+    _emptyText = options.emptyText || '';
+    if (_toggleHost) {
+      _toggleHost.innerHTML = '';
+      (options.toggles || []).forEach(function (t) {
+        var chip = el('button', 'ef-timeline__chip ef-timeline__chip--toggle', t.label);
+        chip.type = 'button';
+        chip.setAttribute('aria-pressed', t.pressed ? 'true' : 'false');
+        chip.setAttribute('data-kind', t.id);
+        chip.addEventListener('click', function () { if (t.onToggle) t.onToggle(); });
+        _toggleHost.appendChild(chip);
+      });
+    }
+    layoutLanes();
   }
 
   function ensureTimeline(hostEl, onBucketChange) {
@@ -476,11 +753,30 @@
     _wrap = el('div', 'ef-timeline');
 
     var head = el('div', 'ef-timeline__head');
-    var eyebrow = el('span', 'ef-timeline__eyebrow', "When it's busiest");
-    var readout = el('span', 'ef-timeline__readout');
-    _readout = readout;
+    head.appendChild(el('span', 'ef-timeline__eyebrow', "When it's busiest"));
+    _readout = el('span', 'ef-timeline__readout');
+    head.appendChild(_readout);
 
-    var chips = el('div', 'ef-timeline__chips');
+    _chips = el('div', 'ef-timeline__chips');
+    _toggleHost = el('span', 'ef-timeline__toggles');
+    _chips.appendChild(_toggleHost);
+
+    _overnightChip = el('button', 'ef-timeline__chip ef-timeline__chip--toggle', 'Overnight');
+    _overnightChip.type = 'button';
+    _overnightChip.addEventListener('click', function () {
+      _showOvernight = !_showOvernight;
+      saveShowOvernight(_showOvernight);
+      updateOvernightChip();
+      var vis = visibleRange();
+      if (typeof _bucket === 'number' && (_bucket < vis.from || _bucket >= vis.to)) {
+        setBucket(_forecast ? (_forecast.peak_bucket || 0) : 0, true);
+      }
+      draw();
+      layoutLanes();
+    });
+    updateOvernightChip();
+    _chips.appendChild(_overnightChip);
+
     _peakChip = el('button', 'ef-timeline__chip', 'Busiest');
     _peakChip.type = 'button';
     _peakChip.addEventListener('click', function () {
@@ -493,12 +789,9 @@
       var nb = parseInt(_nowChip.dataset.bucket || '', 10);
       if (!isNaN(nb)) setBucket(nb, true);
     });
-    chips.appendChild(_peakChip);
-    chips.appendChild(_nowChip);
-
-    head.appendChild(eyebrow);
-    head.appendChild(readout);
-    head.appendChild(chips);
+    _chips.appendChild(_peakChip);
+    _chips.appendChild(_nowChip);
+    head.appendChild(_chips);
     _wrap.appendChild(head);
 
     _canvas = el('canvas', 'ef-timeline__canvas');
@@ -506,6 +799,18 @@
     _canvas.setAttribute('role', 'slider');
     _canvas.setAttribute('aria-label', 'Day busyness timeline. Drag to scrub through the day in 15-minute steps.');
     _wrap.appendChild(_canvas);
+
+    // Station lanes + the details popover live in one positioned box so
+    // the popover can be placed relative to its chip.
+    var lanesWrap = el('div', 'ef-lanes-wrap');
+    _lanes = el('div', 'ef-lanes');
+    _lanes.setAttribute('aria-label', 'Stations likely packed, placed on the timeline');
+    lanesWrap.appendChild(_lanes);
+    _pop = el('div', 'ef-pop');
+    _pop.setAttribute('role', 'tooltip');
+    _pop.hidden = true;
+    lanesWrap.appendChild(_pop);
+    _wrap.appendChild(lanesWrap);
 
     var legend = el('div', 'ef-timeline__legend');
     var lg1 = el('span', 'ef-timeline__legend-item');
@@ -529,26 +834,28 @@
     _ctx = _canvas.getContext('2d');
     attachPointerEvents();
 
-    // Redraw on resize. Falls back to window resize if ResizeObserver is missing.
+    var onResize = function () { draw(); layoutLanes(); };
     if (window.ResizeObserver) {
-      _ro = new ResizeObserver(function () { draw(); });
+      _ro = new ResizeObserver(onResize);
       _ro.observe(_canvas);
     } else {
-      window.addEventListener('resize', function () { draw(); });
+      window.addEventListener('resize', onResize);
     }
   }
 
   function destroy() {
     if (_ro) { _ro.disconnect(); _ro = null; }
-    _host = _wrap = _readout = _peakChip = _nowChip = null;
-    _canvas = _ctx = null;
+    _host = _wrap = _readout = _chips = _peakChip = _nowChip = _overnightChip = _toggleHost = null;
+    _canvas = _ctx = _lanes = _scrubLine = _pop = _pinnedChip = null;
     _forecast = _cityConfig = null;
+    _rows = [];
     _bucket = null;
   }
 
   window.EFTimeline = {
     ensureTimeline: ensureTimeline,
     setForecast: setForecast,
+    setStations: setStations,
     setBucket: setBucket,
     getBucket: getBucket,
     destroy: destroy

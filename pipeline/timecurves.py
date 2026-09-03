@@ -6,12 +6,13 @@ prompt). Do not tune constants in this file — calibration changes go
 through 01-modeling-spec.md + 10-decisions-log.md first.
 
 Outputs (all consumed by the frontend via forecast.json):
-  * Per-event `time_curve` — 96 floats in [0, 1] representing street
-    presence weight per 15-minute bucket, before multiplying by impact.
+  * Per-event `time_curve` — 104 floats in [0, 1] (a 26-hour modeled
+    day, 12:00 AM to 2:00 AM next morning) representing street presence
+    weight per 15-minute bucket, before multiplying by impact.
   * Per-event `sigma_m` — Gaussian sigma in meters for distance decay.
   * Per-event `peak_intensity` — venue intensity at the day's peak
     bucket (= impact * time_curve[peak_bucket]).
-  * Day-level `timeline` — 96 floats = sum over events of
+  * Day-level `timeline` — 104 floats = sum over events of
     impact * time_curve.
   * Day-level `peak_bucket` — argmax index of `timeline`.
 
@@ -27,8 +28,15 @@ import math
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-BUCKETS_PER_DAY = 96
 BUCKET_MINUTES = 15
+# A modeled "day" runs 26 hours: 12:00 AM through 2:00 AM the next
+# morning. Buckets 96–103 are the post-midnight spillover of THIS day's
+# events, so a show letting out at 11:30 PM keeps its tail instead of
+# being clipped at midnight (decisions log, 2026-09-03 "26-hour day").
+# The previous day's spillover lives in the previous day's file.
+DAY_SPAN_HOURS = 26
+DAY_SPAN_MIN = DAY_SPAN_HOURS * 60
+BUCKETS_PER_DAY = DAY_SPAN_MIN // BUCKET_MINUTES   # 104
 
 # Arrival ramp window: from start-120m to peak at start-15m.
 ARRIVAL_LEAD_MIN = 120
@@ -111,9 +119,9 @@ def build_time_curve(
     """Return the 96-bucket street presence curve for one event on one day.
 
     Values are in [0, 1], evaluated at the CENTER of each 15-minute bucket
-    in the city-local timezone. The curve is clamped to the day window —
-    arrival/dispersal portions that cross midnight contribute only to
-    their own day's array.
+    in the city-local timezone. The curve covers the 26-hour modeled day
+    (12:00 AM through 2:00 AM next morning), so a dispersal tail that
+    crosses midnight stays with the day the event belongs to.
 
     Math (per modeling spec):
       arrival(t)   = 0.5 - 0.5*cos(pi * (t - (start-120m)) / 105m)
@@ -235,11 +243,11 @@ def annotate_peak_intensity(forecast_events: list[dict], peak_bucket: int) -> No
 
 
 def _intersect_minute_range_with_day(from_min: float, to_min: float) -> tuple[float, float] | None:
-    """Clip [from_min, to_min] to the displayed day [0, 1440]; return None if disjoint."""
-    if to_min <= 0 or from_min >= 24 * 60:
+    """Clip [from_min, to_min] to the modeled day [0, DAY_SPAN_MIN]; None if disjoint."""
+    if to_min <= 0 or from_min >= DAY_SPAN_MIN:
         return None
     lo = max(0.0, from_min)
-    hi = min(24.0 * 60.0, to_min)
+    hi = min(float(DAY_SPAN_MIN), to_min)
     if hi <= lo:
         return None
     return lo, hi
@@ -254,7 +262,8 @@ def build_avoid_windows(
 
     Each entry: {event_id, kind ("arrival"|"dispersal"), from_bucket,
     to_bucket, from_minute, to_minute}. Buckets are fractional in
-    [0, 96]. Windows that don't intersect the displayed day are omitted.
+    [0, BUCKETS_PER_DAY]. Windows that don't intersect the modeled
+    26-hour day are omitted.
 
     Single source of truth for the operator-facing "avoid" window across
     three consumers: the timeline band rendering, the M4 transit-station

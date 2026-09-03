@@ -9,9 +9,9 @@
  *   2. the view filters (event-type chips, "smaller venues" chip,
  *      verdict-follows-filter switch),
  *   3. the selected day in today-first order: the "Because …" driver
- *      line, the stations likely packed and when (times lead), the
- *      busyness timeline, the map, and the events active at the
- *      scrubbed time.
+ *      line, the busyness timeline with the stations likely packed
+ *      drawn as lanes under the curve, the map, and the events active
+ *      at the scrubbed time.
  *
  * Map + timeline modules are owned by map.js / timeline.js; this file
  * fans state out to them.
@@ -109,7 +109,6 @@
     freshness: null
   };
 
-  var BUCKETS_PER_DAY = 96;
   var BUCKET_MIN = 15;
 
   // ─────────── Theme ───────────
@@ -204,10 +203,11 @@
     return new Intl.DateTimeFormat('en-US', opts).format(d);
   }
 
-  // Minutes-since-midnight → "5:40 PM". 1440 renders as "12:00 AM".
+  // Minutes-since-midnight → "5:40 PM". Minutes past 1440 are the next
+  // morning (a modeled day runs to 2 AM), so 1500 renders as "1:00 AM".
   function clockFromMinutes(min) {
     if (typeof min !== 'number' || isNaN(min)) return '';
-    var m = Math.max(0, Math.min(24 * 60, Math.round(min))) % (24 * 60);
+    var m = ((Math.round(min) % (24 * 60)) + 24 * 60) % (24 * 60);
     var hh = Math.floor(m / 60);
     var mm = m % 60;
     var suffix = hh >= 12 ? 'PM' : 'AM';
@@ -217,8 +217,7 @@
   }
 
   function clockFromBucket(bucket) {
-    var b = Math.max(0, Math.min(BUCKETS_PER_DAY - 1, bucket || 0));
-    return clockFromMinutes(b * BUCKET_MIN);
+    return clockFromMinutes(Math.max(0, bucket || 0) * BUCKET_MIN);
   }
 
   // "5:40–6:50 PM" when both ends share a meridiem, else "11:30 AM–1:00 PM".
@@ -414,13 +413,14 @@
 
     // Re-sum the daily timeline from surviving events (mirrors
     // pipeline/timecurves.build_daily_timeline).
+    var n = (forecast.timeline || []).length || 96;
     var timeline = [];
     var b;
-    for (b = 0; b < BUCKETS_PER_DAY; b++) timeline.push(0);
+    for (b = 0; b < n; b++) timeline.push(0);
     events.forEach(function (ev) {
       var impact = ev.impact || 0;
       var curve = ev.time_curve || [];
-      for (var i = 0; i < curve.length && i < BUCKETS_PER_DAY; i++) {
+      for (var i = 0; i < curve.length && i < n; i++) {
         if (curve[i]) timeline[i] += impact * curve[i];
       }
     });
@@ -621,18 +621,6 @@
     return (t && t.primary) || '#F8FAFC';
   }
 
-  function linePill(line, kind) {
-    var pill = el('span', 'line-pill line-pill--' + kind, lineLabel(line, kind));
-    var c = lineColor(line, kind);
-    if (c) {
-      pill.style.background = c;
-      pill.style.borderColor = c;
-      pill.style.color = contrastTextFor(c);
-      pill.setAttribute('data-colored', 'true');
-    }
-    return pill;
-  }
-
   function joinNames(names) {
     if (names.length <= 1) return names.join('');
     if (names.length === 2) return names[0] + ' and ' + names[1];
@@ -751,11 +739,6 @@
     header.appendChild(left);
     host.appendChild(header);
 
-    var stationsHost = el('section', 'forecast-detail__stations');
-    stationsHost.id = 'stations-host';
-    stationsHost.setAttribute('aria-label', 'Stations likely packed');
-    host.appendChild(stationsHost);
-
     var timelineHost = el('div', 'forecast-detail__timeline');
     timelineHost.id = 'timeline-host';
     host.appendChild(timelineHost);
@@ -782,7 +765,6 @@
         if (window.EFMap && window.EFMap.setBucket) {
           window.EFMap.setBucket(bucket);
         }
-        renderStations();
         renderRail();
       });
     }
@@ -815,8 +797,8 @@
 
     if (window.EFTimeline) {
       window.EFTimeline.setForecast(view, state.cityConfig);
+      renderTimelineStations(view);
     }
-    renderStations();
 
     var mapHost = document.getElementById('map-canvas');
     if (!window.EFMap || !window.L || !mapHost) {
@@ -948,108 +930,87 @@
     return 'In';
   }
 
-  function renderStations() {
-    var host = document.getElementById('stations-host');
-    if (!host) return;
-    var date = state.selectedDate;
-    var forecast = date && state.forecasts[date];
-    var view = forecast && filteredForecast(forecast);
-    host.innerHTML = '';
+  function kindLabel(kind) {
+    if (kind === 'go') return 'GO';
+    if (kind === 'streetcar') return 'Streetcar';
+    return 'Subway';
+  }
 
-    var head = el('div', 'stations__head');
-    head.appendChild(el('span', 'stations__eyebrow', 'Stations likely packed'));
-    var toggles = el('div', 'stations__toggles');
-    toggles.appendChild(el('span', 'stations__toggles-label', 'Subway'));
-    TRANSIT_TOGGLES.forEach(function (t) {
-      var chip = el('button', 'stations__chip', t.label);
-      chip.type = 'button';
-      chip.setAttribute('aria-pressed', state.transitKinds[t.id] ? 'true' : 'false');
-      chip.setAttribute('data-kind', t.id);
-      chip.addEventListener('click', function () {
-        state.transitKinds[t.id] = !state.transitKinds[t.id];
-        saveJson(TRANSIT_KINDS_KEY, state.transitKinds);
-        renderStations();
-        if (window.EFMap && window.EFMap.setStations && view) {
-          window.EFMap.setStations(stationCollectionFromForecast(view));
-          window.EFMap.setForecast(view, state.cityConfig);
-          if (typeof state.selectedBucket === 'number') window.EFMap.setBucket(state.selectedBucket);
-        }
-      });
-      toggles.appendChild(chip);
-    });
-    head.appendChild(toggles);
-    host.appendChild(head);
-
-    if (!view) return;
-    var bucket = (typeof state.selectedBucket === 'number') ? state.selectedBucket : (view.peak_bucket || 0);
-    var nowMin = bucket * BUCKET_MIN + BUCKET_MIN / 2;
+  // Rows for the timeline's station lanes: a compact chip per busy
+  // window (name + line badge), full details for the hover popover.
+  function stationLaneRows(view) {
     var result = stationRows(view);
-    var rows = result.rows;
+    var rows = result.rows.map(function (row) {
+      return {
+        id: row.id,
+        name: row.name,
+        kind: row.kind,
+        kindLabel: kindLabel(row.kind),
+        lines: row.lines.slice(0, 3).map(function (l) {
+          var c = lineColor(l, row.kind);
+          return { label: lineLabel(l, row.kind), color: c, text: c ? contrastTextFor(c) : null };
+        }),
+        spans: row.spans.map(function (sp) {
+          var cause = sp.causes.slice(0, 2).join(', ') +
+            (sp.causes.length > 2 ? ' +' + (sp.causes.length - 2) : '');
+          return {
+            fromBucket: sp.from / BUCKET_MIN,
+            toBucket: sp.to / BUCKET_MIN,
+            phase: sp.phases.length > 1 ? 'both' : sp.phases[0],
+            phaseWord: phaseWord(sp.phases),
+            time: rangeLabel(sp.from, sp.to),
+            cause: cause,
+            via: sp.via || ''
+          };
+        })
+      };
+    });
+    return { rows: rows, hiddenKinds: result.hiddenKinds };
+  }
 
-    if (rows.length === 0) {
-      var hasEvents = !!(view.events && view.events.length);
-      var msg;
-      if (!hasEvents) {
-        msg = 'Nothing major on, so no stations are flagged.';
-      } else if (result.hiddenKinds.go || result.hiddenKinds.streetcar) {
-        var hidden = [];
-        if (result.hiddenKinds.go) hidden.push('GO');
-        if (result.hiddenKinds.streetcar) hidden.push('Streetcar');
-        msg = 'No subway station within walking distance of these events. Turn on ' +
-          joinNames(hidden) + ' to see the surface routes that will fill up instead.';
-      } else {
-        msg = 'No subway station within walking distance of these events.';
-      }
-      host.appendChild(el('div', 'stations__empty', msg));
-      host.appendChild(el('p', 'stations__fine', 'Modeled from venue proximity and event timing, not measured.'));
+  function stationsEmptyText(view, hiddenKinds) {
+    var hasEvents = !!(view && view.events && view.events.length);
+    if (!hasEvents) return 'Nothing major on, so no stations are flagged.';
+    var hidden = [];
+    if (hiddenKinds.streetcar) hidden.push('Streetcar');
+    if (hiddenKinds.go) hidden.push('GO');
+    if (hidden.length) {
+      return 'No subway station within walking distance of these events. Turn on ' +
+        joinNames(hidden) + ' to see the surface routes that will fill up instead.';
+    }
+    return 'No subway station within walking distance of these events.';
+  }
+
+  // Hand the day's station rows and the kind toggles to the timeline,
+  // which draws them as lanes under the curve.
+  function renderTimelineStations(view) {
+    if (!window.EFTimeline || !window.EFTimeline.setStations) return;
+    if (!view) {
+      window.EFTimeline.setStations([], {});
       return;
     }
-
-    var list = el('ol', 'stations__list');
-    rows.forEach(function (row) {
-      var item = el('li', 'station-row');
-      item.setAttribute('data-kind', row.kind);
-      item.setAttribute('data-station-id', row.id);
-      var active = row.spans.some(function (s) { return nowMin >= s.from && nowMin < s.to; });
-      if (active) item.setAttribute('data-active', 'true');
-
-      var headRow = el('div', 'station-row__head');
-      headRow.appendChild(el('span', 'station-row__name', row.name));
-      var lines = el('span', 'station-row__lines');
-      row.lines.slice(0, 4).forEach(function (l) {
-        lines.appendChild(linePill(l, row.kind));
-      });
-      headRow.appendChild(lines);
-      if (row.kind !== 'subway') {
-        headRow.appendChild(el('span', 'kind-tag', row.kind === 'go' ? 'GO' : 'Streetcar'));
-      }
-      item.appendChild(headRow);
-
-      // Times lead. The cause (event name) prints once under the card
-      // when every window shares it, which is the common case; only a
-      // card mixing events labels each window.
-      var causeTexts = row.spans.map(function (s) {
-        var c = s.causes.slice(0, 2).join(', ') + (s.causes.length > 2 ? ' +' + (s.causes.length - 2) : '');
-        if (s.via) c += ' · via ' + s.via;
-        return c;
-      });
-      var sameCause = causeTexts.every(function (c) { return c === causeTexts[0]; });
-      var spans = el('ul', 'station-row__windows');
-      row.spans.forEach(function (s, i) {
-        var inSpan = nowMin >= s.from && nowMin < s.to;
-        var li = el('li', 'station-window' + (inSpan ? ' station-window--active' : ''));
-        li.setAttribute('data-phase', s.phases.length > 1 ? 'both' : s.phases[0]);
-        li.appendChild(el('span', 'station-window__time', rangeLabel(s.from, s.to)));
-        li.appendChild(el('span', 'station-window__phase', phaseWord(s.phases)));
-        if (!sameCause) li.appendChild(el('span', 'station-window__cause', causeTexts[i]));
-        spans.appendChild(li);
-      });
-      item.appendChild(spans);
-      if (sameCause && causeTexts[0]) item.appendChild(el('div', 'station-row__cause', causeTexts[0]));
-      list.appendChild(item);
+    var r = stationLaneRows(view);
+    var toggles = TRANSIT_TOGGLES.map(function (t) {
+      return {
+        id: t.id,
+        label: t.label,
+        pressed: state.transitKinds[t.id] === true,
+        onToggle: function () {
+          state.transitKinds[t.id] = !state.transitKinds[t.id];
+          saveJson(TRANSIT_KINDS_KEY, state.transitKinds);
+          renderTimelineStations(view);
+          if (window.EFMap && window.EFMap.setStations) {
+            window.EFMap.setStations(stationCollectionFromForecast(view));
+            window.EFMap.setForecast(view, state.cityConfig);
+            if (typeof state.selectedBucket === 'number') window.EFMap.setBucket(state.selectedBucket);
+          }
+        }
+      };
     });
-    host.appendChild(list);
-    host.appendChild(el('p', 'stations__fine', 'Modeled from venue proximity and event timing, not measured.'));
+    window.EFTimeline.setStations(r.rows, {
+      toggles: toggles,
+      emptyText: stationsEmptyText(view, r.hiddenKinds)
+    });
   }
 
   // Flat, deduped station list for the map, respecting the kind toggles.

@@ -332,6 +332,8 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             "peak_bucket": peak_bucket,
             "peak_value": round(peak_value, 3),
             "bucket_minutes": timecurves.BUCKET_MINUTES,
+            "buckets": timecurves.BUCKETS_PER_DAY,
+            "span_hours": timecurves.DAY_SPAN_HOURS,
             "timeline": timeline,
             "thresholds": scoring.THRESHOLDS,
             "avoid_windows": avoid_windows,

@@ -593,7 +593,9 @@
       byEvent[tfEvents[i].event_id] = tfEvents[i].stations || [];
     }
     _stationEventIndex = {};
-    var BUCKETS = 96;
+    // Bucket count comes from the day file (a modeled day is 26 hours =
+    // 104 buckets; older files carry 96).
+    var BUCKETS = Math.max(96, (forecast && forecast.timeline && forecast.timeline.length) || 0);
     var flags = new Array(BUCKETS);
     var windows = (forecast && forecast.avoid_windows) || [];
     for (var w = 0; w < windows.length; w++) {

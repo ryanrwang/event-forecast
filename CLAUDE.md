@@ -61,12 +61,12 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
 | `styles.css` | Global styles, references CSS custom properties only. |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
-| `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip, drives day selection, and renders the selected day today-first: "Because …" driver line, stations-likely-packed cards with the busy windows as the loudest element (subway by default; Streetcar / GO toggles), then timeline, map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
+| `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip, drives day selection, and renders the selected day today-first: "Because …" driver line, then the timeline (which carries the stations likely packed as lanes; subway by default, Streetcar / GO toggles), map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
 | `map.js` | Leaflet map + custom canvas heat overlay (absolute scale: normalized to the Severe threshold) + markers + kind-aware station markers + legend (M2). |
-| `timeline.js` | Custom canvas day timeline + scrubber + per-event avoid bands (M3). |
+| `timeline.js` | Custom canvas day timeline + scrubber + per-event In / Out bands (M3), plus station lanes under the curve (chip per busy window, hover for details, click to scrub) and the persisted Overnight toggle (hides 12 AM–9 AM unless the day has early activity). Bucket count comes from the day file. |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |
 | `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants; verdict thresholds calibrated 2026-09-03 (5 / 30 / 65). |
-| `pipeline/timecurves.py` | Per-event 96-bucket time curve + daily timeline + peak-bucket + sigma. M2-locked. |
+| `pipeline/timecurves.py` | Per-event time curve over a 26-hour modeled day (104 buckets, 12 AM → 2 AM next morning) + daily timeline + peak-bucket + sigma. M2-locked math. |
 | `pipeline/whitelist.py` | Apply venue whitelist to Ticketmaster events (TM id, name, alias). |
 | `pipeline/transit.py` | Per-day `transit_flags`: curated subway/GO stations per venue from `venue_stations.json`, plus the nearest streetcar stops from the GTFS set. Every station carries a `kind`; bus stops never ship. |
 | `pipeline/gtfs.py` | Static GTFS reduce → `stations_reduced.json`. Classifies each station's `kind` from `route_type` and drops kinds not in `city.json` `transit.keep_kinds`. |

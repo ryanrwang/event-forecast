@@ -340,3 +340,34 @@ Text on each pill flips between the token text colours by luminance.
 Lines 1, 2, 4 and 5 use the TTC Brand Standards values (Pantone 123 C,
 347 C, 234 C, Orange 021 as RGB); Line 6 grey, the streetcar red and the
 GO green are typed from memory and flagged unverified in the config.
+
+### 26-hour modeled day — spillover past midnight stays with its day
+
+Each day's time curves, timeline, and avoid windows now cover 12:00 AM
+through 2:00 AM the next morning (104 fifteen-minute buckets instead of
+96). Under the 24-hour day a show letting out at 11:30 PM lost its
+tail at midnight, and the next day's file never picked it up because
+events are bucketed by their own start date. The extra two hours are
+this day's own spillover; the previous night's spillover lives in the
+previous day's file, so nothing is double counted. The frontend reads
+the bucket count from the day file (`buckets`, `span_hours` are also
+shipped) and still renders older 96-bucket files. Operator-requested,
+in service of the "morning to night" timeline axis below.
+
+### Station lanes inside the timeline; overnight hours hidden by default
+
+The separate "stations likely packed" card grid is gone. The timeline
+now carries the stations as lanes under the curve: one row per
+station, a compact chip (name + line badge, no times) anchored at each
+busy window, so the axis above says when. Hover or focus a chip for the
+full details (exact window, In / Out, the event, the "via" route);
+click it to move the scrubber there. Lanes are laid out in percentages
+of the visible range so they never need a re-measure. The Streetcar and
+GO toggles moved into the timeline's chip row. Operator-requested: the
+timeline and the station list were answering the same question in two
+places.
+
+The visible range hides midnight to 9 AM by default (persisted
+"Overnight" chip shows the full 26 hours), so the axis reads
+9 AM → 2 AM. A day with real early activity, above 10 % of its peak
+before 9 AM (a 6 AM marathon), expands on its own down to that hour.
