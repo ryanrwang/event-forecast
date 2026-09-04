@@ -5,6 +5,10 @@
  * Hosted on Bluehost shared PHP. Keep dependency-free, no framework.
  * No Ticketmaster API key is ever read or echoed by this layer; the M1
  * endpoints only serve cached JSON written by the Python pipeline.
+ *
+ * The one secret-shaped value this layer DOES hand to the browser is the
+ * CARTO basemap key -- see basemap_key() for why that is safe, and why it
+ * still belongs in server config rather than inline in map.js.
  */
 
 define('REPO_ROOT', dirname(__DIR__));
@@ -37,6 +41,44 @@ function map_attribution(): array {
         'osm_url' => 'https://www.openstreetmap.org/copyright',
         'carto_url' => 'https://carto.com/attributions',
     ];
+}
+
+/**
+ * Server-side config, loaded from api/config.php (gitignored, created per
+ * environment -- see config.example.php for the shape). A missing file is
+ * NOT an error: every consumer must degrade gracefully without it, so
+ * local checkouts and fresh deploys still serve.
+ */
+function server_config(): array {
+    static $cfg = null;
+    if ($cfg === null) {
+        $path = __DIR__ . '/config.php';
+        $cfg = is_readable($path) ? (array) require $path : [];
+    }
+    return $cfg;
+}
+
+/**
+ * CARTO basemap key, for the frontend's tile URL.
+ *
+ * Unlike ticketmaster_api_key this value IS sent to the browser -- it has
+ * to be, because the browser fetches tiles from basemaps.cartocdn.com
+ * directly. It is therefore NOT a secret from anyone who loads the map.
+ * CARTO asks which domain you'll use it on when issuing the key, but
+ * documents no enforced domain/referrer restriction, so we cannot rely on
+ * that as a control.
+ *
+ * Keeping it in config.php rather than inline in map.js buys one specific
+ * thing: it stays out of the public git repo, and so out of reach of the
+ * automated scrapers that crawl public repositories for keys. Treat a
+ * leaked key as rotatable, not as a breach.
+ *
+ * Empty string when unset -- map.js then falls back to the keyless tile
+ * URL, which still renders (watermarked) rather than breaking.
+ */
+function basemap_key(): string {
+    $key = server_config()['carto_basemap_key'] ?? '';
+    return is_string($key) ? trim($key) : '';
 }
 
 /**

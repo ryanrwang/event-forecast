@@ -38,5 +38,6 @@ send_json([
     'cities'             => $cities,
     'attribution'        => attribution(),
     'map_attribution'    => map_attribution(),
+    'basemap'            => ['key' => basemap_key()],
     'gtfs_attributions'  => $gtfs_attributions,
 ]);

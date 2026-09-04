@@ -106,6 +106,12 @@
     // footer. Empty defaults so a missing API field renders cleanly.
     gtfsAttributions: {},
     mapAttribution: null,
+    // CARTO basemap key. Served by the API (from api/config.php) rather
+    // than hardcoded in map.js, so it never enters the public repo. It is
+    // still public to anyone who loads the map -- the browser fetches
+    // tiles from CARTO directly -- so this is repo hygiene, not secrecy.
+    // Empty string means keyless, watermarked tiles; map.js falls back.
+    basemapKey: '',
     freshness: null
   };
 
@@ -904,7 +910,8 @@
     } else {
       var bbox = state.cityConfig && state.cityConfig.bbox;
       window.EFMap.ensureMap(mapHost, bbox, {
-        defaultView: state.cityConfig && state.cityConfig.map_default_view
+        defaultView: state.cityConfig && state.cityConfig.map_default_view,
+        basemapKey: state.basemapKey
       });
       window.EFMap.invalidate();
       if (window.EFMap.setStations) {
@@ -1467,6 +1474,9 @@
         state.mapAttribution = resp.map_attribution;
         renderMapAttribution(resp.map_attribution);
       }
+      if (resp.basemap && typeof resp.basemap.key === 'string') {
+        state.basemapKey = resp.basemap.key;
+      }
       if (resp.gtfs_attribution) {
         state.gtfsAttributions[cityId] = resp.gtfs_attribution;
       }
@@ -1505,6 +1515,9 @@
       if (resp.map_attribution) {
         state.mapAttribution = resp.map_attribution;
         renderMapAttribution(resp.map_attribution);
+      }
+      if (resp.basemap && typeof resp.basemap.key === 'string') {
+        state.basemapKey = resp.basemap.key;
       }
       if (resp.gtfs_attributions && typeof resp.gtfs_attributions === 'object') {
         state.gtfsAttributions = resp.gtfs_attributions;

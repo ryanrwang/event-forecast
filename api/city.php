@@ -40,6 +40,7 @@ send_json([
     'days'              => list_forecast_days($id),
     'attribution'       => attribution(),
     'map_attribution'   => map_attribution(),
+    'basemap'           => ['key' => basemap_key()],
     'gtfs_attribution'  => gtfs_attribution_for($id),
     'freshness'         => city_freshness($id),
 ]);

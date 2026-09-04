@@ -40,11 +40,35 @@
   var MARKER_IMPACT_LOW = 2;     // ~theatre
   var MARKER_IMPACT_HIGH = 60;   // ~major stadium concert
 
-  // OSM dark basemap (CARTO's free dark-matter tiles, OSM-derived; the
-  // attribution string below carries the required OSM credit). No key,
-  // no signup. Standard for OSS dark-mode Leaflet apps.
-  var TILE_URL =
+  // OSM dark basemap (CARTO's dark-matter tiles, OSM-derived; the
+  // attribution string below carries the required OSM credit).
+  //
+  // CARTO gates basemaps.cartocdn.com behind an API key. Keyless requests
+  // still return tiles, but stamped with a repeating "API KEY REQUIRED"
+  // watermark. Keys are free within CARTO's fair-use limit:
+  // https://carto.com/basemaps/apikey
+  //
+  // The key is deliberately NOT stored in this file. It lives in
+  // api/config.php (gitignored) and reaches us as
+  // ensureMap(..., { basemapKey: ... }). It still ships to every visitor
+  // -- the browser fetches tiles from CARTO directly, so it can never be
+  // a secret -- but keeping it server-side keeps it out of the public git
+  // repo and away from the scrapers that crawl public repos for keys.
+  // (CARTO asks which domain you'll use it on when issuing the key, but
+  // documents no enforced domain/referrer restriction, so the repo is the
+  // only exposure we can actually control.) With no key configured we
+  // fall back to the keyless URL, so the map still loads (watermarked)
+  // rather than breaking.
+  var TILE_URL_KEYLESS =
     'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+  function tileUrl(basemapKey) {
+    var key = typeof basemapKey === 'string' ? basemapKey.trim() : '';
+    return key
+      ? TILE_URL_KEYLESS + '?key=' + encodeURIComponent(key)
+      : TILE_URL_KEYLESS;
+  }
+
   var TILE_ATTRIBUTION =
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
     'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
@@ -676,7 +700,7 @@
       maxBoundsViscosity: 0.6
     });
 
-    _basemap = L.tileLayer(TILE_URL, {
+    _basemap = L.tileLayer(tileUrl(options.basemapKey), {
       attribution: TILE_ATTRIBUTION,
       subdomains: 'abcd',
       maxZoom: 19,
