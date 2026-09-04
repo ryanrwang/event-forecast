@@ -454,3 +454,10 @@ sub-line, and is decorative for assistive tech: the verdict and the
   " - X Station" suffix removed); the popover keeps the full name.
   Streetcar names also cap tighter than subway names, which cuts the
   stacking on a busy day.
+
+### Tighter chips, dot separators
+
+Chip side padding drops from 16 px to 12 px (new semantic spacing step
+`smd`, the 12 px primitive already existed). The timeline chip row
+separates its three groups with a middle dot instead of a hairline:
+Streetcar / GO · All day / Fit · Peak / Now. Operator-requested.

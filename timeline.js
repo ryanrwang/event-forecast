@@ -1385,6 +1385,12 @@
     layoutLanes();
   }
 
+  function chipSep() {
+    var sep = el('span', 'ef-timeline__sep', '\u00B7');
+    sep.setAttribute('aria-hidden', 'true');
+    return sep;
+  }
+
   function buildHandle(label, side) {
     var h = el('button', 'ef-brush__handle ef-brush__handle--' + side);
     h.type = 'button';
@@ -1413,6 +1419,7 @@
     _chips = el('div', 'ef-timeline__chips');
     _toggleHost = el('span', 'ef-timeline__toggles');
     _chips.appendChild(_toggleHost);
+    _chips.appendChild(chipSep());
 
     _allDayChip = el('button', 'chip ef-timeline__chip', 'All day');
     _allDayChip.type = 'button';
@@ -1433,6 +1440,7 @@
       setView({ mode: _view.mode === 'fit' ? 'default' : 'fit' }, true, true);
     });
     _chips.appendChild(_fitChip);
+    _chips.appendChild(chipSep());
 
     _peakChip = el('button', 'chip ef-timeline__chip', 'Peak');
     _peakChip.type = 'button';

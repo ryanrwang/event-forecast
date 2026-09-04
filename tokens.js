@@ -268,6 +268,7 @@
     spacing: {
       xs:  primitives.spacing[4],
       sm:  primitives.spacing[8],
+      smd: primitives.spacing[12],   // between sm and md: pill-control side padding
       md:  primitives.spacing[16],
       lg:  primitives.spacing[24],
       xl:  primitives.spacing[32],
