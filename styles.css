@@ -132,7 +132,6 @@ a:visited {
   margin: 0 auto;
 }
 
-.forecast-strip,
 .forecast-detail {
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
@@ -143,10 +142,10 @@ a:visited {
   position: relative;
 }
 
+/* The day cards are the cards; the strip around them is bare. */
 .forecast-strip {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 1.5%, transparent), transparent 30%),
-    var(--color-bg-surface);
+  position: relative;
+  padding: 0;
 }
 
 /* ────────────── M6 Status banner ────────────── */
@@ -246,10 +245,6 @@ a:visited {
  * screens; on narrow screens the row scrolls sideways with snap points
  * and a right-edge fade so it's obvious more days sit off-screen.
  */
-.forecast-strip {
-  padding: var(--spacing-md);
-}
-
 .forecast-strip__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -257,10 +252,6 @@ a:visited {
 }
 
 @media (max-width: 980px) {
-  .forecast-strip {
-    padding: var(--spacing-sm);
-  }
-
   .forecast-strip__grid {
     display: flex;
     overflow-x: auto;
@@ -280,11 +271,10 @@ a:visited {
     position: absolute;
     top: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--spacing-xs);
     width: var(--spacing-xl);
     pointer-events: none;
-    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-    background: linear-gradient(90deg, transparent, var(--color-bg-surface));
+    background: linear-gradient(90deg, transparent, var(--color-bg-page));
   }
 }
 
@@ -1220,15 +1210,15 @@ a:visited {
 /* Lanes: a chip anchored at each window, over the same axis as the
    chart. The event lane sits above the curve (one row, stacked when
    events overlap); station lanes sit under it, one row per station.
-   Side margins match the canvas plot margins (16px) so chips line up
-   with the axis. Positions are percentages of the visible range, so a
-   resize never needs a re-measure. */
+   No side margins, like the canvas plot, so chips line up with the
+   axis. Positions are percentages of the visible range, so a resize
+   never needs a re-measure. */
 .ef-lanes {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
-  margin: var(--spacing-xs) var(--spacing-md) 0;
+  margin: var(--spacing-xs) 0 0;
 }
 
 .ef-lanes--events {

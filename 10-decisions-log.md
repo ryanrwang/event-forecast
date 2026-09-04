@@ -491,3 +491,15 @@ chart is gone, so the peak is said once, where it sits).
   "2 events · Coldplay: Music of the Spheres…".
 - **Keyboard on the day strip**: left / right arrows move a day, Home
   or T jumps to today, End to the last day; focus follows.
+
+### Finishing touches: bare strip, filters first, flush plot
+
+- The 7-day strip is no longer a card around cards; the day cards are
+  the cards. The phone-width fade at the strip's right edge fades to
+  the page colour.
+- The view filters sit above the strip, since they apply to
+  everything below them (strip, timeline, map, rail).
+- The timeline canvas, brush and lanes have no side margins of their
+  own; the plot runs edge to edge inside the panel's padding, so it
+  lines up with the header, chips and legend. The "Now" label clamps
+  inside the plot.

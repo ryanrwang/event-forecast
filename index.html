@@ -32,6 +32,14 @@
          (via the hidden attribute) by default. -->
     <div class="status-banner" id="status-banner" role="status" aria-live="polite" hidden></div>
 
+    <!-- View filters: event-type chips, a "smaller venues" chip (off by
+         default), and the verdict-follows-filter switch. They apply to
+         everything below (strip, timeline, map, rail), so they sit
+         first. Populated by app.js once forecasts load; selection
+         persists in localStorage. A hidden event still counts toward
+         the day verdict unless the switch is on. -->
+    <div class="event-filter" id="event-filter" role="group" aria-label="Filter events" hidden></div>
+
     <!-- 7-day outlook: one compact verdict pill per day. Today first.
          Selecting a pill drives the detail panel below. -->
     <section class="forecast-strip" id="forecast-strip" aria-label="7-day outlook">
@@ -40,13 +48,6 @@
         Loading forecast&hellip;
       </div>
     </section>
-
-    <!-- View filters: event-type chips, a "smaller venues" chip (off by
-         default), and the verdict-follows-filter switch. Populated by
-         app.js once forecasts load; selection persists in localStorage.
-         A hidden event still counts toward the day verdict unless the
-         switch is on. -->
-    <div class="event-filter" id="event-filter" role="group" aria-label="Filter events" hidden></div>
 
     <!-- Selected day, today-first order: plain-English takeaway,
          stations likely packed, when it peaks, the map, then the

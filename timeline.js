@@ -53,7 +53,10 @@
 
   // Layout (CSS pixels). The brush and the lanes use the same side
   // margins so everything lines up with the plot.
-  var ML = 16, MR = 16, MT = 16, MB = 24;
+  // No side margins inside the canvas: the plot runs edge to edge so
+  // it lines up with the header, chips and lanes, and the panel's own
+  // padding does the aligning. Top/bottom leave room for the labels.
+  var ML = 0, MR = 0, MT = 16, MB = 24;
 
   // Module-private state
   var _host = null;
@@ -837,7 +840,7 @@
       _ctx.font = tokenColor('typography.tiny', '11px') + ' ' + tokenColor('typography.font.mono', FONT_FALLBACK);
       _ctx.textAlign = 'center';
       _ctx.textBaseline = 'alphabetic';
-      _ctx.fillText('Now', nx, plotTop - 5);
+      _ctx.fillText('Now', clamp(nx, ML + 12, W - MR - 12), plotTop - 5);
     }
 
     positionScrubLine(vis);
