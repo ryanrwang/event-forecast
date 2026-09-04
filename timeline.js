@@ -4,7 +4,7 @@
  * Hand-built canvas. NOT a charting library — the timeline is part of
  * the product's identity (overview §7). Renders the day's busyness
  * curve (smooth monotone interpolation through the 15-minute buckets),
- * the busiest window, per-event In / Out bands, and a draggable
+ * the peak window, per-event In / Out bands, and a draggable
  * scrubber that emits bucket changes via the onBucketChange callback.
  *
  * Above the chart sits the RANGE BRUSH: a miniature of the whole
@@ -60,6 +60,7 @@
   var _peakChip = null;
   var _nowChip = null;
   var _allDayChip = null;
+  var _fitChip = null;
   var _toggleHost = null;
   var _canvas = null;
   var _ctx = null;
@@ -215,7 +216,7 @@
   }
 
   // Contiguous run around the peak bucket where the timeline stays
-  // above PEAK_BAND_FRAC × peak_value — the "busiest window" band.
+  // above PEAK_BAND_FRAC × peak_value — the "peak window" band.
   var PEAK_BAND_FRAC = 0.85;
   function peakWindow(timeline, peakBucket, peakValue) {
     if (!timeline || !timeline.length || peakValue <= 0) {
@@ -263,6 +264,44 @@
     return vis.from === 0 && vis.to === bucketCount();
   }
 
+  // Tightest range around the day's activity: the curve above 5 % of
+  // the peak plus every In / Out window, padded an hour each side and
+  // rounded to the hour. Falls back to the default on an empty day.
+  var FIT_ACTIVITY_FRAC = 0.05;
+  function activityRange() {
+    var n = bucketCount();
+    if (!_forecast) return defaultRange();
+    var timeline = _forecast.timeline || [];
+    var peak = _forecast.peak_value || 0;
+    var lo = Infinity, hi = -Infinity;
+    if (peak > 0) {
+      for (var b = 0; b < n; b++) {
+        if (timeline[b] >= peak * FIT_ACTIVITY_FRAC) {
+          if (b < lo) lo = b;
+          if (b + 1 > hi) hi = b + 1;
+        }
+      }
+    }
+    (_forecast.avoid_windows || []).forEach(function (w) {
+      var r = bucketsFromWindow(w);
+      if (!r) return;
+      if (r.from < lo) lo = Math.floor(r.from);
+      if (r.to > hi) hi = Math.ceil(r.to);
+    });
+    if (!isFinite(lo) || !isFinite(hi)) return defaultRange();
+    lo = Math.max(0, Math.floor((lo - 4) / 4) * 4);
+    hi = Math.min(n, Math.ceil((hi + 4) / 4) * 4);
+    if (hi - lo < MIN_SPAN) hi = Math.min(n, lo + MIN_SPAN);
+    return { from: lo, to: hi };
+  }
+
+  function updateFitChip() {
+    if (!_fitChip || !_forecast) return;
+    var vis = visibleRange();
+    var fit = activityRange();
+    _fitChip.setAttribute('aria-pressed', (vis.from === fit.from && vis.to === fit.to) ? 'true' : 'false');
+  }
+
   // Apply a new range (persisted), keep the scrubber inside it, and
   // redraw the chart, brush, and lanes.
   function setRange(from, to, persist) {
@@ -288,6 +327,7 @@
     draw();
     drawBrush();
     updateAllDayChip();
+    updateFitChip();
     layoutLanes();
   }
 
@@ -482,7 +522,7 @@
       _ctx.fillRect(bx0, plotTop, Math.max(1, bx1 - bx0), plotBot - plotTop);
     }
 
-    // Busiest window band, in the verdict colour.
+    // Peak window band, in the verdict colour.
     var peakWin = peakWindow(timeline, peakBucket, peakValue);
     var verdictRgb = verdictColor(verdict);
     var px0 = bucketToX(clamp(peakWin.from, vis.from, vis.to), size, vis);
@@ -544,14 +584,14 @@
       _ctx.fillText(tickLabel(hh), lx, plotBot + 6);
     }
 
-    // Busiest label above the band (display face, semibold).
+    // Peak label above the band (display face, semibold).
     if (peakValue > 0 && peakBucket >= vis.from && peakBucket < vis.to) {
       _ctx.fillStyle = verdictRgb;
       _ctx.font = '600 13px ' + tokenColor('typography.font.display', FONT_FALLBACK);
       _ctx.textAlign = 'left';
       _ctx.textBaseline = 'alphabetic';
       var labelX = clamp(px0 + 4, ML, W - MR - 120);
-      _ctx.fillText('Busiest · ' + bucketLabel(peakBucket), labelX, plotTop - 4);
+      _ctx.fillText('Peak · ' + bucketLabel(peakBucket), labelX, plotTop - 4);
     }
 
     positionScrubLine(vis);
@@ -692,13 +732,13 @@
 
   // ─────────── Readout / chips ───────────
 
-  // Title: "Busiest at 10:00 PM" (the day's peak), or "Quiet all day".
+  // Title: "Peak at 10:00 PM" (the day's peak), or "Quiet all day".
   function updateTitle() {
     if (!_readout || !_forecast) return;
     _readout.innerHTML = '';
     var peakValue = _forecast.peak_value || 0;
     if (peakValue > 0 && typeof _forecast.peak_bucket === 'number') {
-      _readout.appendChild(document.createTextNode('Busiest at '));
+      _readout.appendChild(document.createTextNode('Peak at '));
       _readout.appendChild(el('strong', 'ef-timeline__title-time', bucketLabel(_forecast.peak_bucket)));
     } else {
       _readout.appendChild(document.createTextNode('Quiet all day'));
@@ -834,8 +874,35 @@
         c.style.right = ((1 - f1b) * 100) + '%';
       }
     }
+    stackOverlaps();
     applyActiveChips();
     positionScrubLine(vis);
+  }
+
+  // Chips in one lane that would overlap (a wide label, a narrow
+  // range, or a phone) drop to a second row instead of covering each
+  // other. Measured, so it adapts to any width.
+  var CHIP_H = 24, ROW_GAP = 4, MIN_CHIP_GAP = 4;
+  function stackOverlaps() {
+    var lanes = _lanes.querySelectorAll('.ef-lane');
+    for (var li = 0; li < lanes.length; li++) {
+      var lane = lanes[li];
+      var chips = Array.prototype.slice.call(lane.querySelectorAll('.ef-lane__chip'));
+      var items = chips.map(function (c) {
+        var r = c.getBoundingClientRect();
+        return { chip: c, left: r.left, right: r.right };
+      }).sort(function (a, b) { return a.left - b.left; });
+      var rows = [];
+      items.forEach(function (it) {
+        var row = 0;
+        while (rows[row] && rows[row].some(function (iv) {
+          return it.left < iv.right + MIN_CHIP_GAP && it.right > iv.left - MIN_CHIP_GAP;
+        })) row++;
+        (rows[row] = rows[row] || []).push(it);
+        it.chip.style.top = (row * (CHIP_H + ROW_GAP)) + 'px';
+      });
+      lane.style.height = (Math.max(1, rows.length) * (CHIP_H + ROW_GAP) - ROW_GAP) + 'px';
+    }
   }
 
   // ─────────── Details popover ───────────
@@ -905,7 +972,7 @@
     _canvas.addEventListener('lostpointercapture', function () { _dragging = false; });
 
     // Keyboard: ←/→ to step (Shift = 1 h); Home/End = start/end of the
-    // visible range; P = busiest.
+    // visible range; P = peak.
     _canvas.addEventListener('keydown', function (evt) {
       if (!_forecast) return;
       var vis = visibleRange();
@@ -976,6 +1043,7 @@
     draw();
     drawBrush();
     updateAllDayChip();
+    updateFitChip();
     updateTitle();
     updateNowChip();
     layoutLanes();
@@ -1043,7 +1111,18 @@
     });
     _chips.appendChild(_allDayChip);
 
-    _peakChip = el('button', 'ef-timeline__chip', 'Busiest');
+    // Fit: tighten the range to the day's activity.
+    _fitChip = el('button', 'ef-timeline__chip ef-timeline__chip--toggle', 'Fit');
+    _fitChip.type = 'button';
+    _fitChip.title = 'Fit the range to when things are happening';
+    _fitChip.addEventListener('click', function () {
+      if (!_forecast) return;
+      var fit = activityRange();
+      setRange(fit.from, fit.to, true);
+    });
+    _chips.appendChild(_fitChip);
+
+    _peakChip = el('button', 'ef-timeline__chip', 'Peak');
     _peakChip.type = 'button';
     _peakChip.addEventListener('click', function () {
       if (!_forecast) return;
@@ -1108,7 +1187,7 @@
     lg2.appendChild(document.createTextNode('Out'));
     var lg3 = el('span', 'ef-timeline__legend-item');
     lg3.appendChild(el('span', 'ef-timeline__legend-swatch ef-timeline__legend-swatch--peak'));
-    lg3.appendChild(document.createTextNode('Busiest'));
+    lg3.appendChild(document.createTextNode('Peak'));
     var lg4 = el('span', 'ef-timeline__legend-note', 'Modeled estimate, not measured.');
     legend.appendChild(lg1);
     legend.appendChild(lg2);
@@ -1132,7 +1211,7 @@
 
   function destroy() {
     if (_ro) { _ro.disconnect(); _ro = null; }
-    _host = _wrap = _readout = _chips = _peakChip = _nowChip = _allDayChip = _toggleHost = null;
+    _host = _wrap = _readout = _chips = _peakChip = _nowChip = _allDayChip = _fitChip = _toggleHost = null;
     _canvas = _ctx = _brush = _brushCanvas = _brushCtx = _brushSel = _hFrom = _hTo = null;
     _lanes = _scrubLine = _pop = _pinnedChip = null;
     _forecast = _cityConfig = null;

@@ -175,13 +175,13 @@
     return Math.round((b.getTime() - a.getTime()) / 86400000);
   }
 
-  // "Today", "Tomorrow", or the weekday — relative labels for the strip.
+  // "Today", "Tomorrow", or the short weekday ("Mon") for the strip.
   function relativeDayLabel(isoDate, tz) {
     var delta = dayDelta(todayIso(tz), isoDate);
     if (delta === 0) return 'Today';
     if (delta === 1) return 'Tomorrow';
     var d = new Date(isoDate + 'T12:00:00Z');
-    var opts = { weekday: 'long' };
+    var opts = { weekday: 'short' };
     if (tz) opts.timeZone = tz;
     return new Intl.DateTimeFormat('en-US', opts).format(d);
   }
@@ -662,11 +662,11 @@
 
     pill.appendChild(el('span', 'day-pill__verdict', verdictLabelText));
 
-    // The "when" in the headline strip: the busiest 15 minutes of the
+    // The "when" in the headline strip: the peak 15 minutes of the
     // browsable view, so it moves with the filters like the sub-line.
     var view = filteredForecast(forecast);
     if (view && view.events && view.events.length && typeof view.peak_bucket === 'number') {
-      pill.appendChild(el('span', 'day-pill__peak', 'Busiest ' + clockFromBucket(view.peak_bucket)));
+      pill.appendChild(el('span', 'day-pill__peak', 'Peak ' + clockFromBucket(view.peak_bucket)));
     }
 
     var sub = pillSubline(forecast);
