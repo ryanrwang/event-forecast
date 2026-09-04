@@ -440,3 +440,17 @@ sub-line, and is decorative for assistive tech: the verdict and the
   (plain outline, secondary text, no dimming), disabled (muted, 50 %).
   The previous off state dimmed to 75 % on muted text and read as
   disabled. The "Selected day" eyebrow is gone; the date line says it.
+
+### Shared chip component; compact streetcar names
+
+- **`.chip` is one component.** The view filters and the timeline
+  controls looked alike but the timeline chips had tighter padding.
+  Both now carry the `chip` class and share every visual rule (size,
+  padding, states); the BEM classes are layout and scripting hooks
+  only. Operator-requested.
+- **Compact streetcar names in the lanes.** GTFS stop names such as
+  "King St West at Bay St" are shown as "King W / Bay" (street-type
+  words dropped after the first word, directions abbreviated, the
+  " - X Station" suffix removed); the popover keeps the full name.
+  Streetcar names also cap tighter than subway names, which cuts the
+  stacking on a busy day.

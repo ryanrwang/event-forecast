@@ -1030,7 +1030,7 @@
     chip.setAttribute('aria-label', row.name + ', ' + span.time + ', ' + span.phaseWord);
     // Line badge first, then the station name.
     (row.lines || []).slice(0, 2).forEach(function (l) { chip.appendChild(linePillNode(row, l)); });
-    chip.appendChild(el('span', 'ef-lane__name', row.name));
+    chip.appendChild(el('span', 'ef-lane__name', row.shortName || row.name));
     chip._row = row;
     chip._span = span;
     wireChip(chip, span.fromBucket);
@@ -1362,7 +1362,7 @@
     layoutLanes();
   }
 
-  // rows: [{id, name, kind, kindLabel, lines: [{label, color, text}],
+  // rows: [{id, name, shortName, kind, kindLabel, lines: [{label, color, text}],
   //         spans: [{fromBucket, toBucket, phase, phaseWord, time, cause, via}]}]
   // options.toggles: [{id, label, pressed, onToggle}] rendered in the
   // chip row (station-kind switches owned by the app); options.emptyText
@@ -1374,7 +1374,7 @@
     if (_toggleHost) {
       _toggleHost.innerHTML = '';
       (options.toggles || []).forEach(function (t) {
-        var chip = el('button', 'ef-timeline__chip ef-timeline__chip--toggle', t.label);
+        var chip = el('button', 'chip ef-timeline__chip', t.label);
         chip.type = 'button';
         chip.setAttribute('aria-pressed', t.pressed ? 'true' : 'false');
         chip.setAttribute('data-kind', t.id);
@@ -1414,7 +1414,7 @@
     _toggleHost = el('span', 'ef-timeline__toggles');
     _chips.appendChild(_toggleHost);
 
-    _allDayChip = el('button', 'ef-timeline__chip ef-timeline__chip--toggle', 'All day');
+    _allDayChip = el('button', 'chip ef-timeline__chip', 'All day');
     _allDayChip.type = 'button';
     _allDayChip.title = 'Show the whole day, midnight to 2 AM';
     _allDayChip.addEventListener('click', function () {
@@ -1425,7 +1425,7 @@
     _chips.appendChild(_allDayChip);
 
     // Fit: tighten the range to the day's activity.
-    _fitChip = el('button', 'ef-timeline__chip ef-timeline__chip--toggle', 'Fit');
+    _fitChip = el('button', 'chip ef-timeline__chip', 'Fit');
     _fitChip.type = 'button';
     _fitChip.title = 'Fit the range to when things are happening';
     _fitChip.addEventListener('click', function () {
@@ -1434,7 +1434,7 @@
     });
     _chips.appendChild(_fitChip);
 
-    _peakChip = el('button', 'ef-timeline__chip', 'Peak');
+    _peakChip = el('button', 'chip ef-timeline__chip', 'Peak');
     _peakChip.type = 'button';
     _peakChip.addEventListener('click', function () {
       if (!_forecast) return;
@@ -1443,7 +1443,7 @@
       setBucket(pb, true);
       _scrubMode = 'peak';
     });
-    _nowChip = el('button', 'ef-timeline__chip', 'Now');
+    _nowChip = el('button', 'chip ef-timeline__chip', 'Now');
     _nowChip.type = 'button';
     _nowChip.hidden = true;
     _nowChip.addEventListener('click', function () {

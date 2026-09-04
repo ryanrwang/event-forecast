@@ -513,7 +513,7 @@
 
     TYPE_GROUPS.forEach(function (g) {
       var on = state.typeFilter[g.id] !== false;
-      var chip = el('button', 'event-filter__chip', g.label);
+      var chip = el('button', 'chip event-filter__chip', g.label);
       chip.type = 'button';
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
       chip.setAttribute('data-group', g.id);
@@ -527,7 +527,7 @@
 
     // "Smaller venues" chip — sub-5k halls and theatres. Off by default
     // so the browsable view stays about the stadium-scale events.
-    var small = el('button', 'event-filter__chip event-filter__chip--small', 'Smaller venues');
+    var small = el('button', 'chip event-filter__chip event-filter__chip--small', 'Smaller venues');
     small.type = 'button';
     small.setAttribute('aria-pressed', state.smallVenues ? 'true' : 'false');
     small.setAttribute('data-group', 'small');
@@ -1019,6 +1019,30 @@
     return 'Subway';
   }
 
+  // Streetcar stops carry long GTFS names ("King St West at Bay St",
+  // "Dundas St East at Yonge St - TMU Station"). The lane chip shows a
+  // compact cross-street form ("King W / Bay", "Dundas E / Yonge"); the
+  // popover keeps the full name. Subway and GO names pass through.
+  var STREET_TYPES = /^(St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive)\.?$/i;
+  var DIRECTIONS = { west: 'W', east: 'E', north: 'N', south: 'S' };
+  function compactStopName(name, kind) {
+    if (kind !== 'streetcar' || !name) return name;
+    var base = name.replace(/\s+-\s+[^-]*Station\s*$/i, '').replace(/\s+Station\s*$/i, '');
+    var parts = base.split(/\s+at\s+/i).map(function (part) {
+      var words = part.trim().split(/\s+/);
+      var out = [];
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        var lower = w.toLowerCase();
+        if (i > 0 && STREET_TYPES.test(w)) continue;          // "King St" → "King" (keeps "St Clair")
+        if (i > 0 && DIRECTIONS[lower]) { out.push(DIRECTIONS[lower]); continue; }
+        out.push(w);
+      }
+      return out.join(' ');
+    });
+    return parts.filter(Boolean).join(' / ');
+  }
+
   // Rows for the timeline's station lanes: a compact chip per busy
   // window (name + line badge), full details for the hover popover.
   function stationLaneRows(view) {
@@ -1027,6 +1051,7 @@
       return {
         id: row.id,
         name: row.name,
+        shortName: compactStopName(row.name, row.kind),
         kind: row.kind,
         kindLabel: kindLabel(row.kind),
         lines: row.lines.slice(0, 3).map(function (l) {

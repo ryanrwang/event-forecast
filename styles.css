@@ -314,14 +314,18 @@ a:visited {
   margin: 0;
 }
 
-/* Chips — one look for the view filters (Sports, Concerts, Smaller
-   venues) and the timeline controls (Streetcar, GO, All day, Fit, Peak,
-   Now). Three states that read at a glance:
-     on        accent border + tint, primary text
-     off       plain outline, secondary text: readable, just not lit
-     disabled  muted and dimmed, no pointer */
-.event-filter__chip,
-.ef-timeline__chip {
+/* ────────────── Chip (shared component) ──────────────
+ *
+ * ONE component for every pill-shaped control: the view filters
+ * (Sports, Concerts, Smaller venues) and the timeline controls
+ * (Streetcar, GO, All day, Fit, Peak, Now). Both app.js and
+ * timeline.js create these with the `chip` class; the BEM classes
+ * (.event-filter__chip, .ef-timeline__chip) are hooks for layout and
+ * scripting only and carry no visual rules. Three states:
+ *   on        accent border + tint, primary text
+ *   off       plain outline, secondary text: readable, just not lit
+ *   disabled  muted and dimmed, no pointer */
+.chip {
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
   font-weight: var(--typography-weight-medium);
@@ -338,24 +342,17 @@ a:visited {
               opacity var(--transition-fast);
 }
 
-.ef-timeline__chip {
-  padding: var(--spacing-xs) var(--spacing-sm);
-}
-
-.event-filter__chip:hover,
-.ef-timeline__chip:hover {
+.chip:hover {
   color: var(--color-text-primary);
   border-color: var(--color-text-tertiary);
 }
 
-.event-filter__chip:focus-visible,
-.ef-timeline__chip:focus-visible {
+.chip:focus-visible {
   outline: 2px solid var(--color-interactive-focus);
   outline-offset: 2px;
 }
 
-.event-filter__chip[aria-pressed="true"],
-.ef-timeline__chip[aria-pressed="true"] {
+.chip[aria-pressed="true"] {
   color: var(--color-text-primary);
   border-color: color-mix(in srgb, var(--color-action-primary) 70%, transparent);
   background: linear-gradient(180deg,
@@ -364,8 +361,7 @@ a:visited {
               var(--color-bg-raised);
 }
 
-.event-filter__chip:disabled,
-.ef-timeline__chip:disabled {
+.chip:disabled {
   color: var(--color-text-muted);
   border-color: var(--color-border-subtle);
   background: transparent;
@@ -1356,6 +1352,13 @@ a:visited {
 /* Event chips span a whole crowd window, so the name gets more room. */
 .ef-lane--events .ef-lane__name {
   max-width: 320px;
+}
+
+/* Streetcar stops carry long GTFS names ("King St West at Bay St");
+   the chip shows a compact form (app.js compactStopName) and caps it
+   tighter than a subway name. The popover keeps the full name. */
+.ef-lane[data-kind="streetcar"] .ef-lane__name {
+  max-width: 112px;
 }
 
 /* Badge inside a lane chip: one step smaller than elsewhere. */

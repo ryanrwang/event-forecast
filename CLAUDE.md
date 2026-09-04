@@ -59,7 +59,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `00-overview.md` | Single source of truth for product, stack, milestones. Read first. |
 | `10-decisions-log.md` | Chronological log of consequential decisions with rationale. |
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
-| `styles.css` | Global styles, references CSS custom properties only. |
+| `styles.css` | Global styles, references CSS custom properties only. `.chip` is the one pill-control component (filters + timeline controls). |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
 | `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip (each pill carries a mini busyness graph on a shared time window and absolute scale), drives day selection, and renders the selected day today-first: "Because …" driver line, then the timeline (an event lane above the curve, the stations likely packed as lanes below it; subway by default, Streetcar / GO toggles), map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
 | `map.js` | Leaflet map + custom canvas heat overlay (absolute scale: normalized to the Severe threshold) + markers + kind-aware station markers + legend (M2). |
