@@ -628,6 +628,20 @@
     }
   }
 
+  // Vertical scale of the chart and the brush: the Severe threshold
+  // with a little headroom, or the day's peak when it climbs higher.
+  // The SAME every day, so a Quiet day draws low and a Severe day
+  // fills the plot (the day cards work the same way). The main chart
+  // used to stretch each day to its own peak, which made a Quiet
+  // Sunday look like a Severe Saturday.
+  var SCALE_HEADROOM = 1.15;
+  function chartMax() {
+    var t = _forecast && _forecast.thresholds;
+    var t3 = (t && typeof t.T3 === 'number') ? t.T3 : 0;
+    var peak = (_forecast && _forecast.peak_value) || 0;
+    return Math.max(t3 * SCALE_HEADROOM, peak * 1.05) || 1;
+  }
+
   // ─────────── Main chart ───────────
 
   function draw() {
@@ -640,6 +654,7 @@
     var peakValue = _forecast.peak_value || 0;
     var peakBucket = (typeof _forecast.peak_bucket === 'number') ? _forecast.peak_bucket : 0;
     var verdict = _forecast.verdict;
+    var maxV = chartMax();
 
     var W = size.w, H = size.h;
     var plotTop = MT, plotBot = H - MB;
@@ -683,6 +698,33 @@
       _ctx.lineTo(Math.round(bx) + 0.5, plotBot);
       _ctx.stroke();
     }
+
+    // Verdict thresholds: where a day turns Busy and Severe. Dashed,
+    // in the verdict colour, labelled at the right edge, so the height
+    // of the curve means the same thing every day.
+    var th = _forecast.thresholds || {};
+    var levels = [
+      { v: th.T2, label: 'Busy',   color: verdictColor('busy') },
+      { v: th.T3, label: 'Severe', color: verdictColor('severe') }
+    ];
+    _ctx.font = tokenColor('typography.tiny', '11px') + ' ' + tokenColor('typography.font.mono', FONT_FALLBACK);
+    _ctx.textAlign = 'right';
+    _ctx.textBaseline = 'bottom';
+    _ctx.setLineDash([3, 4]);
+    for (var lv = 0; lv < levels.length; lv++) {
+      var level = levels[lv];
+      if (typeof level.v !== 'number' || level.v <= 0 || level.v >= maxV) continue;
+      var ly = Math.round(valueToY(level.v, plotTop, plotBot, maxV)) + 0.5;
+      _ctx.strokeStyle = hexToRgba(level.color, 0.45);
+      _ctx.lineWidth = 1;
+      _ctx.beginPath();
+      _ctx.moveTo(ML, ly);
+      _ctx.lineTo(W - MR, ly);
+      _ctx.stroke();
+      _ctx.fillStyle = tokenColor('color.text.tertiary', '#94A3B8');
+      _ctx.fillText(level.label, W - MR - 2, ly - 2);
+    }
+    _ctx.setLineDash([]);
 
     // Per-event In / Out bands. Aggregate the alpha so overlapping
     // events darken naturally.
@@ -729,7 +771,7 @@
     _ctx.clip();
     var pts = curvePoints(timeline, Math.floor(vis.from), Math.ceil(vis.to),
       function (b) { return bucketToX(b, size, vis); },
-      function (v) { return valueToY(v, plotTop, plotBot, peakValue); });
+      function (v) { return valueToY(v, plotTop, plotBot, maxV); });
     strokeAndFillCurve(_ctx, pts, plotBot, hexToRgba(accentRgb, 0.95), grad, 1.5);
     _ctx.restore();
 
@@ -748,7 +790,7 @@
       _ctx.moveTo(Math.round(sxC) + 0.5, plotTop - 4);
       _ctx.lineTo(Math.round(sxC) + 0.5, plotBot + 4);
       _ctx.stroke();
-      var syHandle = valueToY(timeline[bIdx] || 0, plotTop, plotBot, peakValue);
+      var syHandle = valueToY(timeline[bIdx] || 0, plotTop, plotBot, maxV);
       _ctx.fillStyle = scrubColor;
       _ctx.beginPath();
       _ctx.arc(sxC, syHandle, 4, 0, Math.PI * 2);
@@ -769,14 +811,25 @@
       _ctx.fillText(tickLabel(hh), lx, plotBot + 6);
     }
 
-    // Peak label above the band (display face, semibold).
-    if (peakValue > 0 && peakBucket >= vis.from && peakBucket < vis.to) {
-      _ctx.fillStyle = verdictRgb;
-      _ctx.font = '600 13px ' + tokenColor('typography.font.display', FONT_FALLBACK);
-      _ctx.textAlign = 'left';
+    // Today: a thin "now" line so the curve reads against the clock.
+    // (The title above already names the peak, so the canvas doesn't.)
+    var nowB = _cityConfig ? nowBucketForDate(_forecast.date, _cityConfig.timezone) : null;
+    if (nowB != null && nowB >= vis.from && nowB < vis.to) {
+      var nowRgb = tokenColor('color.text.secondary', '#CBD5E1');
+      var nx = Math.round(bucketToX(nowB + 0.5, size, vis)) + 0.5;
+      _ctx.strokeStyle = hexToRgba(nowRgb, 0.7);
+      _ctx.lineWidth = 1;
+      _ctx.setLineDash([2, 3]);
+      _ctx.beginPath();
+      _ctx.moveTo(nx, plotTop - 2);
+      _ctx.lineTo(nx, plotBot);
+      _ctx.stroke();
+      _ctx.setLineDash([]);
+      _ctx.fillStyle = nowRgb;
+      _ctx.font = tokenColor('typography.tiny', '11px') + ' ' + tokenColor('typography.font.mono', FONT_FALLBACK);
+      _ctx.textAlign = 'center';
       _ctx.textBaseline = 'alphabetic';
-      var labelX = clamp(px0 + 4, ML, W - MR - 120);
-      _ctx.fillText('Peak · ' + bucketLabel(peakBucket), labelX, plotTop - 4);
+      _ctx.fillText('Now', nx, plotTop - 5);
     }
 
     positionScrubLine(vis);
@@ -801,7 +854,7 @@
     var accentRgb = tokenColor('color.text.accent', '#34D399');
     var pts = curvePoints(timeline, 0, n,
       function (b) { return bucketToX(b, size, full); },
-      function (v) { return valueToY(v, top, bot, peakValue); });
+      function (v) { return valueToY(v, top, bot, chartMax()); });
     strokeAndFillCurve(_brushCtx, pts, bot, hexToRgba(accentRgb, 0.55), hexToRgba(accentRgb, 0.12), 1);
 
     // Dim what's outside the selected range.

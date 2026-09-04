@@ -432,48 +432,38 @@
     var Ctl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function () {
-        var wrap = el('div', 'ef-legend');
+        // One line: [ramp] Quiet → Severe · In / Out / Several · modeled.
+        // The long wording moved into the tooltip; the footer and the
+        // timeline carry the "modeled, not measured" line in full.
+        var wrap = el('div', 'ef-legend ef-legend--compact');
         wrap.setAttribute('role', 'note');
+        wrap.title =
+          'Same colour scale every day: crowd modeled from event size, ' +
+          'start time, and distance. Stations flagged from venue proximity ' +
+          'and event timing. Not live crowd or transit data.';
 
-        var head = el('div', 'ef-legend__head');
-        head.appendChild(el('span', 'ef-legend__eyebrow', 'Modeled estimate'));
-        head.appendChild(el('span', 'ef-legend__note', 'Not measured.'));
-        wrap.appendChild(head);
-
-        var ramp = el('div', 'ef-legend__ramp');
+        var heat = el('span', 'ef-legend__heat');
+        heat.appendChild(el('span', 'ef-legend__end', 'Quiet'));
+        var ramp = el('span', 'ef-legend__ramp');
         ramp.setAttribute('aria-hidden', 'true');
         for (var i = 0; i < 5; i++) {
           var stop = el('span', 'ef-legend__stop');
           stop.style.background = tokenColor('color.heatmap.s' + i, '#22C55E');
           ramp.appendChild(stop);
         }
-        wrap.appendChild(ramp);
+        heat.appendChild(ramp);
+        heat.appendChild(el('span', 'ef-legend__end', 'Severe'));
+        wrap.appendChild(heat);
 
-        var scale = el('div', 'ef-legend__scale');
-        scale.appendChild(el('span', null, 'Quiet'));
-        scale.appendChild(el('span', null, 'Severe'));
-        wrap.appendChild(scale);
-
-        var fine = el('p', 'ef-legend__fine');
-        fine.textContent =
-          'Same colour scale every day: crowd modeled from event size, ' +
-          'start time, and distance. Not live crowd data.';
-        wrap.appendChild(fine);
-
-        // M4: transit-station glyph row. Reads as a small inline legend
-        // for the rotated-square markers — arrival (info hue),
-        // dispersal (warning hue), multi-event (severe accent).
-        var stationsRow = el('div', 'ef-legend__stations');
+        // M4: transit-station glyphs — arrival (info hue), dispersal
+        // (warning hue), multi-event (severe accent).
+        var stationsRow = el('span', 'ef-legend__stations');
         stationsRow.appendChild(_legendStationGlyph('arrival',   'In'));
         stationsRow.appendChild(_legendStationGlyph('dispersal', 'Out'));
-        stationsRow.appendChild(_legendStationGlyph('multi',     'Several events'));
+        stationsRow.appendChild(_legendStationGlyph('multi',     'Several'));
         wrap.appendChild(stationsRow);
 
-        var transitFine = el('p', 'ef-legend__fine ef-legend__fine--transit');
-        transitFine.textContent =
-          'Stations flagged from venue proximity and event timing. ' +
-          'Not live transit data.';
-        wrap.appendChild(transitFine);
+        wrap.appendChild(el('span', 'ef-legend__note', 'Modeled, not measured'));
 
         // Block map drag/scroll while interacting with the legend.
         L.DomEvent.disableClickPropagation(wrap);

@@ -543,9 +543,9 @@
     // or when the switch below re-buckets them. Hidden smaller venues
     // alone don't earn the note — they barely move the verdict.
     if (state.verdictMode === 'filtered' && viewFilterActive()) {
-      host.appendChild(el('span', 'event-filter__note', 'Busyness counts shown events only.'));
+      host.appendChild(el('span', 'event-filter__note', 'Ratings count shown events only.'));
     } else if (typeFilterActive()) {
-      host.appendChild(el('span', 'event-filter__note', 'Busyness still counts hidden events.'));
+      host.appendChild(el('span', 'event-filter__note', 'Ratings still count hidden events.'));
     }
 
     // Right side: opt-in switch that re-buckets day verdicts from only
@@ -556,14 +556,14 @@
     toggle.id = 'verdict-mode-toggle';
     toggle.setAttribute('role', 'switch');
     toggle.setAttribute('aria-checked', state.verdictMode === 'filtered' ? 'true' : 'false');
-    toggle.setAttribute('aria-label', 'Busyness from shown events only');
+    toggle.setAttribute('aria-label', 'Ratings follow filters');
     toggle.appendChild(el('span', 'event-filter__toggle-knob'));
     toggle.addEventListener('click', function () {
       state.verdictMode = state.verdictMode === 'filtered' ? 'all' : 'filtered';
       saveJson(VERDICT_MODE_KEY, state.verdictMode);
       rerenderAll();
     });
-    toggleWrap.appendChild(el('span', 'event-filter__toggle-label', 'Busyness from shown only'));
+    toggleWrap.appendChild(el('span', 'event-filter__toggle-label', 'Ratings follow filters'));
     toggleWrap.appendChild(toggle);
     host.appendChild(toggleWrap);
   }
@@ -640,9 +640,10 @@
       var rawCount = ((forecast && forecast.events) || []).length;
       return { text: rawCount > 0 ? 'Filtered out' : 'Nothing major', muted: true };
     }
+    // Count first, then the biggest event: "2 events · Blue Jays vs…".
     var top = events[0];
-    var more = events.length - 1;
-    return { text: top.name + (more > 0 ? ' +' + more : ''), muted: false };
+    if (events.length === 1) return { text: top.name, muted: false };
+    return { text: events.length + ' events \u00B7 ' + top.name, muted: false };
   }
 
   function renderDayPill(date, forecast, tz, index) {
@@ -703,6 +704,23 @@
       if (!pill) return;
       var d = pill.getAttribute('data-date');
       if (d) selectDate(d);
+    });
+
+    // Keyboard: ← / → move a day, Home or T jumps to today, End to the
+    // last day. Focus follows the selection so the pills stay a single
+    // control.
+    grid.addEventListener('keydown', function (evt) {
+      var idx = state.days.indexOf(state.selectedDate);
+      var next = null;
+      if (evt.key === 'ArrowRight') next = Math.min(state.days.length - 1, idx + 1);
+      else if (evt.key === 'ArrowLeft') next = Math.max(0, idx - 1);
+      else if (evt.key === 'Home' || evt.key === 't' || evt.key === 'T') next = 0;
+      else if (evt.key === 'End') next = state.days.length - 1;
+      if (next === null || next === idx) return;
+      evt.preventDefault();
+      selectDate(state.days[next]);
+      var target = grid.querySelector('.day-pill[data-date="' + state.days[next] + '"]');
+      if (target) target.focus();
     });
 
     host.appendChild(grid);
@@ -1271,7 +1289,7 @@
     host.innerHTML = '';
 
     var head = el('div', 'rail__head');
-    head.appendChild(el('span', 'rail__eyebrow', 'Events at'));
+    head.appendChild(el('span', 'rail__eyebrow', 'On at'));
     head.appendChild(el('span', 'rail__time', clockFromBucket(bucket)));
     host.appendChild(head);
 
@@ -1296,33 +1314,34 @@
     var item = el('li', 'rail__item');
     item.setAttribute('data-event-id', ev.id || '');
 
-    var topRow = el('div', 'rail__row rail__row--top');
+    // One row per event: the event lane and its popover carry the
+    // detail now, so the rail is a compact "what's on" list whose main
+    // job is the ticket link (and the Ticketmaster attribution).
     var phase = bucketPhaseLabel(ev, bucket);
-    topRow.appendChild(el('span', 'rail__phase rail__phase--' + phase.kind, phase.label));
-    topRow.appendChild(el('span', 'rail__name', ev.name || '(untitled event)'));
-    item.appendChild(topRow);
+    item.appendChild(el('span', 'rail__phase rail__phase--' + phase.kind, phase.label));
 
-    var meta = el('div', 'rail__meta');
+    var main = el('span', 'rail__main');
+    var name = el('span', 'rail__name', ev.name || '(untitled event)');
+    name.title = ev.name || '';
+    main.appendChild(name);
+    var meta = el('span', 'rail__meta');
     meta.appendChild(el('span', 'rail__venue', ev.venue_name || ''));
-    meta.appendChild(el('span', 'rail__sep', '·'));
-    meta.appendChild(el('span', 'rail__category', humanCategory(ev.category)));
     meta.appendChild(el('span', 'rail__sep', '·'));
     meta.appendChild(el('span', 'rail__times',
       friendlyTime(ev.start_local, tz) + ' – ' + friendlyTime(ev.end_local, tz)));
-    var people = roundPeople(ev.venue_capacity);
-    if (people) {
+    if (ev.note) {
       meta.appendChild(el('span', 'rail__sep', '·'));
-      meta.appendChild(el('span', 'rail__people', 'about ' + people + ' people'));
+      meta.appendChild(el('span', 'rail__note', ev.note));
     }
-    item.appendChild(meta);
-
-    if (ev.note) item.appendChild(el('div', 'rail__note', ev.note));
+    main.appendChild(meta);
+    item.appendChild(main);
 
     if (ev.ticketmaster_url) {
-      var link = el('a', 'rail__link', 'Tickets on Ticketmaster');
+      var link = el('a', 'rail__link', 'Tickets');
       link.href = ev.ticketmaster_url;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
+      link.title = 'Tickets on Ticketmaster';
       item.appendChild(link);
     }
     return item;
