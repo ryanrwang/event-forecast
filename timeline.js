@@ -58,7 +58,6 @@
   // Module-private state
   var _host = null;
   var _wrap = null;
-  var _readout = null;
   var _chips = null;
   var _peakChip = null;
   var _nowChip = null;
@@ -811,8 +810,17 @@
       _ctx.fillText(tickLabel(hh), lx, plotBot + 6);
     }
 
+    // Peak label above the band (display face, semibold).
+    if (peakValue > 0 && peakBucket >= vis.from && peakBucket < vis.to) {
+      _ctx.fillStyle = verdictRgb;
+      _ctx.font = '600 13px ' + tokenColor('typography.font.display', FONT_FALLBACK);
+      _ctx.textAlign = 'left';
+      _ctx.textBaseline = 'alphabetic';
+      var labelX = clamp(px0 + 4, ML, W - MR - 120);
+      _ctx.fillText('Peak \u00B7 ' + bucketLabel(peakBucket), labelX, plotTop - 4);
+    }
+
     // Today: a thin "now" line so the curve reads against the clock.
-    // (The title above already names the peak, so the canvas doesn't.)
     var nowB = _cityConfig ? nowBucketForDate(_forecast.date, _cityConfig.timezone) : null;
     if (nowB != null && nowB >= vis.from && nowB < vis.to) {
       var nowRgb = tokenColor('color.text.secondary', '#CBD5E1');
@@ -965,20 +973,7 @@
     }
   }
 
-  // ─────────── Readout / chips ───────────
-
-  // Title: "Peak at 10:00 PM" (the day's peak), or "Quiet all day".
-  function updateTitle() {
-    if (!_readout || !_forecast) return;
-    _readout.innerHTML = '';
-    var peakValue = _forecast.peak_value || 0;
-    if (peakValue > 0 && typeof _forecast.peak_bucket === 'number') {
-      _readout.appendChild(document.createTextNode('Peak at '));
-      _readout.appendChild(el('strong', 'ef-timeline__title-time', bucketLabel(_forecast.peak_bucket)));
-    } else {
-      _readout.appendChild(document.createTextNode('Quiet all day'));
-    }
-  }
+  // ─────────── Chips ───────────
 
   function updateNowChip() {
     if (!_nowChip || !_forecast || !_cityConfig) return;
@@ -1398,7 +1393,6 @@
     }
     _bucket = (want != null) ? clamp(want, target.from, target.to - 1) : target.from;
     _scrubMode = keep;
-    updateTitle();
     updateScrubChips();
     if (prev && prevN === bucketCount() && !sameRange(prev, target)) {
       animateRange(prev, target);
@@ -1465,10 +1459,9 @@
 
     _wrap = el('div', 'ef-timeline');
 
+    // Head: just the chip row. The peak is labelled on the canvas,
+    // where it sits, rather than repeated in a title.
     var head = el('div', 'ef-timeline__head');
-    _readout = el('span', 'ef-timeline__title');
-    head.appendChild(_readout);
-
     _chips = el('div', 'ef-timeline__chips');
     _toggleHost = el('span', 'ef-timeline__toggles');
     _chips.appendChild(_toggleHost);
@@ -1590,7 +1583,7 @@
 
   function destroy() {
     if (_ro) { _ro.disconnect(); _ro = null; }
-    _host = _wrap = _readout = _chips = _peakChip = _nowChip = _allDayChip = _fitChip = _toggleHost = null;
+    _host = _wrap = _chips = _peakChip = _nowChip = _allDayChip = _fitChip = _toggleHost = null;
     _canvas = _ctx = _brush = _brushCanvas = _brushCtx = _brushSel = _hFrom = _hTo = null;
     _lanes = _scrubLine = _pop = _pinnedChip = _eventsHost = _eventScrub = null;
     _forecast = _cityConfig = _anim = null;

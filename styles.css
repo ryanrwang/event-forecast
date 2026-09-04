@@ -871,44 +871,38 @@ a:visited {
 
 /* Legend */
 
+/* One wrapping line: [Quiet ramp Severe] · In / Out / Several ·
+   "Modeled, not measured". The long wording is the tooltip; the
+   footer and the timeline carry the modeled line in full. */
 .ef-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
   background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
   backdrop-filter: blur(6px) saturate(140%);
   border: 1px solid var(--color-border-base);
   border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   box-shadow: var(--shadow-md);
-  max-width: 260px;
-  color: var(--color-text-secondary);
+  max-width: 360px;
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
 }
 
-.ef-legend__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+.ef-legend__heat {
+  display: inline-flex;
+  align-items: center;
   gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-}
-
-.ef-legend__eyebrow {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-primary);
-}
-
-.ef-legend__note {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
 }
 
 .ef-legend__ramp {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  width: 48px;
   height: 8px;
   border-radius: var(--radius-pill);
   overflow: hidden;
@@ -917,22 +911,12 @@ a:visited {
 
 .ef-legend__stop { display: block; height: 100%; }
 
-.ef-legend__scale {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
+.ef-legend__end {
   color: var(--color-text-tertiary);
-  margin-top: 2px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
-.ef-legend__fine {
-  margin: var(--spacing-xs) 0 0 0;
-  font-size: var(--typography-micro);
-  line-height: 1.4;
-  color: var(--color-text-tertiary);
+.ef-legend__note {
+  color: var(--color-text-muted);
 }
 
 /* M6: map-level transit empty-state notice. Renders top-left as a
@@ -969,17 +953,9 @@ a:visited {
 
 /* M4: small inline transit-station legend row. */
 .ef-legend__stations {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
 }
 
 .ef-legend__station {
@@ -1008,52 +984,6 @@ a:visited {
   border-color: color-mix(in srgb, var(--color-verdict-severe) 60%, var(--color-text-primary));
 }
 
-.ef-legend__fine--transit {
-}
-
-/* Compact legend (v2): one wrapping line instead of a card of
-   paragraphs, so it stops sitting on the heat field. */
-.ef-legend--compact {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing-xs) var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  max-width: 360px;
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.ef-legend__heat {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.ef-legend--compact .ef-legend__ramp {
-  width: 48px;
-  height: 8px;
-}
-
-.ef-legend__end {
-  color: var(--color-text-tertiary);
-}
-
-.ef-legend--compact .ef-legend__stations {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  gap: var(--spacing-sm);
-}
-
-.ef-legend--compact .ef-legend__note {
-  color: var(--color-text-muted);
-  letter-spacing: 0.06em;
-}
-
 /* ────────────── Timeline (M3) ────────────── */
 
 .forecast-detail__timeline {
@@ -1073,22 +1003,9 @@ a:visited {
 .ef-timeline__head {
   display: flex;
   align-items: baseline;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: var(--spacing-md);
   flex-wrap: wrap;
-}
-
-.ef-timeline__title {
-  font-size: var(--typography-caption);
-  color: var(--color-text-secondary);
-}
-
-.ef-timeline__title-time {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-body);
-  font-weight: var(--typography-weight-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
 }
 
 .ef-timeline__chips {
@@ -1744,21 +1661,14 @@ a:visited {
   .ef-station-marker__dot { transition: none; }
 }
 
-/* Phones: keep the legend to its eyebrow + ramp so it doesn't sit on
-   top of the heat field. The full wording lives under the map in the
-   stations panel and the footer disclaimer. */
+/* Phones: ramp + modeled note only, so the legend doesn't sit on the
+   heat field. The station glyphs are explained by the lane chips. */
 @media (max-width: 720px) {
   .ef-legend {
-    max-width: 168px;
-    padding: var(--spacing-xs) var(--spacing-sm);
-  }
-  .ef-legend__fine,
-  .ef-legend__stations,
-  .ef-legend__fine--transit {
-    display: none;
-  }
-  .ef-legend--compact {
     max-width: 200px;
+  }
+  .ef-legend__stations {
+    display: none;
   }
 }
 

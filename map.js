@@ -435,7 +435,7 @@
         // One line: [ramp] Quiet → Severe · In / Out / Several · modeled.
         // The long wording moved into the tooltip; the footer and the
         // timeline carry the "modeled, not measured" line in full.
-        var wrap = el('div', 'ef-legend ef-legend--compact');
+        var wrap = el('div', 'ef-legend');
         wrap.setAttribute('role', 'note');
         wrap.title =
           'Same colour scale every day: crowd modeled from event size, ' +

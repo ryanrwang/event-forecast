@@ -461,3 +461,33 @@ Chip side padding drops from 16 px to 12 px (new semantic spacing step
 `smd`, the 12 px primitive already existed). The timeline chip row
 separates its three groups with a middle dot instead of a hairline:
 Streetcar / GO · All day / Fit · Peak / Now. Operator-requested.
+
+### v2 adopted: absolute chart scale, now line, compact legend and rail
+
+Built as a side-by-side proposal, then adopted whole with one change
+(the peak stays labelled on the canvas; the "Peak at" title above the
+chart is gone, so the peak is said once, where it sits).
+
+- **Absolute chart scale.** The main chart and the brush normalize to
+  the Severe threshold with 15 % headroom (or the day's peak when it
+  climbs higher), with dashed Busy and Severe lines labelled at the
+  right edge. Before, each day stretched to its own peak, so a Quiet
+  Sunday drew like a Severe Saturday. Now the height of the curve
+  means the same thing every day, and the day cards already worked
+  this way.
+- **Now line on today's chart**, dashed, with a small label.
+- **"Ratings follow filters"** replaces "Busyness from shown only" on
+  the verdict switch; the notes say "Ratings still count hidden
+  events." Rating is the word for the Quiet / Moderate / Busy / Severe
+  call in the UI; "verdict" stays a code-side term.
+- **Events rail is one row per event** (phase · name · venue · time ·
+  Tickets) under "On at [time]". The event lane and its popover carry
+  the detail, so the rail's job is the ticket link and the Ticketmaster
+  attribution.
+- **One-line map legend**: ramp with Quiet / Severe ends, the In / Out
+  / Several glyphs, and "Modeled, not measured"; the long wording is
+  the tooltip. Phones drop the glyph row.
+- **Day cards lead with the count** when there is more than one event:
+  "2 events · Coldplay: Music of the Spheres…".
+- **Keyboard on the day strip**: left / right arrows move a day, Home
+  or T jumps to today, End to the last day; focus follows.
