@@ -118,6 +118,7 @@
     },
 
     fontSize: {
+      xxs: '11px',
       xs:  '12px',
       sm:  '14px',
       md:  '16px',
@@ -142,13 +143,16 @@
       relaxed: '1.7'
     },
 
-    // Chosen in M1 per overview §7 (characterful display + clean technical/mono,
-    // no Inter/Roboto/Arial/system defaults). Loaded via Google Fonts <link>
-    // in index.html. See 10-decisions-log.md for rationale.
+    // Operator decision 2026-09-03 (see 10-decisions-log.md): one natural
+    // sans for every role. The italic serif display face and the mono data
+    // face were hard to read. The three roles stay as tokens (display /
+    // mono / body) so the cascade keeps its hierarchy — now by weight and
+    // figure style rather than by family. Loaded via Google Fonts <link>
+    // in index.html.
     fontFamily: {
-      display: '"Instrument Serif", Georgia, serif',
-      mono:    '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace',
-      body:    '"Space Grotesk", "Helvetica Neue", sans-serif'
+      display: '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif',
+      mono:    '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif',
+      body:    '"IBM Plex Sans", "Segoe UI", Helvetica, sans-serif'
     },
 
     radius: {
@@ -264,6 +268,7 @@
     spacing: {
       xs:  primitives.spacing[4],
       sm:  primitives.spacing[8],
+      smd: primitives.spacing[12],   // between sm and md: pill-control side padding
       md:  primitives.spacing[16],
       lg:  primitives.spacing[24],
       xl:  primitives.spacing[32],
@@ -278,6 +283,8 @@
       body:     primitives.fontSize.md,
       caption:  primitives.fontSize.sm,
       micro:    primitives.fontSize.xs,
+      // Badge-only size (line numbers inside lane chips). Never body copy.
+      tiny:     primitives.fontSize.xxs,
       font: {
         display: primitives.fontFamily.display,
         mono:    primitives.fontFamily.mono,

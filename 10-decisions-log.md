@@ -210,3 +210,296 @@ Two operator-requested refinements:
 
 - **"Busyness from shown only" switch** (right side of the filter row, persisted as `eventforecast.verdictMode`). Default stays full-model — the verdict answers "how busy will the city be" and a hidden concert still clogs the TTC. The opt-in mode answers the *other* question ("how busy because of what I care about") by re-bucketing the day from only the visible events. To keep one source of truth for the modeling math, the pipeline now ships `proxy_contribution` per event (impact × time-of-day weight, computed by `scoring.proxy_contribution` — the same weighting `daily_verdict` uses), and the client sums the survivors against the `thresholds` already shipped in forecast.json. No TOD-band constants duplicated in JS; pre-`proxy_contribution` day files fall back to raw impact. The filter-active note switches copy ("Verdicts reflect shown events only.") so the chip's meaning is always declared.
 - **`map_default_view` in city config** (`config/<city>/city.json`, echoed by `api/city.php`). The initial full-bbox fit rendered ~90% of Toronto's whitelisted venues as one downtown clump. The map now opens on a configured center/zoom (Toronto: 43.642, −79.395 @ z13 — downtown core through Exhibition Place) and falls back to the bbox fit for cities without the key. Config-driven per the no-hardcoded-city rule; `maxBounds` still comes from the bbox so panning stays inside the city.
+
+## 2026-09-03 — UX rebuild after the usability audit
+
+The audit found the product polished but not actionable: most days read
+Severe, the transit rail listed dozens of bus stops with route numbers,
+and the answer to "which stations, when" was spread across four panels.
+Eight changes landed together on one branch; each is recorded here.
+
+### Verdict recalibration — T1/T2/T3 = 5 / 30 / 65
+
+The M1 placeholders (5 / 15 / 30) put a single ordinary Blue Jays game
+(impact ≈ 43) at Severe, so four of seven days in a normal week read
+Severe and the word carried no information. New thresholds target:
+
+- **Quiet** (< 5): theatre-only nights.
+- **Moderate** (5–30): one arena game or a mid-size show (Scotiabank
+  Arena ≈ 22, Coca-Cola Coliseum ≈ 8 + theatres).
+- **Busy** (30–65): one stadium game or stadium concert (Rogers Centre
+  baseball ≈ 37–43, BMO Field ≈ 33, Rogers Stadium concert ≈ 63).
+- **Severe** (≥ 65): stacked nights — two stadium-scale events, or a
+  stadium plus an arena the same evening.
+
+`peak_proxy` is still the time-of-day-weighted sum of impacts (not the
+timeline max), so an afternoon game plus an evening concert stack into
+Severe even though they don't overlap; that matches "how busy is the
+day" and is left as is. `bucketVerdict()` in `app.js` carries the same
+defaults for pre-threshold day files.
+
+### Curated venue → station map replaces the transit radius
+
+`config/<city>/venue_stations.json` is now the source of the "stations
+likely packed" list: a station catalogue (subway + GO, with lat/lon and
+lines) and a per-venue list of one to three stations, optionally `via` a
+surface route ("Union via 509 Harbourfront streetcar" for BMO Field).
+Rationale: with ~12 venues a hand list is shorter and more honest than a
+600 m radius, which either missed the real stations (Rogers Centre, BMO
+Field, Rogers Stadium have no subway inside the circle) or dragged in
+forty bus stops. Coordinates typed from memory are marked
+`verified: false` in the file; the seven downtown Line 1 stations were
+copied from the GTFS-derived set.
+
+**GO stations are included** (Union GO, Exhibition GO, Downsview Park
+GO) behind an off-by-default toggle. This deviates from the "Toronto
+(TTC) only" decision in a narrow way: three hand-typed catalogue rows,
+no GO feed is ingested. Operator-requested.
+
+### Station kinds; bus stops dropped; streetcar behind a toggle
+
+`pipeline.gtfs` now reads GTFS `route_type` and writes a `kind`
+(subway / streetcar / bus) per reduced station; `transit.keep_kinds` in
+city.json (default subway + streetcar) drops bus-only stops at
+generation time. Until the weekly GTFS job regenerates the committed
+station file, `pipeline.transit` classifies the old file from line
+names using the city config's `subway_lines` and
+`streetcar_route_pattern`, so the fallback is still config-driven.
+GTFS subway stations are used only when a venue has no curated entry.
+Streetcar stops are capped at the nearest four per event and show only
+their 5xx routes (not the night buses that share the pole). The
+frontend shows subway by default; Streetcar and GO are persisted
+toggles, off by default (operator's choice).
+
+### Manual crowd days — `config/<city>/manual_events.json`
+
+Parades, street festivals, marathons and road closures are the biggest
+"avoid downtown" days and none are ticketed, so the whitelist can never
+see them. The operator-maintained file lists them with a date, window,
+area, crowd estimate, category and station ids; each dated entry is
+fully modeled (impact via `scoring.score_event` on a synthetic venue,
+time curve, avoid windows, heat splat, station list, verdict). This is
+NOT discovery logic: nothing is inferred, the operator types every
+entry. Shipped with two template entries (`date: null`, skipped) rather
+than seeded 2026 dates, because those dates could not be verified at
+build time. Manual events always render regardless of the type chips
+(they are days, not a type) and carry `source: "manual"`.
+
+### Today-first layout, times lead the station cards, smaller venues hidden
+
+The detail panel order is now: date + verdict + "Because …" driver
+line, the stations panel, the timeline, the map, then the events at
+the scrubbed time. A one-paragraph takeaway sat between the header and
+the stations in the first cut; the operator reviewed it and asked for
+the station cards to carry that message instead, with the time as the
+loudest element. Each card now leads with its busy windows in
+title-size mono digits ("10:07–11:22 PM · letting out"), and the cause
+prints once under the card. The day pills gained a "Busiest 10:00 PM"
+line for the same reason. Same order on every
+screen size. The 7-day strip is a row of compact verdict pills (Today /
+Tomorrow / weekday, verdict, top event). Events at venues under 5,000
+seats are hidden from the browsable view by default (a persisted
+"Smaller venues" chip shows them); they still count toward the verdict.
+All of this is client-side over data already in the day file — no new
+pipeline output.
+
+### Absolute heat scale; wording; 12-hour times
+
+The heatmap now normalizes against the Severe threshold (`thresholds.T3`)
+instead of the day's own peak, so a quiet day paints a faint smudge and
+only a stacked night reaches full red; the legend reads Quiet → Severe.
+The visibility floor rose from 1% to 3% of scale so the blob is
+honestly sized. "Arrival" / "Dispersal" became "Heading in" /
+"Letting out", "Impacting at" became "Events at", and every time in the
+UI is 12-hour (timeline axis, readout, windows, cards).
+
+### One sans for everything — IBM Plex Sans (operator veto of the type direction)
+
+The operator found the type hard to read: the italic serif verdicts and
+titles (Instrument Serif) and the wide-tracked uppercase monospace
+labels and times (JetBrains Mono) at 10–12 px on a dark ground. Every
+text role now resolves to IBM Plex Sans, loaded from Google Fonts. The
+three font tokens (`display` / `mono` / `body`) are kept so nothing in
+the cascade changes structurally; hierarchy now comes from weight
+(semibold verdicts, titles, and the times on station cards) and from
+tabular figures, not from switching families. All italics were removed,
+letter-spacing on uppercase labels was capped at 0.06em, and the 10–11 px
+literals became the 12 px micro token. The timeline canvas follows the
+same tokens. This retires the M1 "characterful display + technical
+mono" pairing on readability grounds; overview §7's "no Inter / Roboto /
+Arial / system default" guidance still holds (Plex is none of those).
+
+### Line pills carry the agency's line colours
+
+Line pills ("Line 1", "504", "Lakeshore West") are painted in the
+transit agency's own colours, read from `transit.line_colors` in
+`config/<city>/city.json` and echoed by `api/city.php`. These are brand
+data, not design tokens: a Toronto rider reads yellow as Line 1 on
+sight, and the MTA's or CTA's palette will live in its own city file.
+Text on each pill flips between the token text colours by luminance.
+Lines 1, 2, 4 and 5 use the TTC Brand Standards values (Pantone 123 C,
+347 C, 234 C, Orange 021 as RGB); Line 6 grey, the streetcar red and the
+GO green are typed from memory and flagged unverified in the config.
+
+### 26-hour modeled day — spillover past midnight stays with its day
+
+Each day's time curves, timeline, and avoid windows now cover 12:00 AM
+through 2:00 AM the next morning (104 fifteen-minute buckets instead of
+96). Under the 24-hour day a show letting out at 11:30 PM lost its
+tail at midnight, and the next day's file never picked it up because
+events are bucketed by their own start date. The extra two hours are
+this day's own spillover; the previous night's spillover lives in the
+previous day's file, so nothing is double counted. The frontend reads
+the bucket count from the day file (`buckets`, `span_hours` are also
+shipped) and still renders older 96-bucket files. Operator-requested,
+in service of the "morning to night" timeline axis below.
+
+### Station lanes inside the timeline; overnight hours hidden by default
+
+The separate "stations likely packed" card grid is gone. The timeline
+now carries the stations as lanes under the curve: one row per
+station, a compact chip (name + line badge, no times) anchored at each
+busy window, so the axis above says when. Hover or focus a chip for the
+full details (exact window, In / Out, the event, the "via" route);
+click it to move the scrubber there. Lanes are laid out in percentages
+of the visible range so they never need a re-measure. The Streetcar and
+GO toggles moved into the timeline's chip row. Operator-requested: the
+timeline and the station list were answering the same question in two
+places.
+
+The visible range hides midnight to 9 AM by default (persisted
+"Overnight" chip shows the full 26 hours), so the axis reads
+9 AM → 2 AM. A day with real early activity, above 10 % of its peak
+before 9 AM (a 6 AM marathon), expands on its own down to that hour.
+
+### Range brush, smooth curve, badge-first chips
+
+- **Range brush.** The "Overnight" on/off chip became a proper range
+  control: a miniature of the whole 26-hour day above the chart with
+  two draggable handles (15-minute steps, 2-hour minimum span; drag the
+  window to slide it; arrow keys on a handle). The main chart, the
+  lanes, and the scrubber follow the range, and the axis picks finer
+  ticks (down to 15 minutes) as the range narrows. The range persists;
+  "All day" toggles the full 26 hours, and clearing it returns to the
+  default (9 AM → 2 AM, or earlier on a day with early activity).
+  Operator-requested: "slide between very specific times".
+- **Smooth curve.** The busyness curve is drawn with monotone cubic
+  (Fritsch–Carlson) interpolation through the bucket centres instead of
+  15-minute steps. Monotone so it never dips below zero or invents a
+  bump between two buckets; the underlying numbers are unchanged.
+- **Badge first, number only.** Line badges read "1" instead of
+  "Line 1" (the coloured badge already says it's a line) and sit before
+  the station name: [1] Union, [504] King St West at Bay St.
+
+### Mini graphs in the day cards
+
+Each card in the 7-day strip carries a small canvas of that day's
+busyness curve, so the week can be scanned without opening each day.
+Same monotone smoothing as the main chart, drawn by the timeline module
+(`EFTimeline.sparkline`). Two deliberate differences from the main
+chart:
+
+- **Absolute scale.** Every card is normalized to the Severe threshold
+  (or the day's own peak when higher), so a Quiet day reads as a low
+  line and a Severe day fills the box. The main chart stretches each
+  day to its own peak, which is right for reading one day and wrong
+  for comparing seven.
+- **Shared window.** All cards cover the same hours: 9 AM to 2 AM,
+  pulled earlier to the hour when any day in the outlook has modeled
+  activity at or above the Quiet threshold before 9 AM. Faint stubs on
+  the baseline mark 12 PM, 6 PM and midnight so the cards line up by
+  time; today's card also carries a thin "now" line.
+
+The graph follows the view filters like the peak time and the
+sub-line, and is decorative for assistive tech: the verdict and the
+"Peak" line carry the same information in text. Operator-requested.
+
+### Range mode persists across days; event lane; one chip look
+
+- **The range follows a mode, not a number.** "All day", "Fit" and the
+  default are remembered as the choice itself, so switching days keeps
+  All day at all day and re-fits Fit to the new day's activity; only a
+  hand-brushed range keeps its hours. The chart, brush and lanes glide
+  to the new range (320 ms ease-out; skipped under
+  `prefers-reduced-motion`). Peak / Now light up while the scrubber
+  sits on that bucket, and "Now" stays the choice across days: on a day
+  that isn't today the scrubber sits on the peak and returns to now on
+  today. Operator-requested.
+- **Handle times sit inside the range.** The start time is flush with
+  the start handle and reads rightward, the end time flush with the end
+  handle reading leftward, so nothing hangs past the handles into the
+  drag area. On a narrow range they flip to the outside.
+- **Event lane above the curve.** One chip per event over its modeled
+  crowd window (first In minute to last Out), start time as the badge,
+  name after it; hover or focus for the venue, size, and the In / Out
+  windows; click to scrub to the start. Same chip machinery as the
+  station lanes (percent positions, right-edge anchoring, measured
+  stacking when events overlap).
+- **One chip look.** View filters and timeline controls share one
+  style with three legible states: on (accent border + tint), off
+  (plain outline, secondary text, no dimming), disabled (muted, 50 %).
+  The previous off state dimmed to 75 % on muted text and read as
+  disabled. The "Selected day" eyebrow is gone; the date line says it.
+
+### Shared chip component; compact streetcar names
+
+- **`.chip` is one component.** The view filters and the timeline
+  controls looked alike but the timeline chips had tighter padding.
+  Both now carry the `chip` class and share every visual rule (size,
+  padding, states); the BEM classes are layout and scripting hooks
+  only. Operator-requested.
+- **Compact streetcar names in the lanes.** GTFS stop names such as
+  "King St West at Bay St" are shown as "King W / Bay" (street-type
+  words dropped after the first word, directions abbreviated, the
+  " - X Station" suffix removed); the popover keeps the full name.
+  Streetcar names also cap tighter than subway names, which cuts the
+  stacking on a busy day.
+
+### Tighter chips, dot separators
+
+Chip side padding drops from 16 px to 12 px (new semantic spacing step
+`smd`, the 12 px primitive already existed). The timeline chip row
+separates its three groups with a middle dot instead of a hairline:
+Streetcar / GO · All day / Fit · Peak / Now. Operator-requested.
+
+### v2 adopted: absolute chart scale, now line, compact legend and rail
+
+Built as a side-by-side proposal, then adopted whole with one change
+(the peak stays labelled on the canvas; the "Peak at" title above the
+chart is gone, so the peak is said once, where it sits).
+
+- **Absolute chart scale.** The main chart and the brush normalize to
+  the Severe threshold with 15 % headroom (or the day's peak when it
+  climbs higher), with dashed Busy and Severe lines labelled at the
+  right edge. Before, each day stretched to its own peak, so a Quiet
+  Sunday drew like a Severe Saturday. Now the height of the curve
+  means the same thing every day, and the day cards already worked
+  this way.
+- **Now line on today's chart**, dashed, with a small label.
+- **"Ratings follow filters"** replaces "Busyness from shown only" on
+  the verdict switch; the notes say "Ratings still count hidden
+  events." Rating is the word for the Quiet / Moderate / Busy / Severe
+  call in the UI; "verdict" stays a code-side term.
+- **Events rail is one row per event** (phase · name · venue · time ·
+  Tickets) under "On at [time]". The event lane and its popover carry
+  the detail, so the rail's job is the ticket link and the Ticketmaster
+  attribution.
+- **One-line map legend**: ramp with Quiet / Severe ends, the In / Out
+  / Several glyphs, and "Modeled, not measured"; the long wording is
+  the tooltip. Phones drop the glyph row.
+- **Day cards lead with the count** when there is more than one event:
+  "2 events · Coldplay: Music of the Spheres…".
+- **Keyboard on the day strip**: left / right arrows move a day, Home
+  or T jumps to today, End to the last day; focus follows.
+
+### Finishing touches: bare strip, filters first, flush plot
+
+- The 7-day strip is no longer a card around cards; the day cards are
+  the cards. The phone-width fade at the strip's right edge fades to
+  the page colour.
+- The view filters sit above the strip, since they apply to
+  everything below them (strip, timeline, map, rail).
+- The timeline canvas, brush and lanes have no side margins of their
+  own; the plot runs edge to edge inside the panel's padding, so it
+  lines up with the header, chips and legend. The "Now" label clamps
+  inside the plot.

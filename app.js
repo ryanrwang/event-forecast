@@ -3,8 +3,18 @@
  *
  * Vanilla JS, no framework, no build step. Loads the configured cities,
  * picks one (selector appears only when >1 city is configured), pulls
- * the next 7 days of forecast JSON from the PHP layer, and renders the
- * multi-day forecast strip. Map + timeline come in later milestones.
+ * the next 7 days of forecast JSON from the PHP layer, and renders:
+ *
+ *   1. the 7-day outlook strip (one compact verdict pill per day),
+ *   2. the view filters (event-type chips, "smaller venues" chip,
+ *      verdict-follows-filter switch),
+ *   3. the selected day in today-first order: the "Because …" driver
+ *      line, the busyness timeline with the stations likely packed
+ *      drawn as lanes under the curve, the map, and the events active
+ *      at the scrubbed time.
+ *
+ * Map + timeline modules are owned by map.js / timeline.js; this file
+ * fans state out to them.
  */
 (function () {
   'use strict';
@@ -12,44 +22,75 @@
   var STORAGE_KEY = 'eventforecast.theme';
   var DEFAULT_THEME = 'dark';
   var TYPE_FILTER_KEY = 'eventforecast.typeFilter';
+  var VERDICT_MODE_KEY = 'eventforecast.verdictMode';
+  var SMALL_VENUES_KEY = 'eventforecast.smallVenues';
+  var TRANSIT_KINDS_KEY = 'eventforecast.transitKinds';
+
+  // Venues under this capacity are "smaller venues": hidden from the
+  // browsable view by default (they still count toward the verdict).
+  // Mirrors the whitelist's ~5,000 guideline in 00-overview.md §3.
+  var SMALL_VENUE_CAP = 5000;
 
   // Event-type filter groups. Grouping is TM-segment first (an event's
   // own classification), venue-category fallback for forecast.json
-  // written before `segment` shipped.
+  // written before `segment` shipped. Operator-curated crowd days
+  // ("City event") always show — they are days, not a type.
   var TYPE_GROUPS = [
     { id: 'sports',   label: 'Sports' },
     { id: 'concerts', label: 'Concerts' },
     { id: 'other',    label: 'Theatre & other' }
   ];
 
+  // Station kinds the transit panel + map can show. Subway is always
+  // on; the other two are opt-in toggles (persisted).
+  var TRANSIT_TOGGLES = [
+    { id: 'streetcar', label: 'Streetcar' },
+    { id: 'go',        label: 'GO' }
+  ];
+
+  function loadJson(key, fallback) {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(key) || 'null');
+      return parsed == null ? fallback : parsed;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function saveJson(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+
   function loadTypeFilter() {
     var out = { sports: true, concerts: true, other: true };
-    try {
-      var parsed = JSON.parse(localStorage.getItem(TYPE_FILTER_KEY) || '{}');
-      TYPE_GROUPS.forEach(function (g) {
-        if (parsed && parsed[g.id] === false) out[g.id] = false;
-      });
-    } catch (e) {}
+    var parsed = loadJson(TYPE_FILTER_KEY, {});
+    TYPE_GROUPS.forEach(function (g) {
+      if (parsed && parsed[g.id] === false) out[g.id] = false;
+    });
     return out;
   }
 
-  var VERDICT_MODE_KEY = 'eventforecast.verdictMode';
-
-  function loadVerdictMode() {
-    try {
-      return localStorage.getItem(VERDICT_MODE_KEY) === 'filtered' ? 'filtered' : 'all';
-    } catch (e) {
-      return 'all';
-    }
+  function loadTransitKinds() {
+    var out = { streetcar: false, go: false };
+    var parsed = loadJson(TRANSIT_KINDS_KEY, {});
+    TRANSIT_TOGGLES.forEach(function (t) {
+      if (parsed && parsed[t.id] === true) out[t.id] = true;
+    });
+    return out;
   }
 
   var state = {
     // Persisted event-type chip selection. All-on means "no filtering".
     typeFilter: loadTypeFilter(),
+    // Persisted "smaller venues" chip. Off by default: sub-5k theatres
+    // and halls stay out of the browsable view.
+    smallVenues: loadJson(SMALL_VENUES_KEY, false) === true,
     // 'all': day verdicts reflect every modeled event (default).
-    // 'filtered': verdicts re-bucket from only the events the type
-    // filter shows — "how busy because of the stuff I care about".
-    verdictMode: loadVerdictMode(),
+    // 'filtered': verdicts re-bucket from only the events the filters
+    // show — "how busy because of the stuff I care about".
+    verdictMode: loadJson(VERDICT_MODE_KEY, 'all') === 'filtered' ? 'filtered' : 'all',
+    // Persisted transit toggles (subway is always shown).
+    transitKinds: loadTransitKinds(),
     cities: [],
     currentCityId: null,
     cityConfig: null,
@@ -68,7 +109,6 @@
     freshness: null
   };
 
-  var BUCKETS_PER_DAY = 96;
   var BUCKET_MIN = 15;
 
   // ─────────── Theme ───────────
@@ -113,6 +153,47 @@
     return fmt.replace(',', ' ·');
   }
 
+  // Today's date (YYYY-MM-DD) in the city's timezone.
+  function todayIso(tz) {
+    try {
+      var fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz || undefined, year: 'numeric', month: '2-digit', day: '2-digit'
+      });
+      var parts = fmt.formatToParts(new Date());
+      var bag = {};
+      for (var i = 0; i < parts.length; i++) bag[parts[i].type] = parts[i].value;
+      return bag.year + '-' + bag.month + '-' + bag.day;
+    } catch (_) {
+      return new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  function dayDelta(aIso, bIso) {
+    if (!aIso || !bIso) return 0;
+    var a = new Date(aIso + 'T00:00:00Z');
+    var b = new Date(bIso + 'T00:00:00Z');
+    return Math.round((b.getTime() - a.getTime()) / 86400000);
+  }
+
+  // "Today", "Tomorrow", or the short weekday ("Mon") for the strip.
+  function relativeDayLabel(isoDate, tz) {
+    var delta = dayDelta(todayIso(tz), isoDate);
+    if (delta === 0) return 'Today';
+    if (delta === 1) return 'Tomorrow';
+    var d = new Date(isoDate + 'T12:00:00Z');
+    var opts = { weekday: 'short' };
+    if (tz) opts.timeZone = tz;
+    return new Intl.DateTimeFormat('en-US', opts).format(d);
+  }
+
+  function shortDate(isoDate, tz) {
+    var d = new Date(isoDate + 'T12:00:00Z');
+    var opts = { month: 'short', day: 'numeric' };
+    if (tz) opts.timeZone = tz;
+    return new Intl.DateTimeFormat('en-US', opts).format(d);
+  }
+
+  // 12-hour clock, the one time format used everywhere in the UI.
   function friendlyTime(isoDateTime, tz) {
     if (!isoDateTime) return '';
     var d = new Date(isoDateTime);
@@ -122,8 +203,41 @@
     return new Intl.DateTimeFormat('en-US', opts).format(d);
   }
 
+  // Minutes-since-midnight → "5:40 PM". Minutes past 1440 are the next
+  // morning (a modeled day runs to 2 AM), so 1500 renders as "1:00 AM".
+  function clockFromMinutes(min) {
+    if (typeof min !== 'number' || isNaN(min)) return '';
+    var m = ((Math.round(min) % (24 * 60)) + 24 * 60) % (24 * 60);
+    var hh = Math.floor(m / 60);
+    var mm = m % 60;
+    var suffix = hh >= 12 ? 'PM' : 'AM';
+    var h12 = hh % 12;
+    if (h12 === 0) h12 = 12;
+    return h12 + ':' + (mm < 10 ? '0' : '') + mm + ' ' + suffix;
+  }
+
+  function clockFromBucket(bucket) {
+    return clockFromMinutes(Math.max(0, bucket || 0) * BUCKET_MIN);
+  }
+
+  // "5:40–6:50 PM" when both ends share a meridiem, else "11:30 AM–1:00 PM".
+  function rangeLabel(fromMin, toMin) {
+    var a = clockFromMinutes(fromMin);
+    var b = clockFromMinutes(toMin);
+    if (!a || !b) return a || b;
+    var sa = a.slice(-2), sb = b.slice(-2);
+    if (sa === sb) return a.slice(0, -3) + '–' + b;
+    return a + '–' + b;
+  }
+
   function verdictKey(verdict) {
     return (verdict || '').toLowerCase();
+  }
+
+  function roundPeople(n) {
+    if (typeof n !== 'number' || !(n > 0)) return '';
+    var rounded = n >= 10000 ? Math.round(n / 1000) * 1000 : Math.round(n / 500) * 500;
+    return rounded.toLocaleString('en-US');
   }
 
   // ─────────── Attribution ───────────
@@ -147,15 +261,13 @@
   // M6: render the OSM + CARTO basemap attribution into the footer.
   // The map module also renders this via Leaflet's L.control.attribution;
   // the footer line is a redundant safeguard so the credit is present
-  // even when the map host hasn't been initialized yet (e.g. before a
-  // day is selected, or on a zero-event city).
+  // even when the map host hasn't been initialized yet.
   function renderMapAttribution(mapAttr) {
     if (!mapAttr) return;
     var node = document.getElementById('map-attribution');
     if (!node) return;
     node.innerHTML = '';
-    var lead = document.createTextNode('Map: ');
-    node.appendChild(lead);
+    node.appendChild(document.createTextNode('Map: '));
     if (mapAttr.osm_url) {
       var a1 = el('a', null, 'OpenStreetMap contributors');
       a1.href = mapAttr.osm_url;
@@ -178,9 +290,6 @@
   }
 
   // M6: render the per-city GTFS feed attribution in the footer.
-  // MVP is Toronto-only, so the lookup always resolves to one entry,
-  // but the API ships a city_id-keyed map so the M5 expansion is a
-  // drop-in (one credit line per active city's transit feed).
   function renderGtfsAttribution(cityId) {
     var node = document.getElementById('gtfs-attribution');
     if (!node) return;
@@ -192,10 +301,7 @@
     }
     node.hidden = false;
     node.innerHTML = '';
-    // The licence link is the contractually-required disclosure; the
-    // dataset URL is the courteous "find the source" link.
-    var leadText = 'Transit: ';
-    node.appendChild(document.createTextNode(leadText));
+    node.appendChild(document.createTextNode('Transit: '));
     if (attr.url) {
       var src = el('a', null, attr.agency ? (attr.agency + ' GTFS') : 'GTFS feed');
       src.href = attr.url;
@@ -250,13 +356,10 @@
     slot.appendChild(select);
   }
 
-  // ─────────── Event-type filter ───────────
-
-  function saveTypeFilter() {
-    try { localStorage.setItem(TYPE_FILTER_KEY, JSON.stringify(state.typeFilter)); } catch (e) {}
-  }
+  // ─────────── View filters ───────────
 
   function eventTypeGroup(ev) {
+    if (ev && ev.source === 'manual') return 'city';
     var seg = ((ev && ev.segment) || '').toLowerCase();
     if (seg === 'sports') return 'sports';
     if (seg === 'music')  return 'concerts';
@@ -269,39 +372,55 @@
     return 'other';
   }
 
+  function isSmallVenue(ev) {
+    if (!ev || ev.source === 'manual') return false;
+    return typeof ev.venue_capacity === 'number' && ev.venue_capacity < SMALL_VENUE_CAP;
+  }
+
   function typeFilterActive() {
     var f = state.typeFilter;
     return !!f && TYPE_GROUPS.some(function (g) { return f[g.id] === false; });
   }
 
-  function eventMatchesTypeFilter(ev) {
-    var f = state.typeFilter;
-    return !f || f[eventTypeGroup(ev)] !== false;
+  // Any view filter that can make the browsable view diverge from the
+  // full model: a type chip off, or smaller venues hidden (the default).
+  function viewFilterActive() {
+    return typeFilterActive() || !state.smallVenues;
   }
 
-  // Client-side view of a day's forecast with the type filter applied.
+  function eventVisible(ev) {
+    var group = eventTypeGroup(ev);
+    if (group !== 'city' && state.typeFilter && state.typeFilter[group] === false) return false;
+    if (!state.smallVenues && isSmallVenue(ev)) return false;
+    return true;
+  }
+
+  // Client-side view of a day's forecast with the view filters applied.
   // Recomputes the derived fields map.js + timeline.js read (timeline,
   // peak bucket/value, per-event peak_intensity, avoid windows, transit
   // flags) exactly the way the pipeline builds them, so both modules
   // render the filtered view without changes. The day VERDICT is
-  // deliberately NOT recomputed: a hidden concert still clogs the TTC,
-  // so the chips filter what you browse, never what's modeled.
+  // deliberately NOT recomputed here: a hidden concert still clogs the
+  // TTC, so the filters change what you browse, never what's modeled.
   function filteredForecast(forecast) {
-    if (!forecast || !typeFilterActive()) return forecast;
+    if (!forecast || !viewFilterActive()) return forecast;
 
-    var events = (forecast.events || []).filter(eventMatchesTypeFilter);
+    var events = (forecast.events || []).filter(eventVisible);
+    if (events.length === (forecast.events || []).length) return forecast;
+
     var keepIds = {};
     events.forEach(function (ev) { keepIds[ev.id || ''] = true; });
 
     // Re-sum the daily timeline from surviving events (mirrors
     // pipeline/timecurves.build_daily_timeline).
+    var n = (forecast.timeline || []).length || 96;
     var timeline = [];
     var b;
-    for (b = 0; b < BUCKETS_PER_DAY; b++) timeline.push(0);
+    for (b = 0; b < n; b++) timeline.push(0);
     events.forEach(function (ev) {
       var impact = ev.impact || 0;
       var curve = ev.time_curve || [];
-      for (var i = 0; i < curve.length && i < BUCKETS_PER_DAY; i++) {
+      for (var i = 0; i < curve.length && i < n; i++) {
         if (curve[i]) timeline[i] += impact * curve[i];
       }
     });
@@ -351,8 +470,8 @@
   function bucketVerdict(peak, thresholds) {
     var t = thresholds || {};
     var t1 = typeof t.T1 === 'number' ? t.T1 : 5;
-    var t2 = typeof t.T2 === 'number' ? t.T2 : 15;
-    var t3 = typeof t.T3 === 'number' ? t.T3 : 30;
+    var t2 = typeof t.T2 === 'number' ? t.T2 : 30;
+    var t3 = typeof t.T3 === 'number' ? t.T3 : 65;
     if (peak < t1) return 'Quiet';
     if (peak < t2) return 'Moderate';
     if (peak < t3) return 'Busy';
@@ -360,14 +479,14 @@
   }
 
   // The verdict shown for a day. Default: the server's full-model
-  // verdict — a hidden concert still clogs the TTC. In 'filtered' mode
-  // (opt-in toggle) the day re-buckets from only the visible events'
-  // proxy_contribution (impact × time-of-day weight, shipped per event)
-  // against the same thresholds the pipeline used. Falls back to raw
-  // impact for pre-`proxy_contribution` day files.
+  // verdict. In 'filtered' mode (opt-in switch) the day re-buckets from
+  // only the visible events' proxy_contribution (impact × time-of-day
+  // weight, shipped per event) against the same thresholds the
+  // pipeline used. Falls back to raw impact for pre-`proxy_contribution`
+  // day files.
   function displayVerdict(forecast) {
     if (!forecast) return '—';
-    if (state.verdictMode !== 'filtered' || !typeFilterActive()) {
+    if (state.verdictMode !== 'filtered' || !viewFilterActive()) {
       return forecast.verdict || '—';
     }
     var events = ((filteredForecast(forecast) || {}).events) || [];
@@ -380,137 +499,191 @@
     return bucketVerdict(peak, forecast.thresholds);
   }
 
+  function rerenderAll() {
+    renderTypeFilter();
+    renderForecastStrip();
+    if (state.selectedDate) renderDetailForSelected();
+  }
+
   function renderTypeFilter() {
     var host = document.getElementById('event-filter');
     if (!host) return;
     host.innerHTML = '';
     host.hidden = false;
 
-    host.appendChild(el('span', 'event-filter__label', 'Show'));
-
-    function rerender() {
-      renderTypeFilter();
-      renderForecastStrip();
-      if (state.selectedDate) renderDetailForSelected();
-    }
-
     TYPE_GROUPS.forEach(function (g) {
       var on = state.typeFilter[g.id] !== false;
-      var chip = el('button', 'event-filter__chip', g.label);
+      var chip = el('button', 'chip event-filter__chip', g.label);
       chip.type = 'button';
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
       chip.setAttribute('data-group', g.id);
       chip.addEventListener('click', function () {
         state.typeFilter[g.id] = state.typeFilter[g.id] === false;
-        saveTypeFilter();
-        rerender();
+        saveJson(TYPE_FILTER_KEY, state.typeFilter);
+        rerenderAll();
       });
       host.appendChild(chip);
     });
 
-    // Say what the verdict chips mean whenever the view and the full
-    // model can diverge (any chip off).
-    if (typeFilterActive()) {
-      host.appendChild(el('span', 'event-filter__note',
-        state.verdictMode === 'filtered'
-          ? 'Verdicts reflect shown events only.'
-          : 'Verdicts still reflect all modeled events.'));
+    // "Smaller venues" chip — sub-5k halls and theatres. Off by default
+    // so the browsable view stays about the stadium-scale events.
+    var small = el('button', 'chip event-filter__chip event-filter__chip--small', 'Smaller venues');
+    small.type = 'button';
+    small.setAttribute('aria-pressed', state.smallVenues ? 'true' : 'false');
+    small.setAttribute('data-group', 'small');
+    small.title = 'Venues under ' + SMALL_VENUE_CAP.toLocaleString('en-US') + ' seats';
+    small.addEventListener('click', function () {
+      state.smallVenues = !state.smallVenues;
+      saveJson(SMALL_VENUES_KEY, state.smallVenues);
+      rerenderAll();
+    });
+    host.appendChild(small);
+
+    // Say what the verdicts mean when a type chip hides something big,
+    // or when the switch below re-buckets them. Hidden smaller venues
+    // alone don't earn the note — they barely move the verdict.
+    if (state.verdictMode === 'filtered' && viewFilterActive()) {
+      host.appendChild(el('span', 'event-filter__note', 'Ratings count shown events only.'));
+    } else if (typeFilterActive()) {
+      host.appendChild(el('span', 'event-filter__note', 'Ratings still count hidden events.'));
     }
 
     // Right side: opt-in switch that re-buckets day verdicts from only
-    // the visible events. Rendered even when no chip is off (the
-    // preference persists) — it just has no visible effect until the
-    // filter hides something.
+    // the visible events.
     var toggleWrap = el('label', 'event-filter__toggle-wrap');
     var toggle = el('button', 'event-filter__toggle');
     toggle.type = 'button';
     toggle.id = 'verdict-mode-toggle';
     toggle.setAttribute('role', 'switch');
     toggle.setAttribute('aria-checked', state.verdictMode === 'filtered' ? 'true' : 'false');
-    toggle.setAttribute('aria-label', 'Busyness from shown events only');
+    toggle.setAttribute('aria-label', 'Ratings follow filters');
     toggle.appendChild(el('span', 'event-filter__toggle-knob'));
     toggle.addEventListener('click', function () {
       state.verdictMode = state.verdictMode === 'filtered' ? 'all' : 'filtered';
-      try { localStorage.setItem(VERDICT_MODE_KEY, state.verdictMode); } catch (e) {}
-      rerender();
+      saveJson(VERDICT_MODE_KEY, state.verdictMode);
+      rerenderAll();
     });
-    var toggleLabel = el('span', 'event-filter__toggle-label', 'Busyness from shown only');
-    toggleWrap.appendChild(toggleLabel);
+    toggleWrap.appendChild(el('span', 'event-filter__toggle-label', 'Ratings follow filters'));
     toggleWrap.appendChild(toggle);
     host.appendChild(toggleWrap);
   }
 
-  // ─────────── Forecast strip ───────────
+  // ─────────── Event helpers ───────────
 
-  function renderEmptyEvents(filteredOut) {
-    var wrap = el('div', 'day-card__empty');
-    wrap.textContent = filteredOut
-      ? 'No events match the filter.'
-      : 'No major events scheduled.';
-    return wrap;
+  // Events sorted by impact (the pipeline ships them that way; re-sort
+  // defensively so a hand-edited file still reads right).
+  function sortedEvents(list) {
+    return (list || []).slice().sort(function (a, b) { return (b.impact || 0) - (a.impact || 0); });
   }
 
-  function renderEventLine(ev, tz) {
-    var line = el('div', 'day-card__event');
-
-    var name = el('div', 'day-card__event-name', ev.name);
-    line.appendChild(name);
-
-    var meta = el('div', 'day-card__event-meta');
-    var venue = el('span', 'day-card__event-venue', ev.venue_name);
-    var sep   = el('span', 'day-card__event-sep', '·');
-    var time  = el('span', 'day-card__event-time', friendlyTime(ev.start_local, tz));
-    meta.appendChild(venue);
-    meta.appendChild(sep);
-    meta.appendChild(time);
-    line.appendChild(meta);
-
-    return line;
+  function majorEvents(forecast) {
+    return sortedEvents(forecast && forecast.events).filter(function (ev) { return !isSmallVenue(ev); });
   }
 
-  function renderDayCard(date, forecast, tz, index) {
-    var verdictLabelText = displayVerdict(forecast);
-    var card = el('article', 'day-card');
-    card.setAttribute('data-date', date);
-    card.setAttribute('data-verdict', verdictKey(verdictLabelText));
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-pressed', state.selectedDate === date ? 'true' : 'false');
-    if (state.selectedDate === date) card.setAttribute('data-selected', 'true');
-    card.style.setProperty('--i', String(index));
+  function smallEvents(forecast) {
+    return sortedEvents(forecast && forecast.events).filter(isSmallVenue);
+  }
 
-    var header = el('header', 'day-card__header');
-    var dateNode = el('time', 'day-card__date', friendlyDate(date, tz));
-    dateNode.setAttribute('datetime', date);
-    header.appendChild(dateNode);
-    card.appendChild(header);
-
-    var verdict = el('div', 'day-card__verdict');
-    var verdictLabel = el('span', 'day-card__verdict-label', verdictLabelText);
-    verdict.appendChild(verdictLabel);
-    card.appendChild(verdict);
-
-    var eventsWrap = el('div', 'day-card__events');
-    // Card verdict above stays full-model; only the browsable event list
-    // respects the type filter.
-    var view = filteredForecast(forecast);
-    var events = (view && view.events) || [];
-    if (events.length === 0) {
-      var rawCount = ((forecast && forecast.events) || []).length;
-      eventsWrap.appendChild(renderEmptyEvents(rawCount > 0));
-    } else {
-      events.slice(0, 2).forEach(function (ev) {
-        eventsWrap.appendChild(renderEventLine(ev, tz));
-      });
-      if (events.length > 2) {
-        var more = el('div', 'day-card__more');
-        more.textContent = '+' + (events.length - 2) + ' more';
-        eventsWrap.appendChild(more);
-      }
+  function humanCategory(cat) {
+    switch ((cat || '').toLowerCase()) {
+      case 'major_concert':   return 'Concert';
+      case 'arena_sports':    return 'Sports';
+      case 'performing_arts': return 'Performing arts';
+      case 'comedy':          return 'Comedy';
+      case 'festival':        return 'City event';
+      case 'family_other':    return 'Family / other';
+      default:                return cat || '—';
     }
-    card.appendChild(eventsWrap);
+  }
 
-    return card;
+  // Badge text for a line. The coloured badge already says "line", so a
+  // subway line is just its number ("1"), a streetcar its route ("504").
+  function lineLabel(line, kind) {
+    return String(line == null ? '' : line);
+  }
+
+  // Agency line colour from city config (line_colors: subway line id →
+  // hex, plus "streetcar" / "go" per kind). Brand data, not a design
+  // token — the MTA's or CTA's palette lands in its own city.json.
+  function lineColor(line, kind) {
+    var colors = (state.cityConfig && state.cityConfig.line_colors) || {};
+    var key = kind === 'subway' ? String(line) : kind;
+    var c = colors[key];
+    return (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c)) ? c : null;
+  }
+
+  // Dark or light text on a coloured pill, from the token text colours.
+  function contrastTextFor(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    var lum = (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+    var t = window.TOKENS && window.TOKENS.semantic && window.TOKENS.semantic.color.text;
+    if (lum > 0.55) return (t && t.inverse) || '#020617';
+    return (t && t.primary) || '#F8FAFC';
+  }
+
+  function joinNames(names) {
+    if (names.length <= 1) return names.join('');
+    if (names.length === 2) return names[0] + ' and ' + names[1];
+    return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+  }
+
+  // ─────────── Forecast strip (7-day outlook) ───────────
+
+  function pillSubline(forecast) {
+    var view = filteredForecast(forecast);
+    var events = sortedEvents(view && view.events);
+    var hiddenSmall = (!state.smallVenues) ? smallEvents(forecast).length : 0;
+    if (events.length === 0) {
+      if (hiddenSmall > 0) {
+        return { text: hiddenSmall + ' smaller show' + (hiddenSmall === 1 ? '' : 's') + ' only', muted: true };
+      }
+      var rawCount = ((forecast && forecast.events) || []).length;
+      return { text: rawCount > 0 ? 'Filtered out' : 'Nothing major', muted: true };
+    }
+    // Count first, then the biggest event: "2 events · Blue Jays vs…".
+    var top = events[0];
+    if (events.length === 1) return { text: top.name, muted: false };
+    return { text: events.length + ' events \u00B7 ' + top.name, muted: false };
+  }
+
+  function renderDayPill(date, forecast, tz, index) {
+    var verdictLabelText = displayVerdict(forecast);
+    var pill = el('button', 'day-pill');
+    pill.type = 'button';
+    pill.setAttribute('data-date', date);
+    pill.setAttribute('data-verdict', verdictKey(verdictLabelText));
+    pill.setAttribute('aria-pressed', state.selectedDate === date ? 'true' : 'false');
+    if (state.selectedDate === date) pill.setAttribute('data-selected', 'true');
+    pill.style.setProperty('--i', String(index));
+
+    var when = el('span', 'day-pill__when');
+    when.appendChild(el('span', 'day-pill__day', relativeDayLabel(date, tz)));
+    when.appendChild(el('span', 'day-pill__date', shortDate(date, tz)));
+    pill.appendChild(when);
+
+    pill.appendChild(el('span', 'day-pill__verdict', verdictLabelText));
+
+    // Mini busyness graph, drawn once the strip is in the DOM (see
+    // drawSparklines). Decorative for assistive tech: the verdict and
+    // the peak line below carry the same information in text.
+    var spark = document.createElement('canvas');
+    spark.className = 'day-pill__spark';
+    spark.setAttribute('aria-hidden', 'true');
+    pill.appendChild(spark);
+
+    // The "when" in the headline strip: the peak 15 minutes of the
+    // browsable view, so it moves with the filters like the sub-line.
+    var view = filteredForecast(forecast);
+    if (view && view.events && view.events.length && typeof view.peak_bucket === 'number') {
+      pill.appendChild(el('span', 'day-pill__peak', 'Peak ' + clockFromBucket(view.peak_bucket)));
+    }
+
+    var sub = pillSubline(forecast);
+    var subNode = el('span', 'day-pill__sub' + (sub.muted ? ' day-pill__sub--muted' : ''), sub.text);
+    subNode.title = sub.text;
+    pill.appendChild(subNode);
+
+    return pill;
   }
 
   function renderForecastStrip() {
@@ -519,30 +692,109 @@
     host.innerHTML = '';
 
     var grid = el('div', 'forecast-strip__grid');
+    grid.setAttribute('role', 'group');
     var tz = state.cityConfig && state.cityConfig.timezone;
 
     state.days.forEach(function (date, i) {
-      grid.appendChild(renderDayCard(date, state.forecasts[date], tz, i));
+      grid.appendChild(renderDayPill(date, state.forecasts[date], tz, i));
     });
 
-    // Single delegated listener — picks up data-date off the clicked card
-    // (no text parsing, no separate event channel — uses the M1 contract).
     grid.addEventListener('click', function (evt) {
-      var card = evt.target && evt.target.closest && evt.target.closest('.day-card');
-      if (!card) return;
-      var d = card.getAttribute('data-date');
+      var pill = evt.target && evt.target.closest && evt.target.closest('.day-pill');
+      if (!pill) return;
+      var d = pill.getAttribute('data-date');
       if (d) selectDate(d);
     });
+
+    // Keyboard: ← / → move a day, Home or T jumps to today, End to the
+    // last day. Focus follows the selection so the pills stay a single
+    // control.
     grid.addEventListener('keydown', function (evt) {
-      if (evt.key !== 'Enter' && evt.key !== ' ') return;
-      var card = evt.target && evt.target.closest && evt.target.closest('.day-card');
-      if (!card) return;
+      var idx = state.days.indexOf(state.selectedDate);
+      var next = null;
+      if (evt.key === 'ArrowRight') next = Math.min(state.days.length - 1, idx + 1);
+      else if (evt.key === 'ArrowLeft') next = Math.max(0, idx - 1);
+      else if (evt.key === 'Home' || evt.key === 't' || evt.key === 'T') next = 0;
+      else if (evt.key === 'End') next = state.days.length - 1;
+      if (next === null || next === idx) return;
       evt.preventDefault();
-      var d = card.getAttribute('data-date');
-      if (d) selectDate(d);
+      selectDate(state.days[next]);
+      var target = grid.querySelector('.day-pill[data-date="' + state.days[next] + '"]');
+      if (target) target.focus();
     });
 
     host.appendChild(grid);
+    drawSparklines();
+    observeStripResize(grid);
+  }
+
+  // ─────────── Mini graphs in the day cards ───────────
+
+  var SPARK_DAY_START = 9 * 4;   // 9 AM in 15-minute buckets
+  var _sparkRO = null;
+  var _sparkRaf = 0;
+
+  // One time window for every card so the mini graphs line up: 9 AM to
+  // the end of the modeled day, pulled earlier (to the hour) when any
+  // day in the outlook has modeled activity at or above the Quiet
+  // threshold before that. Mirrors the main chart's default range.
+  function sparkWindow() {
+    var n = 0;
+    var start = SPARK_DAY_START;
+    state.days.forEach(function (date) {
+      var view = filteredForecast(state.forecasts[date]);
+      var tl = (view && view.timeline) || [];
+      n = Math.max(n, tl.length);
+      var th = view && view.thresholds;
+      var t1 = (th && typeof th.T1 === 'number') ? th.T1 : 5;
+      for (var b = 0; b < start; b++) {
+        if (tl[b] >= t1) { start = Math.floor(b / 4) * 4; break; }
+      }
+    });
+    if (!n) n = 96;
+    return { from: Math.min(start, n - 2), to: n };
+  }
+
+  function drawSparklines() {
+    var tl = window.EFTimeline;
+    if (!tl || !tl.sparkline) return;
+    var win = sparkWindow();
+    var tz = state.cityConfig && state.cityConfig.timezone;
+    var pills = document.querySelectorAll('.day-pill');
+    for (var i = 0; i < pills.length; i++) {
+      var canvas = pills[i].querySelector('.day-pill__spark');
+      if (!canvas) continue;
+      var date = pills[i].getAttribute('data-date');
+      var forecast = state.forecasts[date];
+      var now = (tl.nowBucketForDate && tz) ? tl.nowBucketForDate(date, tz) : null;
+      tl.sparkline(canvas, filteredForecast(forecast), {
+        from: win.from,
+        to: win.to,
+        verdict: displayVerdict(forecast),
+        now: now
+      });
+    }
+  }
+
+  function scheduleSparklines() {
+    if (_sparkRaf) return;
+    _sparkRaf = window.requestAnimationFrame(function () {
+      _sparkRaf = 0;
+      drawSparklines();
+    });
+  }
+
+  // Cards change width with the viewport (7-up grid on desktop, a
+  // scroll strip on phones), so redraw when the grid is resized.
+  function observeStripResize(grid) {
+    if (window.ResizeObserver) {
+      if (_sparkRO) _sparkRO.disconnect();
+      _sparkRO = new ResizeObserver(scheduleSparklines);
+      _sparkRO.observe(grid);
+    } else if (!observeStripResize.bound) {
+      observeStripResize.bound = true;
+      window.addEventListener('resize', scheduleSparklines);
+    }
   }
 
   // ─────────── Selected day ───────────
@@ -550,59 +802,58 @@
   function selectDate(date) {
     if (!date || !state.forecasts[date]) return;
     state.selectedDate = date;
-    // Update card aria/data-selected flags without rebuilding the strip.
-    var cards = document.querySelectorAll('.day-card');
-    for (var i = 0; i < cards.length; i++) {
-      var c = cards[i];
-      var match = c.getAttribute('data-date') === date;
-      c.setAttribute('aria-pressed', match ? 'true' : 'false');
-      if (match) c.setAttribute('data-selected', 'true');
-      else c.removeAttribute('data-selected');
+    var pills = document.querySelectorAll('.day-pill');
+    for (var i = 0; i < pills.length; i++) {
+      var p = pills[i];
+      var match = p.getAttribute('data-date') === date;
+      p.setAttribute('aria-pressed', match ? 'true' : 'false');
+      if (match) p.setAttribute('data-selected', 'true');
+      else p.removeAttribute('data-selected');
     }
     renderDetailForSelected();
   }
 
-  // ─────────── Detail / map ───────────
+  // ─────────── Detail scaffold ───────────
 
   function ensureDetailScaffold() {
     // Build the detail panel's stable DOM exactly once. The Leaflet map
     // is bound to #map-canvas; tearing the host down on every day-change
-    // would detach the map. We only update the header text + call
-    // EFMap.setForecast / EFTimeline.setForecast / renderRail when the
-    // selected day changes.
+    // would detach the map. Day changes only update text + call the
+    // module setters.
     var host = document.getElementById('forecast-detail');
     if (!host || host.dataset.scaffolded === 'true') return;
     host.innerHTML = '';
 
     var header = el('div', 'forecast-detail__header');
-    var left = el('div');
-    left.appendChild(el('div', 'forecast-detail__eyebrow', 'Where the crunch lands'));
+    var left = el('div', 'forecast-detail__header-main');
     var title = el('div', 'forecast-detail__title');
     title.id = 'forecast-detail-title';
     left.appendChild(title);
+    var driver = el('div', 'forecast-detail__driver');
+    driver.id = 'forecast-detail-driver';
+    left.appendChild(driver);
     header.appendChild(left);
     host.appendChild(header);
 
-    var mapHost = el('div', 'forecast-detail__map');
-    mapHost.id = 'map-canvas';
-    host.appendChild(mapHost);
-
-    // Timeline host (M3). EFTimeline owns the canvas + scrubber.
     var timelineHost = el('div', 'forecast-detail__timeline');
     timelineHost.id = 'timeline-host';
     host.appendChild(timelineHost);
 
-    // Rail host (M3). Lists events impacting the selected bucket;
-    // M4 will populate the reserved transit slot inside each row.
+    var mapWrap = el('div', 'forecast-detail__map-wrap');
+    var mapHost = el('div', 'forecast-detail__map');
+    mapHost.id = 'map-canvas';
+    mapWrap.appendChild(mapHost);
+    host.appendChild(mapWrap);
+
     var railHost = el('section', 'forecast-detail__rail');
     railHost.id = 'rail-host';
-    railHost.setAttribute('aria-label', 'Events impacting the selected time');
+    railHost.setAttribute('aria-label', 'Events at the selected time');
     host.appendChild(railHost);
 
     host.dataset.scaffolded = 'true';
 
-    // Wire the timeline's scrubber to map + rail. The scrubber is the
-    // single source of truth for state.selectedBucket.
+    // Wire the timeline's scrubber to map + stations + rail. The scrubber
+    // is the single source of truth for state.selectedBucket.
     if (window.EFTimeline) {
       window.EFTimeline.ensureTimeline(timelineHost, function (bucket) {
         state.selectedBucket = bucket;
@@ -619,60 +870,330 @@
     var date = state.selectedDate;
     var forecast = date && state.forecasts[date];
     if (!forecast) return;
-    // Map, timeline, and rail all render the filtered view; the title's
-    // verdict badge stays full-model (forecast.verdict below).
+    // Map, timeline, stations, and rail render the filtered view; the
+    // header verdict and driver line stay full-model.
     var view = filteredForecast(forecast);
-
     var tz = state.cityConfig && state.cityConfig.timezone;
+
+    var verdictText = displayVerdict(forecast);
     var title = document.getElementById('forecast-detail-title');
     if (title) {
       title.textContent = '';
-      title.appendChild(document.createTextNode(friendlyDate(date, tz)));
-      var verdictBadge = el('span', 'forecast-detail__title-verdict', '· ' + displayVerdict(forecast));
-      title.appendChild(verdictBadge);
+      title.setAttribute('data-verdict', verdictKey(verdictText));
+      title.appendChild(document.createTextNode(friendlyDate(date, tz) + ' · '));
+      title.appendChild(el('span', 'forecast-detail__title-verdict', verdictText));
+    }
+    var driver = document.getElementById('forecast-detail-driver');
+    if (driver) driver.textContent = driverText(forecast, tz);
+
+    // The timeline places the scrubber for the new day (its peak, or
+    // "now" when that was the last choice and it's today) and is the
+    // single source of truth for state.selectedBucket.
+    state.selectedBucket = (typeof view.peak_bucket === 'number') ? view.peak_bucket : 0;
+    if (window.EFTimeline) {
+      window.EFTimeline.setForecast(view, state.cityConfig);
+      var tb = window.EFTimeline.getBucket();
+      if (typeof tb === 'number') state.selectedBucket = tb;
+      window.EFTimeline.setEvents(eventLaneRows(view));
+      renderTimelineStations(view);
     }
 
     var mapHost = document.getElementById('map-canvas');
     if (!window.EFMap || !window.L || !mapHost) {
       if (mapHost) mapHost.textContent = 'Map unavailable (Leaflet failed to load).';
-      return;
-    }
-
-    var bbox = state.cityConfig && state.cityConfig.bbox;
-    window.EFMap.ensureMap(mapHost, bbox, {
-      defaultView: state.cityConfig && state.cityConfig.map_default_view
-    });
-    window.EFMap.invalidate();
-
-    // Reset bucket selection to the new day's peak (M3 spec: "scrubber
-    // resets to the new day's peak bucket"). The timeline owns the
-    // visual reset; we just sync app state and the map.
-    var newBucket = (typeof view.peak_bucket === 'number')
-      ? view.peak_bucket : 0;
-    state.selectedBucket = newBucket;
-
-    // M4: hand the candidate transit-station set to the map BEFORE
-    // setForecast so the day's bucket-flag index is built against the
-    // current station collection. setStations is a no-op for the same
-    // station list, but a city switch can shift it.
-    if (window.EFMap.setStations) {
-      window.EFMap.setStations(stationCollectionFromForecast(view));
-    }
-
-    // setForecast renders the heatmap at peak_bucket using peak_value
-    // normalization. The scrubber will override via setBucket().
-    window.EFMap.setForecast(view, state.cityConfig);
-
-    if (window.EFTimeline) {
-      window.EFTimeline.setForecast(view, state.cityConfig);
+    } else {
+      var bbox = state.cityConfig && state.cityConfig.bbox;
+      window.EFMap.ensureMap(mapHost, bbox, {
+        defaultView: state.cityConfig && state.cityConfig.map_default_view
+      });
+      window.EFMap.invalidate();
+      if (window.EFMap.setStations) {
+        window.EFMap.setStations(stationCollectionFromForecast(view));
+      }
+      window.EFMap.setForecast(view, state.cityConfig);
+      if (window.EFMap.setBucket && typeof state.selectedBucket === 'number') {
+        window.EFMap.setBucket(state.selectedBucket);
+      }
     }
     renderRail();
   }
 
-  // Reduce the per-day forecast's transit_flags into a flat, deduped
-  // station list for the map. Each station appears once even when
-  // multiple events flag it; the per-bucket state is computed inside
-  // the map module from avoid_windows + transit_flags.
+  // ─────────── Driver line ───────────
+
+  // "Because Toronto Blue Jays vs. New York Yankees at Rogers Centre
+  // (about 39,000 people)." Full-model, so it explains the verdict.
+  function driverText(forecast, tz) {
+    var major = majorEvents(forecast);
+    var small = smallEvents(forecast);
+    if (major.length === 0) {
+      if (small.length === 0) return 'Nothing major on.';
+      return 'Only smaller shows on: ' + small.length + ' at venues under ' +
+        SMALL_VENUE_CAP.toLocaleString('en-US') + ' seats.';
+    }
+    var top = major[0];
+    var people = roundPeople(top.venue_capacity);
+    var text = 'Because ' + top.name +
+      (top.source === 'manual' ? ' along ' + top.venue_name : ' at ' + top.venue_name);
+    if (people) text += ' (about ' + people + ' people)';
+    if (major.length > 1) text += ', plus ' + (major.length - 1) + ' more';
+    return text + '.';
+  }
+
+  // ─────────── Stations panel ───────────
+
+  function kindShown(kind) {
+    if (kind === 'subway') return true;
+    if (kind === 'go' || kind === 'streetcar') return state.transitKinds[kind] === true;
+    return false;
+  }
+
+  // Invert the per-event transit flags into per-station busy windows,
+  // merged across events, for the current view.
+  function stationRows(view) {
+    var tf = view && view.transit_flags;
+    var evList = (tf && tf.events) || [];
+    var eventsById = {};
+    (view.events || []).forEach(function (ev) { eventsById[ev.id || ''] = ev; });
+    var windowsByEvent = {};
+    (view.avoid_windows || []).forEach(function (w) {
+      (windowsByEvent[w.event_id] = windowsByEvent[w.event_id] || []).push(w);
+    });
+
+    var byId = {};
+    var hiddenKinds = {};
+    evList.forEach(function (te) {
+      var ev = eventsById[te.event_id];
+      if (!ev) return;
+      var wins = windowsByEvent[te.event_id] || [];
+      (te.stations || []).forEach(function (s) {
+        if (!kindShown(s.kind)) { hiddenKinds[s.kind] = true; return; }
+        var rec = byId[s.station_id];
+        if (!rec) {
+          rec = byId[s.station_id] = {
+            id: s.station_id,
+            name: s.station_name,
+            kind: s.kind,
+            lines: (s.lines || []).slice(),
+            lat: s.lat,
+            lon: s.lon,
+            windows: []
+          };
+        }
+        wins.forEach(function (w) {
+          rec.windows.push({
+            from: w.from_minute,
+            to: w.to_minute,
+            phase: w.kind,
+            event: ev.name,
+            via: s.via || ''
+          });
+        });
+      });
+    });
+
+    var rows = [];
+    Object.keys(byId).forEach(function (id) {
+      var rec = byId[id];
+      rec.windows.sort(function (a, b) { return a.from - b.from; });
+      // Merge overlapping windows into busy spans.
+      var spans = [];
+      rec.windows.forEach(function (w) {
+        var last = spans[spans.length - 1];
+        if (last && w.from <= last.to) {
+          last.to = Math.max(last.to, w.to);
+          if (last.phases.indexOf(w.phase) < 0) last.phases.push(w.phase);
+          if (last.causes.indexOf(w.event) < 0) last.causes.push(w.event);
+          if (w.via && !last.via) last.via = w.via;
+        } else {
+          spans.push({ from: w.from, to: w.to, phases: [w.phase], causes: [w.event], via: w.via });
+        }
+      });
+      rec.spans = spans;
+      rec.first = spans.length ? spans[0].from : Infinity;
+      rows.push(rec);
+    });
+    // Subway first, then streetcar, then GO; within a kind, earliest
+    // window first. Kind wins over time so the toggles append groups
+    // below the subway rows instead of shuffling them.
+    var order = { subway: 0, streetcar: 1, go: 2 };
+    function rank(kind) { return Object.prototype.hasOwnProperty.call(order, kind) ? order[kind] : 9; }
+    rows.sort(function (a, b) {
+      return (rank(a.kind) - rank(b.kind)) || (a.first - b.first) || a.name.localeCompare(b.name);
+    });
+    return { rows: rows, hiddenKinds: hiddenKinds };
+  }
+
+  function phaseWord(phases) {
+    var hasIn = phases.indexOf('arrival') >= 0;
+    var hasOut = phases.indexOf('dispersal') >= 0;
+    if (hasIn && hasOut) return 'In + out';
+    if (hasOut) return 'Out';
+    return 'In';
+  }
+
+  function kindLabel(kind) {
+    if (kind === 'go') return 'GO';
+    if (kind === 'streetcar') return 'Streetcar';
+    return 'Subway';
+  }
+
+  // Streetcar stops carry long GTFS names ("King St West at Bay St",
+  // "Dundas St East at Yonge St - TMU Station"). The lane chip shows a
+  // compact cross-street form ("King W / Bay", "Dundas E / Yonge"); the
+  // popover keeps the full name. Subway and GO names pass through.
+  var STREET_TYPES = /^(St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive)\.?$/i;
+  var DIRECTIONS = { west: 'W', east: 'E', north: 'N', south: 'S' };
+  function compactStopName(name, kind) {
+    if (kind !== 'streetcar' || !name) return name;
+    var base = name.replace(/\s+-\s+[^-]*Station\s*$/i, '').replace(/\s+Station\s*$/i, '');
+    var parts = base.split(/\s+at\s+/i).map(function (part) {
+      var words = part.trim().split(/\s+/);
+      var out = [];
+      for (var i = 0; i < words.length; i++) {
+        var w = words[i];
+        var lower = w.toLowerCase();
+        if (i > 0 && STREET_TYPES.test(w)) continue;          // "King St" → "King" (keeps "St Clair")
+        if (i > 0 && DIRECTIONS[lower]) { out.push(DIRECTIONS[lower]); continue; }
+        out.push(w);
+      }
+      return out.join(' ');
+    });
+    return parts.filter(Boolean).join(' / ');
+  }
+
+  // Rows for the timeline's station lanes: a compact chip per busy
+  // window (name + line badge), full details for the hover popover.
+  function stationLaneRows(view) {
+    var result = stationRows(view);
+    var rows = result.rows.map(function (row) {
+      return {
+        id: row.id,
+        name: row.name,
+        shortName: compactStopName(row.name, row.kind),
+        kind: row.kind,
+        kindLabel: kindLabel(row.kind),
+        lines: row.lines.slice(0, 3).map(function (l) {
+          var c = lineColor(l, row.kind);
+          return { label: lineLabel(l, row.kind), color: c, text: c ? contrastTextFor(c) : null };
+        }),
+        spans: row.spans.map(function (sp) {
+          var cause = sp.causes.slice(0, 2).join(', ') +
+            (sp.causes.length > 2 ? ' +' + (sp.causes.length - 2) : '');
+          return {
+            fromBucket: sp.from / BUCKET_MIN,
+            toBucket: sp.to / BUCKET_MIN,
+            phase: sp.phases.length > 1 ? 'both' : sp.phases[0],
+            phaseWord: phaseWord(sp.phases),
+            time: rangeLabel(sp.from, sp.to),
+            cause: cause,
+            via: sp.via || ''
+          };
+        })
+      };
+    });
+    return { rows: rows, hiddenKinds: result.hiddenKinds };
+  }
+
+  // Minutes into the selected day for an ISO local time; an event that
+  // ends after midnight lands past 1440 (the modeled day runs to 2 AM).
+  function minutesIntoDay(iso, selDay) {
+    var m = isoMinutesOfDay(iso);
+    if (m == null || !selDay) return null;
+    return m + dayDelta(selDay, (iso || '').slice(0, 10)) * 24 * 60;
+  }
+
+  // Rows for the timeline's event lane: one chip per event over its
+  // modeled crowd window (first In minute to last Out minute), with the
+  // start time as the badge and the full details for the popover.
+  function eventLaneRows(view) {
+    if (!view) return [];
+    var selDay = view.date || state.selectedDate;
+    var winsByEvent = {};
+    (view.avoid_windows || []).forEach(function (w) {
+      (winsByEvent[w.event_id] = winsByEvent[w.event_id] || []).push(w);
+    });
+    var rows = [];
+    (view.events || []).forEach(function (ev) {
+      var startMin = minutesIntoDay(ev.start_local, selDay);
+      var endMin = minutesIntoDay(ev.end_local, selDay);
+      var wins = winsByEvent[ev.id || ''] || [];
+      var from = Infinity, to = -Infinity;
+      var ins = { from: Infinity, to: -Infinity }, outs = { from: Infinity, to: -Infinity };
+      wins.forEach(function (w) {
+        if (w.from_minute < from) from = w.from_minute;
+        if (w.to_minute > to) to = w.to_minute;
+        var bag = w.kind === 'dispersal' ? outs : ins;
+        if (w.from_minute < bag.from) bag.from = w.from_minute;
+        if (w.to_minute > bag.to) bag.to = w.to_minute;
+      });
+      if (startMin != null && startMin < from) from = startMin;
+      if (endMin != null && endMin > to) to = endMin;
+      if (!isFinite(from) || !isFinite(to) || to <= from) return;
+      rows.push({
+        id: ev.id || '',
+        name: ev.name || '(untitled event)',
+        badge: startMin != null ? clockFromMinutes(startMin) : '',
+        kindLabel: humanCategory(ev.category),
+        fromBucket: from / BUCKET_MIN,
+        toBucket: to / BUCKET_MIN,
+        startBucket: Math.floor((startMin != null ? startMin : from) / BUCKET_MIN),
+        time: (startMin != null && endMin != null) ? rangeLabel(startMin, endMin) : '',
+        venue: ev.venue_name || '',
+        people: roundPeople(ev.venue_capacity),
+        inWindow: isFinite(ins.from) ? rangeLabel(ins.from, ins.to) : '',
+        outWindow: isFinite(outs.from) ? rangeLabel(outs.from, outs.to) : ''
+      });
+    });
+    rows.sort(function (a, b) { return (a.fromBucket - b.fromBucket) || (b.toBucket - a.toBucket); });
+    return rows;
+  }
+
+  function stationsEmptyText(view, hiddenKinds) {
+    var hasEvents = !!(view && view.events && view.events.length);
+    if (!hasEvents) return 'Nothing major on, so no stations are flagged.';
+    var hidden = [];
+    if (hiddenKinds.streetcar) hidden.push('Streetcar');
+    if (hiddenKinds.go) hidden.push('GO');
+    if (hidden.length) {
+      return 'No subway station within walking distance of these events. Turn on ' +
+        joinNames(hidden) + ' to see the surface routes that will fill up instead.';
+    }
+    return 'No subway station within walking distance of these events.';
+  }
+
+  // Hand the day's station rows and the kind toggles to the timeline,
+  // which draws them as lanes under the curve.
+  function renderTimelineStations(view) {
+    if (!window.EFTimeline || !window.EFTimeline.setStations) return;
+    if (!view) {
+      window.EFTimeline.setStations([], {});
+      return;
+    }
+    var r = stationLaneRows(view);
+    var toggles = TRANSIT_TOGGLES.map(function (t) {
+      return {
+        id: t.id,
+        label: t.label,
+        pressed: state.transitKinds[t.id] === true,
+        onToggle: function () {
+          state.transitKinds[t.id] = !state.transitKinds[t.id];
+          saveJson(TRANSIT_KINDS_KEY, state.transitKinds);
+          renderTimelineStations(view);
+          if (window.EFMap && window.EFMap.setStations) {
+            window.EFMap.setStations(stationCollectionFromForecast(view));
+            window.EFMap.setForecast(view, state.cityConfig);
+            if (typeof state.selectedBucket === 'number') window.EFMap.setBucket(state.selectedBucket);
+          }
+        }
+      };
+    });
+    window.EFTimeline.setStations(r.rows, {
+      toggles: toggles,
+      emptyText: stationsEmptyText(view, r.hiddenKinds)
+    });
+  }
+
+  // Flat, deduped station list for the map, respecting the kind toggles.
   function stationCollectionFromForecast(forecast) {
     var tf = forecast && forecast.transit_flags;
     var evList = (tf && tf.events) || [];
@@ -681,13 +1202,20 @@
       var stations = evList[i].stations || [];
       for (var j = 0; j < stations.length; j++) {
         var s = stations[j];
+        if (!kindShown(s.kind)) continue;
         if (!byId[s.station_id]) {
           byId[s.station_id] = {
             station_id: s.station_id,
             station_name: s.station_name,
+            kind: s.kind,
             lat: s.lat,
             lon: s.lon,
-            lines: (s.lines || []).slice()
+            lines: (s.lines || []).map(function (l) { return lineLabel(l, s.kind); }),
+            lineColors: (s.lines || []).map(function (l) { return lineColor(l, s.kind); }),
+            lineText: (s.lines || []).map(function (l) {
+              var c = lineColor(l, s.kind);
+              return c ? contrastTextFor(c) : null;
+            })
           };
         }
       }
@@ -697,16 +1225,7 @@
     return out;
   }
 
-  // ─────────── Detail rail ───────────
-
-  function bucketToTimeLabel(bucket) {
-    var b = Math.max(0, Math.min(BUCKETS_PER_DAY - 1, bucket || 0));
-    var mins = b * BUCKET_MIN;
-    var hh = Math.floor(mins / 60);
-    var mm = mins % 60;
-    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-    return pad(hh) + ':' + pad(mm);
-  }
+  // ─────────── Events rail ───────────
 
   // The rail shows events that have meaningful presence at the selected
   // bucket. "Meaningful" = time_curve[bucket] above a small floor so the
@@ -728,29 +1247,6 @@
     return out;
   }
 
-  // Categorize the event's presence at this bucket into a chip label.
-  // Drives both copy ("Arrival underway" vs "Dispersing") and styling.
-  function bucketPhaseLabel(ev, bucket, tz) {
-    if (!ev) return { label: '', kind: 'during' };
-    var startMin = isoMinutesOfDay(ev.start_local);
-    var endMin   = isoMinutesOfDay(ev.end_local);
-    var bucketMin = (bucket || 0) * BUCKET_MIN + BUCKET_MIN / 2;
-    // Normalize to same-day cross-midnight: if event end_local's date
-    // string differs from start_local, end straddles midnight relative
-    // to the selected day. For phase labels we treat them as monotonic.
-    var startDay = (ev.start_local || '').slice(0, 10);
-    var endDay   = (ev.end_local   || '').slice(0, 10);
-    var selDay   = state.selectedDate;
-    if (startMin == null || endMin == null || !selDay) {
-      return { label: 'During', kind: 'during' };
-    }
-    var startAbs = startMin + dayDelta(selDay, startDay) * 24 * 60;
-    var endAbs   = endMin   + dayDelta(selDay, endDay)   * 24 * 60;
-    if (bucketMin < startAbs) return { label: 'Arrival', kind: 'arrival' };
-    if (bucketMin > endAbs)   return { label: 'Dispersal', kind: 'dispersal' };
-    return { label: 'During event', kind: 'during' };
-  }
-
   function isoMinutesOfDay(s) {
     if (!s || typeof s !== 'string') return null;
     var t = s.indexOf('T');
@@ -761,11 +1257,23 @@
     return hh * 60 + mm;
   }
 
-  function dayDelta(aIso, bIso) {
-    if (!aIso || !bIso) return 0;
-    var a = new Date(aIso + 'T00:00:00Z');
-    var b = new Date(bIso + 'T00:00:00Z');
-    return Math.round((b.getTime() - a.getTime()) / 86400000);
+  // Categorize the event's presence at this bucket into a chip label.
+  function bucketPhaseLabel(ev, bucket) {
+    if (!ev) return { label: '', kind: 'during' };
+    var startMin = isoMinutesOfDay(ev.start_local);
+    var endMin   = isoMinutesOfDay(ev.end_local);
+    var bucketMin = (bucket || 0) * BUCKET_MIN + BUCKET_MIN / 2;
+    var startDay = (ev.start_local || '').slice(0, 10);
+    var endDay   = (ev.end_local   || '').slice(0, 10);
+    var selDay   = state.selectedDate;
+    if (startMin == null || endMin == null || !selDay) {
+      return { label: 'During', kind: 'during' };
+    }
+    var startAbs = startMin + dayDelta(selDay, startDay) * 24 * 60;
+    var endAbs   = endMin   + dayDelta(selDay, endDay)   * 24 * 60;
+    if (bucketMin < startAbs) return { label: 'In', kind: 'arrival' };
+    if (bucketMin > endAbs)   return { label: 'Out', kind: 'dispersal' };
+    return { label: 'During', kind: 'during' };
   }
 
   function renderRail() {
@@ -781,19 +1289,15 @@
     host.innerHTML = '';
 
     var head = el('div', 'rail__head');
-    var eyebrow = el('span', 'rail__eyebrow', 'Impacting at');
-    var timeLabel = el('span', 'rail__time', bucketToTimeLabel(bucket));
-    head.appendChild(eyebrow);
-    head.appendChild(timeLabel);
+    head.appendChild(el('span', 'rail__eyebrow', 'On at'));
+    head.appendChild(el('span', 'rail__time', clockFromBucket(bucket)));
     host.appendChild(head);
 
     if (!forecast) return;
     var entries = eventsForBucket(forecast, bucket);
 
     if (entries.length === 0) {
-      var empty = el('div', 'rail__empty',
-        'No major events drive the modeled crowd at this time.');
-      host.appendChild(empty);
+      host.appendChild(el('div', 'rail__empty', 'No major event is moving a crowd at this time.'));
       return;
     }
 
@@ -810,171 +1314,48 @@
     var item = el('li', 'rail__item');
     item.setAttribute('data-event-id', ev.id || '');
 
-    // Top row: phase chip + event name
-    var topRow = el('div', 'rail__row rail__row--top');
-    var phase = bucketPhaseLabel(ev, bucket, tz);
-    var chip = el('span', 'rail__phase rail__phase--' + phase.kind, phase.label);
+    // One row per event: the event lane and its popover carry the
+    // detail now, so the rail is a compact "what's on" list whose main
+    // job is the ticket link (and the Ticketmaster attribution).
+    var phase = bucketPhaseLabel(ev, bucket);
+    item.appendChild(el('span', 'rail__phase rail__phase--' + phase.kind, phase.label));
+
+    var main = el('span', 'rail__main');
     var name = el('span', 'rail__name', ev.name || '(untitled event)');
-    topRow.appendChild(chip);
-    topRow.appendChild(name);
-    item.appendChild(topRow);
+    name.title = ev.name || '';
+    main.appendChild(name);
+    var meta = el('span', 'rail__meta');
+    meta.appendChild(el('span', 'rail__venue', ev.venue_name || ''));
+    meta.appendChild(el('span', 'rail__sep', '·'));
+    meta.appendChild(el('span', 'rail__times',
+      friendlyTime(ev.start_local, tz) + ' – ' + friendlyTime(ev.end_local, tz)));
+    if (ev.note) {
+      meta.appendChild(el('span', 'rail__sep', '·'));
+      meta.appendChild(el('span', 'rail__note', ev.note));
+    }
+    main.appendChild(meta);
+    item.appendChild(main);
 
-    // Meta row: venue · category · times
-    var meta = el('div', 'rail__meta');
-    var venue = el('span', 'rail__venue', ev.venue_name || '');
-    var sep1 = el('span', 'rail__sep', '·');
-    var cat = el('span', 'rail__category', humanCategory(ev.category));
-    var sep2 = el('span', 'rail__sep', '·');
-    var times = el('span', 'rail__times',
-      friendlyTime(ev.start_local, tz) + ' – ' + friendlyTime(ev.end_local, tz));
-    meta.appendChild(venue);
-    meta.appendChild(sep1);
-    meta.appendChild(cat);
-    meta.appendChild(sep2);
-    meta.appendChild(times);
-    item.appendChild(meta);
-
-    // Reserved transit slot. M3 reserved the box (min-height 36px) so
-    // M4's populate-by-event pass doesn't shift the rail layout. We
-    // build the eyebrow + populate fresh children here; the slot's
-    // identity (data-transit-slot, data-event-id) is preserved so
-    // anything that targets the slot by event id keeps working.
-    var transit = el('div', 'rail__transit');
-    transit.setAttribute('data-transit-slot', 'true');
-    transit.setAttribute('data-event-id', ev.id || '');
-    transit.appendChild(el('span', 'rail__transit-eyebrow', 'Transit'));
-    populateRailTransitSlot(transit, ev, bucket, tz);
-    item.appendChild(transit);
-
+    if (ev.ticketmaster_url) {
+      var link = el('a', 'rail__link', 'Tickets');
+      link.href = ev.ticketmaster_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.title = 'Tickets on Ticketmaster';
+      item.appendChild(link);
+    }
     return item;
-  }
-
-  // M4: populate the rail row's reserved transit slot with the modeled
-  // stations + lines + window time text for this event. Replaces the
-  // .rail__transit-placeholder child while leaving the eyebrow alone.
-  function populateRailTransitSlot(slotEl, ev, bucket, tz) {
-    // Drop any prior dynamic children (the eyebrow is the first child;
-    // everything after is owned by this function).
-    while (slotEl.children.length > 1) {
-      slotEl.removeChild(slotEl.lastChild);
-    }
-
-    var date = state.selectedDate;
-    var forecast = date && filteredForecast(state.forecasts[date]);
-    if (!forecast) return;
-    var tf = forecast.transit_flags;
-    var transitEv = tf && tf.events
-      ? tf.events.find(function (te) { return te.event_id === (ev.id || ''); })
-      : null;
-
-    if (!transitEv || !transitEv.stations || !transitEv.stations.length) {
-      var empty = el('span', 'rail__transit-empty',
-        'No major-transit stations within modeled range.');
-      slotEl.appendChild(empty);
-      return;
-    }
-
-    // 1. Summary row: station count + dedup'd line pills (across all
-    //    nearby stations of this event).
-    var summary = el('div', 'rail__transit-summary');
-    var count = transitEv.stations.length;
-    summary.appendChild(el('span', 'rail__transit-count',
-      count + (count === 1 ? ' station' : ' stations')));
-
-    var linesSet = {};
-    var linesOrdered = [];
-    transitEv.stations.forEach(function (s) {
-      (s.lines || []).forEach(function (line) {
-        if (!linesSet[line]) {
-          linesSet[line] = true;
-          linesOrdered.push(line);
-        }
-      });
-    });
-    if (linesOrdered.length) {
-      summary.appendChild(el('span', 'rail__sep', '·'));
-      var linesWrap = el('span', 'rail__transit-lines');
-      // Cap at 8 to avoid wrapping the row; the popup carries the full
-      // set for any one station.
-      linesOrdered.slice(0, 8).forEach(function (line) {
-        linesWrap.appendChild(el('span', 'rail__transit-line', line));
-      });
-      if (linesOrdered.length > 8) {
-        linesWrap.appendChild(el('span', 'rail__transit-line', '+' + (linesOrdered.length - 8)));
-      }
-      summary.appendChild(linesWrap);
-    }
-    slotEl.appendChild(summary);
-
-    // 2. Window time row: arrival / dispersal windows for THIS event,
-    //    pulled from the same forecast.avoid_windows the timeline reads.
-    //    Highlight whichever window the current bucket is inside so the
-    //    scrubber's effect is visible row-by-row.
-    var windowsForEvent = (forecast.avoid_windows || []).filter(function (w) {
-      return w.event_id === (ev.id || '');
-    });
-    if (windowsForEvent.length) {
-      var winsRow = el('div', 'rail__transit-windows');
-      windowsForEvent.forEach(function (w) {
-        var inWindow = (typeof bucket === 'number') &&
-          bucket >= Math.floor(w.from_bucket) &&
-          bucket <  Math.ceil(w.to_bucket);
-        var span = el('span', 'rail__transit-window rail__transit-window--' + w.kind +
-          (inWindow ? ' rail__transit-window-active' : ''));
-        var label = (w.kind === 'arrival' ? 'Arrival' : 'Dispersal') + ' ' +
-          minuteRangeLabel(w.from_minute, w.to_minute);
-        span.textContent = label;
-        winsRow.appendChild(span);
-      });
-      slotEl.appendChild(winsRow);
-    }
-
-    // 3. Modeled-not-measured fine print, every row, every event.
-    slotEl.appendChild(el('span', 'rail__transit-fine',
-      'Modeled load from proximity + dispersal timing — not measured.'));
-  }
-
-  function minuteRangeLabel(fromMin, toMin) {
-    return minuteToHHMM(fromMin) + '–' + minuteToHHMM(toMin);
-  }
-
-  function minuteToHHMM(min) {
-    if (typeof min !== 'number') return '';
-    // Clip to [0, 1440] for display — windows are pre-intersected with
-    // the displayed day server-side, but a negative or >=1440 sneak-in
-    // would render as gibberish.
-    var m = Math.max(0, Math.min(24 * 60, Math.round(min)));
-    var hh = Math.floor(m / 60);
-    var mm = m % 60;
-    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
-    return pad(hh) + ':' + pad(mm);
-  }
-
-  function humanCategory(cat) {
-    switch ((cat || '').toLowerCase()) {
-      case 'major_concert':   return 'Concert';
-      case 'arena_sports':    return 'Sports';
-      case 'performing_arts': return 'Performing arts';
-      case 'comedy':          return 'Comedy';
-      case 'festival':        return 'Festival';
-      case 'family_other':    return 'Family / other';
-      default:                return cat || '—';
-    }
   }
 
   function renderEmptyState(message) {
     var host = document.getElementById('forecast-strip');
     if (!host) return;
     host.innerHTML = '';
-    var empty = el('div', 'forecast-strip__empty', message);
-    host.appendChild(empty);
+    host.appendChild(el('div', 'forecast-strip__empty', message));
   }
 
   // ─────────── M6: status banner + designed empty / stale states ───────────
 
-  // Compose a friendly absolute timestamp ("yesterday at 4:12 PM") in
-  // the city's timezone. Falls back to the raw ISO string on parser
-  // failure so the operator can still see when the last refresh was.
   function friendlyTimestamp(iso, tz) {
     if (!iso) return 'never';
     var d = new Date(iso);
@@ -988,9 +1369,6 @@
     }
   }
 
-  // Banner copy is intentionally explicit about WHY the data is stale
-  // and WHEN it was last good. "Cache" is the lever the operator can
-  // pull — telling them so prevents an unnecessary support ticket.
   function renderStatusBanner(freshness, cityCfg) {
     var node = document.getElementById('status-banner');
     if (!node) return;
@@ -1031,7 +1409,7 @@
       kind = 'info';
       eyebrow = 'Transit data older than expected';
       body = 'Static GTFS hasn’t refreshed in over ' + (gtfs.max_age_days || 14) +
-        ' days. Map + rail still render the last-known stations and lines.';
+        ' days. Map + stations still use the last-known lines.';
     }
 
     if (!kind) {
@@ -1050,9 +1428,6 @@
     node.appendChild(content);
   }
 
-  // The forecast strip + map both need a "no whitelisted events" empty
-  // state. Routed through one copy line so the two messages stay
-  // synonymous.
   function designedEmptyForecastMessage(cityCfg) {
     var name = (cityCfg && cityCfg.name) || 'this city';
     return 'No major events meet the whitelist for ' + name + ' in the next 7 days. ' +
@@ -1077,14 +1452,9 @@
     });
   }
 
+  // Today first. The API already serves today-onward, so the first day
+  // is today (or the earliest day available when today has no file).
   function pickInitialDate() {
-    // Prefer the first day that actually has events; fall back to the
-    // first day available so the map always renders something.
-    for (var i = 0; i < state.days.length; i++) {
-      var d = state.days[i];
-      var f = state.forecasts[d];
-      if (f && f.events && f.events.length > 0) return d;
-    }
     return state.days[0] || null;
   }
 
@@ -1093,9 +1463,6 @@
     return fetchJson('api/city.php?id=' + encodeURIComponent(cityId)).then(function (resp) {
       state.cityConfig = resp.city;
       state.freshness = resp.freshness || null;
-      // The map attribution and per-city GTFS attribution may also come
-      // through here. Fall back to what /api/cities.php already loaded
-      // if either field is absent (older deploys, missing endpoint).
       if (resp.map_attribution) {
         state.mapAttribution = resp.map_attribution;
         renderMapAttribution(resp.map_attribution);

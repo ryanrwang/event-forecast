@@ -85,7 +85,7 @@ a:visited {
 .app-header__name {
   font-family: var(--typography-font-display);
   font-size: var(--typography-heading);
-  font-weight: var(--typography-weight-regular);
+  font-weight: var(--typography-weight-semibold);
   letter-spacing: 0.005em;
   line-height: 1;
 }
@@ -95,7 +95,7 @@ a:visited {
 .city-selector__label {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
   margin-right: var(--spacing-sm);
@@ -132,7 +132,6 @@ a:visited {
   margin: 0 auto;
 }
 
-.forecast-strip,
 .forecast-detail {
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
@@ -143,10 +142,10 @@ a:visited {
   position: relative;
 }
 
+/* The day cards are the cards; the strip around them is bare. */
 .forecast-strip {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 1.5%, transparent), transparent 30%),
-    var(--color-bg-surface);
+  position: relative;
+  padding: 0;
 }
 
 /* ────────────── M6 Status banner ────────────── */
@@ -228,7 +227,7 @@ a:visited {
 .status-banner__eyebrow {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-primary);
 }
@@ -239,20 +238,43 @@ a:visited {
   line-height: 1.45;
 }
 
-/* ────────────── Forecast strip ────────────── */
+/* ────────────── 7-day outlook strip ────────────── */
 
+/*
+ * One compact verdict pill per day, today first. Seven columns on wide
+ * screens; on narrow screens the row scrolls sideways with snap points
+ * and a right-edge fade so it's obvious more days sit off-screen.
+ */
 .forecast-strip__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
 @media (max-width: 980px) {
   .forecast-strip__grid {
-    grid-template-columns: repeat(7, minmax(160px, 1fr));
+    display: flex;
     overflow-x: auto;
-    padding-bottom: var(--spacing-sm);
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--spacing-xs);
     scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .forecast-strip__grid .day-pill {
+    flex: 0 0 152px;
+    scroll-snap-align: start;
+  }
+
+  .forecast-strip::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: var(--spacing-xs);
+    width: var(--spacing-xl);
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--color-bg-page));
   }
 }
 
@@ -279,25 +301,30 @@ a:visited {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  margin: 0;
 }
 
-.event-filter__label {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.event-filter__chip {
+/* ────────────── Chip (shared component) ──────────────
+ *
+ * ONE component for every pill-shaped control: the view filters
+ * (Sports, Concerts, Smaller venues) and the timeline controls
+ * (Streetcar, GO, All day, Fit, Peak, Now). Both app.js and
+ * timeline.js create these with the `chip` class; the BEM classes
+ * (.event-filter__chip, .ef-timeline__chip) are hooks for layout and
+ * scripting only and carry no visual rules. Three states:
+ *   on        accent border + tint, primary text
+ *   off       plain outline, secondary text: readable, just not lit
+ *   disabled  muted and dimmed, no pointer */
+.chip {
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
+  font-weight: var(--typography-weight-medium);
+  line-height: 1.2;
   color: var(--color-text-secondary);
   background: var(--color-bg-raised);
-  border: 1px solid var(--color-border-base);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-pill);
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-smd);
   cursor: pointer;
   transition: border-color var(--transition-fast),
               color var(--transition-fast),
@@ -305,22 +332,31 @@ a:visited {
               opacity var(--transition-fast);
 }
 
-.event-filter__chip:hover {
-  border-color: var(--color-border-strong);
+.chip:hover {
   color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
 }
 
-.event-filter__chip[aria-pressed="true"] {
+.chip:focus-visible {
+  outline: 2px solid var(--color-interactive-focus);
+  outline-offset: 2px;
+}
+
+.chip[aria-pressed="true"] {
   color: var(--color-text-primary);
-  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 12%, transparent), transparent 80%),
+  border-color: color-mix(in srgb, var(--color-action-primary) 70%, transparent);
+  background: linear-gradient(180deg,
+                color-mix(in srgb, var(--color-action-primary) 20%, transparent),
+                color-mix(in srgb, var(--color-action-primary) 8%, transparent)),
               var(--color-bg-raised);
 }
 
-.event-filter__chip[aria-pressed="false"] {
+.chip:disabled {
   color: var(--color-text-muted);
+  border-color: var(--color-border-subtle);
   background: transparent;
-  opacity: var(--opacity-75);
+  opacity: var(--opacity-50);
+  cursor: not-allowed;
 }
 
 .event-filter__note {
@@ -344,7 +380,7 @@ a:visited {
 .event-filter__toggle-label {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
 }
@@ -387,29 +423,36 @@ a:visited {
   background: var(--color-action-primary);
 }
 
-/* ────────────── Day card ────────────── */
+/* ────────────── Day pill ────────────── */
 
-.day-card {
+.day-pill {
   --verdict-color: var(--color-text-tertiary);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--typography-font-body);
+  color: var(--color-text-primary);
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
   box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast),
               box-shadow var(--transition-base);
   opacity: 0;
   transform: translateY(8px);
-  animation: day-card-in var(--duration-slow) var(--easing-decelerate) forwards;
-  animation-delay: calc(var(--i, 0) * 60ms);
+  animation: day-pill-in var(--duration-slow) var(--easing-decelerate) forwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
 }
 
-.day-card::before {
+.day-pill::before {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
@@ -418,142 +461,116 @@ a:visited {
   opacity: 0.85;
 }
 
-.day-card[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
-.day-card[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
-.day-card[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
-.day-card[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
+.day-pill[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
+.day-pill[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
+.day-pill[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
+.day-pill[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
 
-.day-card:hover {
+.day-pill:hover {
   transform: translateY(-2px);
   border-color: var(--color-border-base);
   box-shadow: var(--shadow-md);
 }
 
-.day-card__header {
+.day-pill__when {
   display: flex;
+  justify-content: flex-start;
   align-items: baseline;
-  justify-content: space-between;
-}
-
-.day-card__date {
+  gap: var(--spacing-xs);
+  width: 100%;
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.10em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
 }
 
-.day-card__verdict {
-  display: flex;
-  align-items: baseline;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-xs);
+.day-pill__day,
+.day-pill__date {
+  white-space: nowrap;
 }
 
-.day-card__verdict-label {
-  font-family: var(--typography-font-display);
-  font-size: var(--typography-display1);
-  line-height: 1;
-  color: var(--verdict-color);
-  letter-spacing: -0.01em;
-  font-style: italic;
-}
-
-.day-card__events {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-xs);
-}
-
-.day-card__event {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-}
-
-.day-card__event-name {
-  font-size: var(--typography-caption);
-  font-weight: var(--typography-weight-semibold);
-  color: var(--color-text-primary);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.day-card__event-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  color: var(--color-text-tertiary);
-  letter-spacing: 0.02em;
-}
-
-.day-card__event-venue {
+.day-pill__day {
   color: var(--color-text-secondary);
 }
 
-.day-card__event-sep {
-  opacity: 0.5;
+.day-pill__verdict {
+  font-family: var(--typography-font-display);
+  font-size: var(--typography-heading);
+  font-weight: var(--typography-weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--verdict-color);
+  margin-top: var(--spacing-xs);
 }
 
-.day-card__empty {
-  font-size: var(--typography-caption);
-  color: var(--color-text-muted);
-  font-style: italic;
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
+/* Mini busyness graph. Height and width come from CSS; the canvas
+   buffer follows the rendered box (timeline.js sparkline). */
+.day-pill__spark {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: var(--spacing-xs);
 }
 
-.day-card__more {
+.day-pill__peak {
   font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.08em;
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  padding-top: var(--spacing-xs);
+  font-size: var(--typography-caption);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+  white-space: nowrap;
 }
 
-@keyframes day-card-in {
+.day-pill__sub {
+  width: 100%;
+  font-size: var(--typography-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-pill__sub--muted {
+  color: var(--color-text-muted);
+}
+
+.day-pill[data-selected="true"] {
+  border-color: var(--verdict-color);
+  box-shadow: 0 0 0 1px var(--verdict-color), var(--shadow-md);
+}
+
+.day-pill[data-selected="true"]::before {
+  height: 5px;
+  opacity: 1;
+}
+
+.day-pill:focus-visible {
+  outline: 2px solid var(--color-interactive-focus);
+  outline-offset: 2px;
+}
+
+@keyframes day-pill-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .day-card {
+  .day-pill {
     animation: none;
     opacity: 1;
     transform: none;
   }
 }
 
-/* ────────────── Day card — selected state ────────────── */
+/* ────────────── Forecast detail — selected day ────────────── */
 
-.day-card[data-selected="true"] {
-  border-color: var(--verdict-color);
-  box-shadow: 0 0 0 1px var(--verdict-color), var(--shadow-md);
-}
-
-.day-card[data-selected="true"]::before {
-  height: 5px;
-  opacity: 1;
-}
-
-.day-card { cursor: pointer; }
-
-.day-card:focus-visible {
-  outline: 2px solid var(--color-interactive-focus);
-  outline-offset: 2px;
-}
-
-/* ────────────── Forecast detail (M2 map host) ────────────── */
-
+/*
+ * Today-first order, top to bottom: header (date + verdict + driver),
+ * stations likely packed (times lead), the busyness timeline, the map,
+ * then the events active at the scrubbed time.
+ */
 .forecast-detail {
   padding: 0;
   overflow: hidden;
@@ -570,27 +587,41 @@ a:visited {
               var(--color-bg-surface);
 }
 
-.forecast-detail__eyebrow {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
+.forecast-detail__header-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
 }
 
 .forecast-detail__title {
+  --verdict-color: var(--color-text-secondary);
   font-family: var(--typography-font-display);
-  font-size: var(--typography-title);
+  font-size: var(--typography-heading);
+  font-weight: var(--typography-weight-semibold);
   line-height: 1;
   color: var(--color-text-primary);
   letter-spacing: -0.005em;
-  font-style: italic;
 }
 
+.forecast-detail__title[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
+.forecast-detail__title[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
+.forecast-detail__title[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
+.forecast-detail__title[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
+
 .forecast-detail__title-verdict {
+  color: var(--verdict-color);
+  margin-left: var(--spacing-sm);
+}
+
+.forecast-detail__driver {
+  font-size: var(--typography-caption);
   color: var(--color-text-secondary);
-  font-style: normal;
-  margin-left: var(--spacing-xs);
+  line-height: 1.4;
+}
+
+.forecast-detail__map-wrap {
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .forecast-detail__map {
@@ -601,7 +632,7 @@ a:visited {
 }
 
 @media (max-width: 720px) {
-  .forecast-detail__map { height: 360px; }
+  .forecast-detail__map { height: 320px; }
 }
 
 /* ────────────── Forecast detail — placeholder before selection ────────────── */
@@ -618,7 +649,7 @@ a:visited {
 .forecast-detail__placeholder-eyebrow {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -631,7 +662,6 @@ a:visited {
 }
 
 .forecast-detail__placeholder-text em {
-  font-style: italic;
   color: var(--color-text-primary);
 }
 
@@ -713,7 +743,7 @@ a:visited {
   background: color-mix(in srgb, var(--color-bg-surface) 78%, transparent) !important;
   color: var(--color-text-tertiary) !important;
   font-family: var(--typography-font-mono);
-  font-size: 10px;
+  font-size: var(--typography-micro);
   letter-spacing: 0.02em;
   padding: 2px var(--spacing-xs) !important;
   border-top-left-radius: var(--radius-sm);
@@ -815,7 +845,7 @@ a:visited {
 .ef-popup__link {
   font-size: var(--typography-micro);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   font-family: var(--typography-font-mono);
   padding-top: var(--spacing-xs);
   border-top: 1px dashed var(--color-border-subtle);
@@ -823,7 +853,7 @@ a:visited {
 
 .ef-popup__attribution {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
+  font-size: var(--typography-micro);
   letter-spacing: 0.04em;
   color: var(--color-text-muted);
   margin-top: 2px;
@@ -831,44 +861,38 @@ a:visited {
 
 /* Legend */
 
+/* One wrapping line: [Quiet ramp Severe] · In / Out / Several ·
+   "Modeled, not measured". The long wording is the tooltip; the
+   footer and the timeline carry the modeled line in full. */
 .ef-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
   background: color-mix(in srgb, var(--color-bg-surface) 88%, transparent);
   backdrop-filter: blur(6px) saturate(140%);
   border: 1px solid var(--color-border-base);
   border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
   box-shadow: var(--shadow-md);
-  max-width: 260px;
-  color: var(--color-text-secondary);
-}
-
-.ef-legend__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-xs);
-}
-
-.ef-legend__eyebrow {
+  max-width: 360px;
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-primary);
+  color: var(--color-text-tertiary);
 }
 
-.ef-legend__note {
-  font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+.ef-legend__heat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .ef-legend__ramp {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  width: 48px;
   height: 8px;
   border-radius: var(--radius-pill);
   overflow: hidden;
@@ -877,22 +901,12 @@ a:visited {
 
 .ef-legend__stop { display: block; height: 100%; }
 
-.ef-legend__scale {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--typography-font-mono);
-  font-size: 10px;
+.ef-legend__end {
   color: var(--color-text-tertiary);
-  margin-top: 2px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
-.ef-legend__fine {
-  margin: var(--spacing-xs) 0 0 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--color-text-tertiary);
+.ef-legend__note {
+  color: var(--color-text-muted);
 }
 
 /* M6: map-level transit empty-state notice. Renders top-left as a
@@ -915,8 +929,8 @@ a:visited {
 
 .ef-transit-empty__eyebrow {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-status-info);
 }
@@ -925,22 +939,13 @@ a:visited {
   font-size: var(--typography-micro);
   color: var(--color-text-secondary);
   line-height: 1.4;
-  font-style: italic;
 }
 
 /* M4: small inline transit-station legend row. */
 .ef-legend__stations {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-  font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
 }
 
 .ef-legend__station {
@@ -969,10 +974,6 @@ a:visited {
   border-color: color-mix(in srgb, var(--color-verdict-severe) 60%, var(--color-text-primary));
 }
 
-.ef-legend__fine--transit {
-  font-style: italic;
-}
-
 /* ────────────── Timeline (M3) ────────────── */
 
 .forecast-detail__timeline {
@@ -983,6 +984,7 @@ a:visited {
 }
 
 .ef-timeline {
+  position: relative;   /* the details popover is placed against this box */
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
@@ -991,63 +993,17 @@ a:visited {
 .ef-timeline__head {
   display: flex;
   align-items: baseline;
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: var(--spacing-md);
   flex-wrap: wrap;
 }
 
-.ef-timeline__eyebrow {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.ef-timeline__readout {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-caption);
-  color: var(--color-text-secondary);
-  letter-spacing: 0.04em;
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--spacing-xs);
-}
-
-.ef-timeline__readout-time {
-  color: var(--color-text-primary);
-  font-weight: var(--typography-weight-medium);
-}
-
-.ef-timeline__readout-sep { opacity: 0.45; }
-.ef-timeline__readout-pct { color: var(--color-text-tertiary); }
-
 .ef-timeline__chips {
   margin-left: auto;
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--spacing-xs);
-}
-
-.ef-timeline__chip {
-  font-family: var(--typography-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  background: var(--color-bg-raised);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-pill);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast),
-              background var(--transition-fast);
-}
-
-.ef-timeline__chip:hover,
-.ef-timeline__chip:focus-visible {
-  border-color: var(--color-border-strong);
-  color: var(--color-text-primary);
-  outline: none;
 }
 
 .ef-timeline__canvas {
@@ -1074,8 +1030,8 @@ a:visited {
   align-items: center;
   gap: var(--spacing-md);
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.10em;
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
   padding-top: var(--spacing-xs);
@@ -1104,8 +1060,390 @@ a:visited {
   margin-left: auto;
   text-transform: none;
   letter-spacing: 0.04em;
-  font-style: italic;
   color: var(--color-text-muted);
+}
+
+/* ────────────── Timeline chips + station lanes ────────────── */
+
+/* Kind toggles (Streetcar / GO) and the Overnight switch share the chip
+   style; aria-pressed carries the on/off look. */
+.ef-timeline__toggles {
+  display: inline-flex;
+  gap: var(--spacing-xs);
+}
+
+.ef-timeline__toggles:empty {
+  display: none;
+}
+
+/* Dot between the chip groups: Streetcar / GO · All day / Fit · Peak / Now.
+   The first dot goes with the toggles when a city has none. */
+.ef-timeline__sep {
+  align-self: center;
+  color: var(--color-text-muted);
+  font-size: var(--typography-caption);
+  line-height: 1;
+  user-select: none;
+}
+
+.ef-timeline__toggles:empty + .ef-timeline__sep {
+  display: none;
+}
+
+/* Line pills. With a configured agency colour (city.json line_colors)
+   the pill is painted inline as a line badge; the class colours below
+   are the fallback for cities without one. */
+.line-pill {
+  display: inline-block;
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  font-weight: var(--typography-weight-semibold);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  padding: 0 var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-base);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.line-pill--subway {
+  color: var(--color-status-info);
+  border-color: color-mix(in srgb, var(--color-status-info) 40%, transparent);
+  background: color-mix(in srgb, var(--color-status-info) 10%, transparent);
+}
+
+.line-pill--go {
+  color: var(--color-status-success);
+  border-color: color-mix(in srgb, var(--color-status-success) 40%, transparent);
+  background: color-mix(in srgb, var(--color-status-success) 10%, transparent);
+}
+
+/* Range brush: a miniature of the whole day above the chart with two
+   handles. Same side margins as the plot so it lines up. */
+.ef-brush {
+  position: relative;
+  height: 48px;
+  margin: var(--spacing-md) 0 var(--spacing-xs);
+  touch-action: none;
+  user-select: none;
+}
+
+.ef-brush__canvas {
+  display: block;
+  width: 100%;
+  height: 28px;
+}
+
+.ef-brush__sel {
+  position: absolute;
+  top: 0;
+  height: 28px;
+  cursor: grab;
+  background: color-mix(in srgb, var(--color-text-accent) 6%, transparent);
+}
+
+.ef-brush--dragging .ef-brush__sel {
+  cursor: grabbing;
+}
+
+.ef-brush__handle {
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 28px;
+  margin-left: -10px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.ef-brush__grip {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 6px;
+  width: 8px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-overlay);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.ef-brush__handle:hover .ef-brush__grip,
+.ef-brush__handle:focus-visible .ef-brush__grip {
+  background: var(--color-bg-modal);
+  border-color: var(--color-text-secondary);
+}
+
+.ef-brush__handle:focus-visible {
+  outline: none;
+}
+
+.ef-brush__handle:focus-visible .ef-brush__grip {
+  box-shadow: 0 0 0 2px var(--color-interactive-focus);
+}
+
+/* Handle times sit INSIDE the range, flush with the grip (left edge
+   of the start handle, right edge of the end handle), so nothing hangs
+   past the handles. On a narrow range they'd meet, so they flip out. */
+.ef-brush__label {
+  position: absolute;
+  top: 30px;
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ef-brush__handle--from .ef-brush__label { left: 6px; }
+.ef-brush__handle--to   .ef-brush__label { right: 6px; }
+
+.ef-brush__handle--tight.ef-brush__handle--from .ef-brush__label { left: auto; right: 14px; }
+.ef-brush__handle--tight.ef-brush__handle--to   .ef-brush__label { right: auto; left: 14px; }
+
+/* Lanes: a chip anchored at each window, over the same axis as the
+   chart. The event lane sits above the curve (one row, stacked when
+   events overlap); station lanes sit under it, one row per station.
+   No side margins, like the canvas plot, so chips line up with the
+   axis. Positions are percentages of the visible range, so a resize
+   never needs a re-measure. */
+.ef-lanes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-xs) 0 0;
+}
+
+.ef-lanes--events {
+  margin-bottom: 0;
+}
+
+.ef-lanes--events[hidden] {
+  display: none;
+}
+
+.ef-lane {
+  position: relative;
+  height: 24px;
+}
+
+.ef-lane__chip {
+  position: absolute;
+  top: 0;
+  height: 24px;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-base);
+  background: var(--color-bg-raised);
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-micro);
+  font-weight: var(--typography-weight-semibold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.ef-lane__chip[data-phase="arrival"] {
+  border-color: color-mix(in srgb, var(--color-status-info) 55%, transparent);
+  background: color-mix(in srgb, var(--color-status-info) 16%, var(--color-bg-raised));
+}
+
+.ef-lane__chip[data-phase="dispersal"] {
+  border-color: color-mix(in srgb, var(--color-status-warning) 55%, transparent);
+  background: color-mix(in srgb, var(--color-status-warning) 16%, var(--color-bg-raised));
+}
+
+.ef-lane__chip[data-phase="both"] {
+  border-color: color-mix(in srgb, var(--color-verdict-severe) 55%, transparent);
+  background: color-mix(in srgb, var(--color-verdict-severe) 16%, var(--color-bg-raised));
+}
+
+/* Event chips take the curve's accent so they read as "the event",
+   not as an In / Out window. */
+.ef-lane__chip[data-phase="event"] {
+  border-color: color-mix(in srgb, var(--color-text-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--color-text-accent) 12%, var(--color-bg-raised));
+}
+
+/* Start-time badge inside an event chip: same footprint as a line
+   badge, neutral colour. */
+.ef-lane__badge {
+  flex: none;
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-tiny);
+  font-weight: var(--typography-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+.ef-lane__chip:hover,
+.ef-lane__chip:focus-visible {
+  border-color: var(--color-border-strong);
+  outline: none;
+  z-index: 2;
+}
+
+.ef-lane__chip[data-active="true"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-text-primary) 35%, transparent);
+  z-index: 1;
+}
+
+.ef-lane__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* Event chips span a whole crowd window, so the name gets more room. */
+.ef-lane--events .ef-lane__name {
+  max-width: 320px;
+}
+
+/* Streetcar stops carry long GTFS names ("King St West at Bay St");
+   the chip shows a compact form (app.js compactStopName) and caps it
+   tighter than a subway name. The popover keeps the full name. */
+.ef-lane[data-kind="streetcar"] .ef-lane__name {
+  max-width: 112px;
+}
+
+/* Badge inside a lane chip: one step smaller than elsewhere. */
+.ef-lane__chip .line-pill {
+  font-size: var(--typography-tiny);
+  line-height: 1.2;
+  padding: 0 var(--spacing-xs);
+}
+
+/* Phones: the axis is short, so chips drop their line badge and keep
+   the name tight (the popover still carries the lines). Overlapping
+   chips are stacked into extra rows by the timeline itself, measured. */
+@media (max-width: 720px) {
+  .ef-lane__chip .line-pill { display: none; }
+  .ef-lane__name,
+  .ef-lane--events .ef-lane__name { max-width: 120px; }
+}
+
+.ef-lanes__scrub {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--color-text-primary) 45%, transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ef-lanes__scrub[hidden] {
+  display: none;
+}
+
+.ef-lanes__empty {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  font-size: var(--typography-caption);
+  line-height: 1.45;
+}
+
+/* Details popover for a chip: the full time, phase, cause. */
+.ef-pop {
+  position: absolute;
+  z-index: 5;
+  min-width: 240px;
+  max-width: 320px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  background: var(--color-bg-overlay);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text-primary);
+}
+
+.ef-pop[hidden] {
+  display: none;
+}
+
+.ef-pop__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.ef-pop__name {
+  font-size: var(--typography-body);
+  font-weight: var(--typography-weight-semibold);
+}
+
+.ef-pop__kind {
+  margin-left: auto;
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.ef-pop__when {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs) var(--spacing-sm);
+}
+
+.ef-pop__time {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-title);
+  font-weight: var(--typography-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.ef-pop__phase {
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-status-info);
+}
+
+.ef-pop__phase[data-phase="dispersal"] { color: var(--color-status-warning); }
+.ef-pop__phase[data-phase="both"]      { color: var(--color-verdict-severe); }
+
+.ef-pop__cause {
+  font-size: var(--typography-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+}
+
+.ef-pop__via {
+  font-size: var(--typography-micro);
+  color: var(--color-text-tertiary);
+}
+
+.ef-pop__fine {
+  font-size: var(--typography-micro);
+  color: var(--color-text-muted);
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border-subtle);
 }
 
 /* ────────────── Detail rail (M3) ────────────── */
@@ -1126,15 +1464,15 @@ a:visited {
 .rail__eyebrow {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
 }
 
 .rail__time {
   font-family: var(--typography-font-display);
-  font-style: italic;
   font-size: var(--typography-title);
+  font-weight: var(--typography-weight-semibold);
   line-height: 1;
   color: var(--color-text-primary);
 }
@@ -1145,38 +1483,40 @@ a:visited {
   border-radius: var(--radius-md);
   color: var(--color-text-tertiary);
   font-size: var(--typography-caption);
-  font-style: italic;
 }
 
+/* v2: one compact row per event — phase · name + venue/time · Tickets.
+   The event lane above the chart carries the detail. */
 .rail__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .rail__item {
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.rail__row--top {
-  display: flex;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--spacing-sm);
 }
 
+.rail__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .rail__phase {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px var(--spacing-xs);
   border-radius: var(--radius-pill);
@@ -1195,10 +1535,9 @@ a:visited {
   font-weight: var(--typography-weight-semibold);
   color: var(--color-text-primary);
   line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rail__meta {
@@ -1213,108 +1552,20 @@ a:visited {
 
 .rail__venue    { color: var(--color-text-secondary); }
 .rail__sep      { opacity: 0.45; }
-.rail__category { text-transform: uppercase; letter-spacing: 0.10em; }
+.rail__category { text-transform: uppercase; letter-spacing: 0.06em; }
 
-/* Reserved transit slot — M4 populates this; M3 reserves the space so
-   M3 → M4 transitions don't reflow the rail items. */
-.rail__transit {
-  margin-top: var(--spacing-xs);
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 36px;
-}
+.rail__people { color: var(--color-text-tertiary); }
 
-.rail__transit-eyebrow {
-  font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.rail__transit-placeholder {
-  font-size: var(--typography-micro);
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-/* M4: populated transit slot. Visual hierarchy in three lines, all
-   monospace + muted to read as "metadata", not chart copy.
-
-   Row 1: lines (pills) + station count summary
-   Row 2: dispersal/arrival window time text
-   Row 3: modeled-not-measured fine print */
-
-.rail__transit-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
+.rail__note {
   color: var(--color-text-secondary);
-  letter-spacing: 0.04em;
 }
 
-.rail__transit-count {
-  color: var(--color-text-primary);
-  font-weight: var(--typography-weight-medium);
-}
-
-.rail__transit-lines {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.rail__transit-line {
-  display: inline-block;
-  padding: 1px var(--spacing-xs);
-  border-radius: var(--radius-pill);
-  border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, transparent);
-  color: var(--color-status-info);
-  background: color-mix(in srgb, var(--color-status-info) 8%, transparent);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  line-height: 1.4;
-}
-
-.rail__transit-windows {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-  margin-top: 2px;
+.rail__link {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.rail__transit-window {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.rail__transit-window--arrival   { color: var(--color-status-info); }
-.rail__transit-window--dispersal { color: var(--color-status-warning); }
-.rail__transit-window-active     { color: var(--color-text-primary); }
-
-.rail__transit-fine {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  font-style: italic;
-  letter-spacing: 0.02em;
-  margin-top: 2px;
-}
-
-.rail__transit-empty {
   font-size: var(--typography-micro);
-  color: var(--color-text-muted);
-  font-style: italic;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 /* ────────────── M4 Transit station markers ────────────── */
@@ -1329,8 +1580,8 @@ a:visited {
 
 .ef-station-marker__dot {
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   /* Rotated square reads as "this is not the same shape as an event
      marker" without going pictogram. */
   transform: rotate(45deg);
@@ -1384,15 +1635,38 @@ a:visited {
               0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
+/* Shape per station kind: subway keeps the rotated square, GO reads as
+   a ring, streetcar stops are smaller squares. */
+.ef-station-marker__dot[data-transit="go"] {
+  border-radius: var(--radius-pill);
+}
+
+.ef-station-marker__dot[data-transit="streetcar"] {
+  width: 12px;
+  height: 12px;
+  margin: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ef-station-marker__dot { transition: none; }
+}
+
+/* Phones: ramp + modeled note only, so the legend doesn't sit on the
+   heat field. The station glyphs are explained by the lane chips. */
+@media (max-width: 720px) {
+  .ef-legend {
+    max-width: 200px;
+  }
+  .ef-legend__stations {
+    display: none;
+  }
 }
 
 /* Popup specifics for stations */
 .ef-popup--station .ef-popup__eyebrow {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
 }
@@ -1405,8 +1679,9 @@ a:visited {
 
 .ef-popup__line {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  font-size: var(--typography-micro);
+  font-weight: var(--typography-weight-semibold);
+  letter-spacing: 0.02em;
   padding: 1px var(--spacing-xs);
   border-radius: var(--radius-pill);
   border: 1px solid color-mix(in srgb, var(--color-status-info) 35%, transparent);
@@ -1416,16 +1691,14 @@ a:visited {
 
 .ef-popup__lines-empty {
   font-family: var(--typography-font-mono);
-  font-size: 10px;
+  font-size: var(--typography-micro);
   color: var(--color-text-muted);
-  font-style: italic;
 }
 
 .ef-popup__fine {
   font-family: var(--typography-font-body);
-  font-size: 11px;
+  font-size: var(--typography-micro);
   color: var(--color-text-tertiary);
-  font-style: italic;
   margin-top: var(--spacing-xs);
   padding-top: var(--spacing-xs);
   border-top: 1px dashed var(--color-border-subtle);

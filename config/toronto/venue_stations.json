@@ -1,0 +1,82 @@
+{
+  "_comment": "Curated venue → station map. This is THE source for the 'stations likely packed' list and the subway/GO markers on the map; the GTFS-derived stations_reduced.json only supplies streetcar stops (bus stops are dropped at generation time). Twelve venues, so a hand list beats a radius: several venues (Rogers Centre, BMO Field, Rogers Stadium) have no subway inside a 600 m circle but still funnel crowds into specific stations. Coordinates marked verified:false were typed from memory and are accurate to roughly a block — fine for a map pin, worth a glance when you next edit this file. 'via' means riders reach that station on the named surface route, so the station fills up second-hand. 'walk_min' is a rough door-to-platform walk.",
+  "stations": [
+    { "id": "union",         "name": "Union",         "kind": "subway", "lines": ["1"],      "lat": 43.645683, "lon": -79.380129, "verified": true },
+    { "id": "st-andrew",     "name": "St Andrew",     "kind": "subway", "lines": ["1"],      "lat": 43.647649, "lon": -79.384788, "verified": true },
+    { "id": "king",          "name": "King",          "kind": "subway", "lines": ["1"],      "lat": 43.649049, "lon": -79.377888, "verified": true },
+    { "id": "queen",         "name": "Queen",         "kind": "subway", "lines": ["1"],      "lat": 43.652749, "lon": -79.379388, "verified": true },
+    { "id": "dundas",        "name": "TMU (Dundas)",  "kind": "subway", "lines": ["1"],      "lat": 43.656549, "lon": -79.380988, "verified": true },
+    { "id": "college",       "name": "College",       "kind": "subway", "lines": ["1"],      "lat": 43.660149, "lon": -79.382688, "verified": true },
+    { "id": "osgoode",       "name": "Osgoode",       "kind": "subway", "lines": ["1"],      "lat": 43.651099, "lon": -79.386688, "verified": true },
+    { "id": "st-patrick",    "name": "St Patrick",    "kind": "subway", "lines": ["1"],      "lat": 43.6548,   "lon": -79.3884,   "verified": false },
+    { "id": "queens-park",   "name": "Queen's Park",  "kind": "subway", "lines": ["1"],      "lat": 43.6598,   "lon": -79.3906,   "verified": false },
+    { "id": "wellesley",     "name": "Wellesley",     "kind": "subway", "lines": ["1"],      "lat": 43.6650,   "lon": -79.3835,   "verified": false },
+    { "id": "bloor-yonge",   "name": "Bloor-Yonge",   "kind": "subway", "lines": ["1", "2"], "lat": 43.6710,   "lon": -79.3860,   "verified": false },
+    { "id": "st-george",     "name": "St George",     "kind": "subway", "lines": ["1", "2"], "lat": 43.6682,   "lon": -79.3999,   "verified": false },
+    { "id": "spadina",       "name": "Spadina",       "kind": "subway", "lines": ["1", "2"], "lat": 43.6672,   "lon": -79.4037,   "verified": false },
+    { "id": "bathurst",      "name": "Bathurst",      "kind": "subway", "lines": ["2"],      "lat": 43.6660,   "lon": -79.4113,   "verified": false },
+    { "id": "dufferin",      "name": "Dufferin",      "kind": "subway", "lines": ["2"],      "lat": 43.6603,   "lon": -79.4356,   "verified": false },
+    { "id": "sheppard-west", "name": "Sheppard West", "kind": "subway", "lines": ["1"],      "lat": 43.7496,   "lon": -79.4620,   "verified": false },
+    { "id": "downsview-park","name": "Downsview Park","kind": "subway", "lines": ["1"],      "lat": 43.7534,   "lon": -79.4784,   "verified": false },
+    { "id": "coxwell",       "name": "Coxwell",       "kind": "subway", "lines": ["2"],      "lat": 43.6836,   "lon": -79.3229,   "verified": false },
+    { "id": "woodbine",      "name": "Woodbine",      "kind": "subway", "lines": ["2"],      "lat": 43.6864,   "lon": -79.3128,   "verified": false },
+    { "id": "union-go",         "name": "Union GO",         "kind": "go", "lines": ["All GO lines", "UP Express"], "lat": 43.6453, "lon": -79.3806, "verified": false },
+    { "id": "exhibition-go",    "name": "Exhibition GO",    "kind": "go", "lines": ["Lakeshore West"],            "lat": 43.6362, "lon": -79.4189, "verified": false },
+    { "id": "downsview-park-go","name": "Downsview Park GO","kind": "go", "lines": ["Barrie"],                    "lat": 43.7534, "lon": -79.4784, "verified": false }
+  ],
+  "venues": {
+    "scotiabank-arena": [
+      { "station": "union",     "walk_min": 3 },
+      { "station": "st-andrew", "walk_min": 8 },
+      { "station": "king",      "walk_min": 8 },
+      { "station": "union-go",  "walk_min": 3 }
+    ],
+    "rogers-centre": [
+      { "station": "union",     "walk_min": 10 },
+      { "station": "st-andrew", "walk_min": 9 },
+      { "station": "union-go",  "walk_min": 10 }
+    ],
+    "rogers-stadium": [
+      { "station": "downsview-park",    "walk_min": 12 },
+      { "station": "sheppard-west",     "walk_min": 20 },
+      { "station": "downsview-park-go", "walk_min": 12 }
+    ],
+    "bmo-field": [
+      { "station": "exhibition-go", "walk_min": 5 },
+      { "station": "union",    "via": "509 Harbourfront streetcar" },
+      { "station": "bathurst", "via": "511 Bathurst streetcar" }
+    ],
+    "budweiser-stage": [
+      { "station": "exhibition-go", "walk_min": 10 },
+      { "station": "union",    "via": "509 Harbourfront streetcar" },
+      { "station": "bathurst", "via": "511 Bathurst streetcar" }
+    ],
+    "coca-cola-coliseum": [
+      { "station": "exhibition-go", "walk_min": 4 },
+      { "station": "union",    "via": "509 Harbourfront streetcar" },
+      { "station": "bathurst", "via": "511 Bathurst streetcar" }
+    ],
+    "meridian-hall": [
+      { "station": "union",    "walk_min": 5 },
+      { "station": "king",     "walk_min": 5 },
+      { "station": "union-go", "walk_min": 5 }
+    ],
+    "massey-hall": [
+      { "station": "queen",  "walk_min": 3 },
+      { "station": "dundas", "walk_min": 4 }
+    ],
+    "roy-thomson-hall": [
+      { "station": "st-andrew", "walk_min": 2 },
+      { "station": "osgoode",   "walk_min": 5 }
+    ],
+    "ed-mirvish-theatre": [
+      { "station": "dundas", "walk_min": 2 },
+      { "station": "queen",  "walk_min": 5 }
+    ],
+    "princess-of-wales-theatre": [
+      { "station": "st-andrew", "walk_min": 4 },
+      { "station": "osgoode",   "walk_min": 6 }
+    ],
+    "history": []
+  }
+}

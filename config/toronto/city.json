@@ -4,10 +4,44 @@
   "country_code": "CA",
   "state_code": "ON",
   "timezone": "America/Toronto",
-  "bbox": [-79.6393, 43.5810, -79.1152, 43.8555],
-  "map_default_view": { "lat": 43.6420, "lon": -79.3950, "zoom": 13 },
+  "bbox": [
+    -79.6393,
+    43.581,
+    -79.1152,
+    43.8555
+  ],
+  "map_default_view": {
+    "lat": 43.642,
+    "lon": -79.395,
+    "zoom": 13
+  },
   "ticketmaster": {
     "city_query": "Toronto"
+  },
+  "transit": {
+    "subway_lines": [
+      "1",
+      "2",
+      "4",
+      "5",
+      "6"
+    ],
+    "streetcar_route_pattern": "^5\\d\\d$",
+    "keep_kinds": [
+      "subway",
+      "streetcar"
+    ],
+    "streetcar_radius_m": 600,
+    "_line_colors_note": "Brand colours per line, applied to the line pills. Lines 1, 2, 4, 5 are the TTC Brand Standards values (Pantone 123 C, 347 C, 234 C, Orange 021 converted to RGB). Line 6 grey, the streetcar red (Pantone 485) and the GO green were typed from memory and are unverified. Keys: subway line ids as strings, plus 'streetcar' and 'go' for those kinds.",
+    "line_colors": {
+      "1": "#F8C300",
+      "2": "#00923F",
+      "4": "#A21A68",
+      "5": "#EB8738",
+      "6": "#8E8E8E",
+      "streetcar": "#DA291C",
+      "go": "#007A33"
+    }
   },
   "gtfs_static_source": "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/7795b45e-e65a-4465-81fc-c36b9dfff169/resource/cfb6b2b8-6191-41e3-bda1-b175c51148cb/download/TTC%20Routes%20and%20Schedules%20Data.zip"
 }

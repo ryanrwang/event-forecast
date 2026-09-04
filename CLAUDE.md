@@ -59,15 +59,18 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `00-overview.md` | Single source of truth for product, stack, milestones. Read first. |
 | `10-decisions-log.md` | Chronological log of consequential decisions with rationale. |
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
-| `styles.css` | Global styles, references CSS custom properties only. |
+| `styles.css` | Global styles, references CSS custom properties only. `.chip` is the one pill-control component (filters + timeline controls). |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
-| `app.js` | Entry point. Loads cities, renders strip, drives day selection, delegates map to `map.js`. Event-type filter chips (Sports / Concerts / Theatre & other): client-side view filter, verdicts stay full-model, persisted in localStorage. |
-| `map.js` | Leaflet map + custom canvas heat overlay + markers + legend (M2). |
-| `timeline.js` | Custom canvas day timeline + scrubber + per-event avoid bands (M3). |
+| `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip (each pill carries a mini busyness graph on a shared time window and absolute scale), drives day selection, and renders the selected day today-first: "Because …" driver line, then the timeline (an event lane above the curve, the stations likely packed as lanes below it; subway by default, Streetcar / GO toggles), map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
+| `map.js` | Leaflet map + custom canvas heat overlay (absolute scale: normalized to the Severe threshold) + markers + kind-aware station markers + one-line legend (M2). |
+| `timeline.js` | Custom canvas day timeline (smooth monotone curve on an ABSOLUTE scale: Severe threshold + headroom, dashed Busy / Severe lines, a Now line on today) + `sparkline()` for the day-pill mini graphs + scrubber + per-event In / Out bands (M3), a dual-handle range brush above the chart whose MODE persists across days (default 9 AM → 2 AM, "All day", "Fit" re-fitted per day, or a brushed range) with a short tween between ranges, an event lane above the curve (start-time badge + name, hover for details), and station lanes under the curve (badge + name chip per busy window, hover for details, click to scrub). Bucket count comes from the day file. |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |
-| `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants. |
-| `pipeline/timecurves.py` | Per-event 96-bucket time curve + daily timeline + peak-bucket + sigma. M2-locked. |
+| `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants; verdict thresholds calibrated 2026-09-03 (5 / 30 / 65). |
+| `pipeline/timecurves.py` | Per-event time curve over a 26-hour modeled day (104 buckets, 12 AM → 2 AM next morning) + daily timeline + peak-bucket + sigma. M2-locked math. |
 | `pipeline/whitelist.py` | Apply venue whitelist to Ticketmaster events (TM id, name, alias). |
+| `pipeline/transit.py` | Per-day `transit_flags`: curated subway/GO stations per venue from `venue_stations.json`, plus the nearest streetcar stops from the GTFS set. Every station carries a `kind`; bus stops never ship. |
+| `pipeline/gtfs.py` | Static GTFS reduce → `stations_reduced.json`. Classifies each station's `kind` from `route_type` and drops kinds not in `city.json` `transit.keep_kinds`. |
+| `pipeline/manual_events.py` | Operator-curated crowd days (parades, marathons, festivals) from `manual_events.json`, modeled like any other event. Not discovery logic. |
 | `pipeline/eventfilter.py` | Exclusion filter for non-crowd listings at whitelisted venues (facility tours, parking, packages). Rules in `config/event_filters.json`. |
 | `pipeline/ticketmaster.py` | Discovery API client + on-disk cache. M6: jittered backoff + per-city per-day budget reservation; raises `BudgetExhausted` when the day's TM quota is hit. |
 | `pipeline/status.py` | M6: writes `data/status.json` (TM freshness, GTFS freshness, zero-event sanity flag per city). Single source of truth for "is the data fresh?". |
@@ -80,8 +83,10 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `DEPLOY.md` | M6: post-deploy verification runbook. |
 | `config/cities.json` | List of configured city ids. MVP: `["toronto"]`. |
 | `config/event_filters.json` | Global (all-city) exclusion rules for non-crowd TM listings: classification matches + name patterns. Operator-tunable. |
-| `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query. |
+| `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query, `transit` (subway line ids, streetcar route pattern, kinds to keep). |
 | `config/<city>/venues.json` | Major-venue whitelist. Single source of truth for venue lat/lon + capacity. |
+| `config/<city>/venue_stations.json` | Curated station catalogue (subway + GO) and the one-to-three stations each venue funnels into, optionally `via` a surface route. Source of the "stations likely packed" list. |
+| `config/<city>/manual_events.json` | Hand-maintained non-ticketed crowd days. Entries with `date: null` are templates and are skipped. |
 | `config/<city>/stations_meta.json` | When the reduced station set was last regenerated. Written by `pipeline.gtfs`; `pipeline.run` copies it into `status.json` so GTFS freshness survives clean CI checkouts. |
 | `.github/workflows/deploy.yml` | SFTP deploy to Bluehost on push to `main`. |
 | `.github/workflows/refresh.yml` | Scheduled data refresh (GitHub Actions, 4×/day): runs `pipeline.run`, FTP-pushes `data/` to Bluehost. Needs the `TICKETMASTER_API_KEY` repo secret. |

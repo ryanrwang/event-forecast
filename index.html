@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
   <link rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -32,24 +32,32 @@
          (via the hidden attribute) by default. -->
     <div class="status-banner" id="status-banner" role="status" aria-live="polite" hidden></div>
 
-    <!-- Event-type filter chips (Sports / Concerts / Theatre & other).
-         Populated by app.js once forecasts load; selection persists in
-         localStorage. A hidden event still counts toward the day verdict
-         — the chips filter the view, not the model. -->
-    <div class="event-filter" id="event-filter" role="group" aria-label="Filter events by type" hidden></div>
+    <!-- View filters: event-type chips, a "smaller venues" chip (off by
+         default), and the verdict-follows-filter switch. They apply to
+         everything below (strip, timeline, map, rail), so they sit
+         first. Populated by app.js once forecasts load; selection
+         persists in localStorage. A hidden event still counts toward
+         the day verdict unless the switch is on. -->
+    <div class="event-filter" id="event-filter" role="group" aria-label="Filter events" hidden></div>
 
-    <section class="forecast-strip" id="forecast-strip" aria-label="Multi-day forecast">
+    <!-- 7-day outlook: one compact verdict pill per day. Today first.
+         Selecting a pill drives the detail panel below. -->
+    <section class="forecast-strip" id="forecast-strip" aria-label="7-day outlook">
       <div class="placeholder" role="status">
         <span class="placeholder__dot" aria-hidden="true"></span>
         Loading forecast&hellip;
       </div>
     </section>
+
+    <!-- Selected day, today-first order: plain-English takeaway,
+         stations likely packed, when it peaks, the map, then the
+         events at the scrubbed time. Scaffolded once by app.js. -->
     <section class="forecast-detail" id="forecast-detail" aria-label="Selected day detail">
       <div class="forecast-detail__placeholder">
         <span class="forecast-detail__placeholder-eyebrow">Select a day</span>
         <p class="forecast-detail__placeholder-text">
-          Tap a day card above to see <em>where</em> the crunch lands and
-          <em>when</em> it spikes.
+          Tap a day above to see <em>which stations</em> fill up,
+          <em>when</em> it peaks, and <em>where</em> it lands.
         </p>
       </div>
     </section>

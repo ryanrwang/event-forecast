@@ -30,6 +30,9 @@ $city_payload = [
     'country_code'     => $cfg['country_code']     ?? null,
     'bbox'             => $cfg['bbox']             ?? null,
     'map_default_view' => $cfg['map_default_view'] ?? null,
+    // Agency line colours (brand data, not design tokens) for the line
+    // pills. Cast to object so an empty map serialises as {} not [].
+    'line_colors'      => (object) ($cfg['transit']['line_colors'] ?? []),
 ];
 
 send_json([

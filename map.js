@@ -208,9 +208,9 @@
             _drawIntensity: typeof e.intensity === 'number' ? e.intensity : e.peak_intensity
           };
         });
-        // Day's absolute peak (timeline max). Normalizing against this
-        // instead of per-redraw max lets the heat visibly dim and brighten
-        // as the operator scrubs. Falls back to grid max only if missing.
+        // Absolute scale (the Severe threshold, see heatScaleFor). The
+        // heat dims and brightens as the scrubber moves AND stays
+        // comparable across days. Falls back to grid max only if missing.
         this._normMax = (typeof peakValue === 'number' && peakValue > 0)
           ? peakValue : null;
         this._redraw();
@@ -298,12 +298,12 @@
         var img = ctx.createImageData(gw, gh);
         for (var j = 0; j < grid.length; j++) {
           var v = grid[j] / maxV;
-          if (v < 0.01) continue;  // skip the long tail
+          if (v < 0.03) continue;  // skip the long tail — keeps the blob honest-sized
           var t = clamp(v, 0, 1);
           var rgb = colorAt(t, ramp);
           // Alpha ramps with intensity so the basemap stays readable
           // under the cool/low end of the field.
-          var alpha = Math.round(clamp(40 + t * 170, 40, 210));
+          var alpha = Math.round(clamp(30 + t * 180, 30, 210));
           var idx = j * 4;
           img.data[idx]     = rgb[0];
           img.data[idx + 1] = rgb[1];
@@ -432,48 +432,38 @@
     var Ctl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function () {
+        // One line: [ramp] Quiet → Severe · In / Out / Several · modeled.
+        // The long wording moved into the tooltip; the footer and the
+        // timeline carry the "modeled, not measured" line in full.
         var wrap = el('div', 'ef-legend');
         wrap.setAttribute('role', 'note');
+        wrap.title =
+          'Same colour scale every day: crowd modeled from event size, ' +
+          'start time, and distance. Stations flagged from venue proximity ' +
+          'and event timing. Not live crowd or transit data.';
 
-        var head = el('div', 'ef-legend__head');
-        head.appendChild(el('span', 'ef-legend__eyebrow', 'Modeled estimate'));
-        head.appendChild(el('span', 'ef-legend__note', 'Not measured.'));
-        wrap.appendChild(head);
-
-        var ramp = el('div', 'ef-legend__ramp');
+        var heat = el('span', 'ef-legend__heat');
+        heat.appendChild(el('span', 'ef-legend__end', 'Quiet'));
+        var ramp = el('span', 'ef-legend__ramp');
         ramp.setAttribute('aria-hidden', 'true');
         for (var i = 0; i < 5; i++) {
           var stop = el('span', 'ef-legend__stop');
           stop.style.background = tokenColor('color.heatmap.s' + i, '#22C55E');
           ramp.appendChild(stop);
         }
-        wrap.appendChild(ramp);
+        heat.appendChild(ramp);
+        heat.appendChild(el('span', 'ef-legend__end', 'Severe'));
+        wrap.appendChild(heat);
 
-        var scale = el('div', 'ef-legend__scale');
-        scale.appendChild(el('span', null, 'Low'));
-        scale.appendChild(el('span', null, 'Peak'));
-        wrap.appendChild(scale);
-
-        var fine = el('p', 'ef-legend__fine');
-        fine.textContent =
-          'Crowd intensity computed from event metadata (venue, capacity, ' +
-          'start time, category) and proximity. Not live crowd data.';
-        wrap.appendChild(fine);
-
-        // M4: transit-station glyph row. Reads as a small inline legend
-        // for the rotated-square markers — arrival (info hue),
-        // dispersal (warning hue), multi-event (severe accent).
-        var stationsRow = el('div', 'ef-legend__stations');
-        stationsRow.appendChild(_legendStationGlyph('arrival',   'Arrival'));
-        stationsRow.appendChild(_legendStationGlyph('dispersal', 'Dispersal'));
-        stationsRow.appendChild(_legendStationGlyph('multi',     'Multiple events'));
+        // M4: transit-station glyphs — arrival (info hue), dispersal
+        // (warning hue), multi-event (severe accent).
+        var stationsRow = el('span', 'ef-legend__stations');
+        stationsRow.appendChild(_legendStationGlyph('arrival',   'In'));
+        stationsRow.appendChild(_legendStationGlyph('dispersal', 'Out'));
+        stationsRow.appendChild(_legendStationGlyph('multi',     'Several'));
         wrap.appendChild(stationsRow);
 
-        var transitFine = el('p', 'ef-legend__fine ef-legend__fine--transit');
-        transitFine.textContent =
-          'Station load modeled from venue proximity and event ' +
-          'dispersal timing. Not live transit data.';
-        wrap.appendChild(transitFine);
+        wrap.appendChild(el('span', 'ef-legend__note', 'Modeled, not measured'));
 
         // Block map drag/scroll while interacting with the legend.
         L.DomEvent.disableClickPropagation(wrap);
@@ -494,13 +484,21 @@
   // "multi" (two or more). The "single" state's tint is further split
   // arrival vs dispersal via data-kind.
 
-  function buildStationIcon() {
+  function kindLabel(kind) {
+    if (kind === 'go') return 'GO';
+    if (kind === 'streetcar') return 'Streetcar';
+    return 'Subway';
+  }
+
+  function buildStationIcon(station) {
+    var kind = (station && station.kind) || 'subway';
     return L.divIcon({
       className: 'ef-station-marker',
       html:
-        '<span class="ef-station-marker__dot" data-state="dormant" aria-hidden="true"></span>',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
+        '<span class="ef-station-marker__dot" data-state="dormant" data-transit="' +
+        escapeHtml(kind) + '" aria-hidden="true"></span>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
     });
   }
 
@@ -508,8 +506,14 @@
     var lines = (station.lines || []);
     var linesHtml = lines.length
       ? '<span class="ef-popup__lines">' +
-          lines.map(function (l) {
-            return '<span class="ef-popup__line">' + escapeHtml(l) + '</span>';
+          lines.map(function (l, i) {
+            var c = station.lineColors && station.lineColors[i];
+            var t = station.lineText && station.lineText[i];
+            var style = c
+              ? ' style="background:' + escapeHtml(c) + ';border-color:' + escapeHtml(c) +
+                (t ? ';color:' + escapeHtml(t) : '') + '"'
+              : '';
+            return '<span class="ef-popup__line"' + style + '>' + escapeHtml(l) + '</span>';
           }).join('') +
         '</span>'
       : '<span class="ef-popup__lines-empty">No lines listed</span>';
@@ -517,11 +521,11 @@
       '<div class="ef-popup ef-popup--station">' +
         '<div class="ef-popup__name">' + escapeHtml(station.station_name || 'Station') + '</div>' +
         '<div class="ef-popup__meta">' +
-          '<span class="ef-popup__eyebrow">Transit</span>' +
+          '<span class="ef-popup__eyebrow">' + escapeHtml(kindLabel(station.kind)) + '</span>' +
           '<span class="ef-popup__sep">·</span>' +
           linesHtml +
         '</div>' +
-        '<div class="ef-popup__fine">Modeled load from nearby event arrival and dispersal windows. Not measured.</div>' +
+        '<div class="ef-popup__fine">Flagged while nearby crowds are heading in or letting out. Modeled, not measured.</div>' +
       '</div>'
     );
   }
@@ -538,7 +542,7 @@
       if (typeof s.lat !== 'number' || typeof s.lon !== 'number') continue;
       _stations[s.station_id] = s;
       var marker = L.marker([s.lat, s.lon], {
-        icon: buildStationIcon(),
+        icon: buildStationIcon(s),
         // Make sure stations float above events without intercepting
         // every map click — popups still open via the marker itself.
         zIndexOffset: 600,
@@ -579,7 +583,9 @@
       byEvent[tfEvents[i].event_id] = tfEvents[i].stations || [];
     }
     _stationEventIndex = {};
-    var BUCKETS = 96;
+    // Bucket count comes from the day file (a modeled day is 26 hours =
+    // 104 buckets; older files carry 96).
+    var BUCKETS = Math.max(96, (forecast && forecast.timeline && forecast.timeline.length) || 0);
     var flags = new Array(BUCKETS);
     var windows = (forecast && forecast.avoid_windows) || [];
     for (var w = 0; w < windows.length; w++) {
@@ -707,6 +713,17 @@
     return _map;
   }
 
+  // Absolute heat scale. Normalizing against the Severe threshold (the
+  // same number the day verdict uses) means a quiet day paints a faint
+  // teal smudge and only a stacked stadium night reaches full red — the
+  // colour now means the same thing on every day. Falls back to the
+  // day's own peak for forecast files written before thresholds shipped.
+  function heatScaleFor(forecast) {
+    var t = forecast && forecast.thresholds;
+    if (t && typeof t.T3 === 'number' && t.T3 > 0) return t.T3;
+    return forecast && forecast.peak_value;
+  }
+
   function eventsForBucket(forecast, bucket) {
     var events = (forecast && forecast.events) || [];
     if (typeof bucket !== 'number') return events;
@@ -742,7 +759,7 @@
       onAdd: function () {
         var wrap = el('div', 'ef-transit-empty');
         wrap.setAttribute('role', 'note');
-        wrap.appendChild(el('span', 'ef-transit-empty__eyebrow', 'Transit layer'));
+        wrap.appendChild(el('span', 'ef-transit-empty__eyebrow', 'Stations'));
         var msg = el('span', 'ef-transit-empty__body');
         msg.setAttribute('data-msg', 'true');
         wrap.appendChild(msg);
@@ -790,8 +807,8 @@
       _transitNoticeControl = buildTransitNoticeControl().addTo(_map);
     }
     var msg = hasEvents
-      ? 'No major transit stations within modeled range of today’s events.'
-      : 'No major events on this day, so no transit stations are flagged.';
+      ? 'No subway station within walking distance of these events.'
+      : 'Nothing major on this day, so no stations are flagged.';
     _transitNoticeControl.setMessage(msg);
   }
 
@@ -815,9 +832,8 @@
     var peakBucket = (forecast && typeof forecast.peak_bucket === 'number')
       ? forecast.peak_bucket : null;
     _currentBucket = peakBucket;
-    var peakValue = forecast && forecast.peak_value;
     if (_heatLayer && _heatLayer.setData) {
-      _heatLayer.setData(eventsForBucket(forecast, peakBucket), peakValue);
+      _heatLayer.setData(eventsForBucket(forecast, peakBucket), heatScaleFor(forecast));
     }
     applyStationStatesForBucket(peakBucket);
   }
@@ -834,7 +850,7 @@
     _currentBucket = bucket;
     _heatLayer.setData(
       eventsForBucket(_currentForecast, bucket),
-      _currentForecast.peak_value
+      heatScaleFor(_currentForecast)
     );
     applyStationStatesForBucket(bucket);
   }
