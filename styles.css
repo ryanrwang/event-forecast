@@ -275,10 +275,6 @@ a:visited {
     scroll-snap-align: start;
   }
 
-  .day-pill__peak {
-    font-size: var(--typography-micro);
-  }
-
   .forecast-strip::after {
     content: "";
     position: absolute;
@@ -493,6 +489,15 @@ a:visited {
   line-height: 1;
   letter-spacing: -0.01em;
   color: var(--verdict-color);
+  margin-top: var(--spacing-xs);
+}
+
+/* Mini busyness graph. Height and width come from CSS; the canvas
+   buffer follows the rendered box (timeline.js sparkline). */
+.day-pill__spark {
+  display: block;
+  width: 100%;
+  height: 32px;
   margin-top: var(--spacing-xs);
 }
 

@@ -662,6 +662,14 @@
 
     pill.appendChild(el('span', 'day-pill__verdict', verdictLabelText));
 
+    // Mini busyness graph, drawn once the strip is in the DOM (see
+    // drawSparklines). Decorative for assistive tech: the verdict and
+    // the peak line below carry the same information in text.
+    var spark = document.createElement('canvas');
+    spark.className = 'day-pill__spark';
+    spark.setAttribute('aria-hidden', 'true');
+    pill.appendChild(spark);
+
     // The "when" in the headline strip: the peak 15 minutes of the
     // browsable view, so it moves with the filters like the sub-line.
     var view = filteredForecast(forecast);
@@ -698,6 +706,77 @@
     });
 
     host.appendChild(grid);
+    drawSparklines();
+    observeStripResize(grid);
+  }
+
+  // ─────────── Mini graphs in the day cards ───────────
+
+  var SPARK_DAY_START = 9 * 4;   // 9 AM in 15-minute buckets
+  var _sparkRO = null;
+  var _sparkRaf = 0;
+
+  // One time window for every card so the mini graphs line up: 9 AM to
+  // the end of the modeled day, pulled earlier (to the hour) when any
+  // day in the outlook has modeled activity at or above the Quiet
+  // threshold before that. Mirrors the main chart's default range.
+  function sparkWindow() {
+    var n = 0;
+    var start = SPARK_DAY_START;
+    state.days.forEach(function (date) {
+      var view = filteredForecast(state.forecasts[date]);
+      var tl = (view && view.timeline) || [];
+      n = Math.max(n, tl.length);
+      var th = view && view.thresholds;
+      var t1 = (th && typeof th.T1 === 'number') ? th.T1 : 5;
+      for (var b = 0; b < start; b++) {
+        if (tl[b] >= t1) { start = Math.floor(b / 4) * 4; break; }
+      }
+    });
+    if (!n) n = 96;
+    return { from: Math.min(start, n - 2), to: n };
+  }
+
+  function drawSparklines() {
+    var tl = window.EFTimeline;
+    if (!tl || !tl.sparkline) return;
+    var win = sparkWindow();
+    var tz = state.cityConfig && state.cityConfig.timezone;
+    var pills = document.querySelectorAll('.day-pill');
+    for (var i = 0; i < pills.length; i++) {
+      var canvas = pills[i].querySelector('.day-pill__spark');
+      if (!canvas) continue;
+      var date = pills[i].getAttribute('data-date');
+      var forecast = state.forecasts[date];
+      var now = (tl.nowBucketForDate && tz) ? tl.nowBucketForDate(date, tz) : null;
+      tl.sparkline(canvas, filteredForecast(forecast), {
+        from: win.from,
+        to: win.to,
+        verdict: displayVerdict(forecast),
+        now: now
+      });
+    }
+  }
+
+  function scheduleSparklines() {
+    if (_sparkRaf) return;
+    _sparkRaf = window.requestAnimationFrame(function () {
+      _sparkRaf = 0;
+      drawSparklines();
+    });
+  }
+
+  // Cards change width with the viewport (7-up grid on desktop, a
+  // scroll strip on phones), so redraw when the grid is resized.
+  function observeStripResize(grid) {
+    if (window.ResizeObserver) {
+      if (_sparkRO) _sparkRO.disconnect();
+      _sparkRO = new ResizeObserver(scheduleSparklines);
+      _sparkRO.observe(grid);
+    } else if (!observeStripResize.bound) {
+      observeStripResize.bound = true;
+      window.addEventListener('resize', scheduleSparklines);
+    }
   }
 
   // ─────────── Selected day ───────────

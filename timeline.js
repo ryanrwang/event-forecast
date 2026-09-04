@@ -27,6 +27,8 @@
  *   window.EFTimeline.setStations(rows, options)          // lanes + toggles
  *   window.EFTimeline.setBucket(bucket)                   // external set
  *   window.EFTimeline.getBucket() -> int|null
+ *   window.EFTimeline.sparkline(canvas, forecast, options) // mini graph for a day card
+ *   window.EFTimeline.nowBucketForDate(dateIso, tz) -> int|null
  */
 (function () {
   'use strict';
@@ -342,11 +344,11 @@
 
   // ─────────── Canvas geometry ───────────
 
-  function fitCanvas(canvas, ctx, minH) {
+  function fitCanvas(canvas, ctx, minH, minW) {
     if (!canvas) return null;
     var rect = canvas.getBoundingClientRect();
     var dpr = window.devicePixelRatio || 1;
-    var w = Math.max(200, Math.floor(rect.width));
+    var w = Math.max(minW || 200, Math.floor(rect.width));
     var h = Math.max(minH || 20, Math.floor(rect.height));
     if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
       canvas.width = w * dpr;
@@ -452,6 +454,90 @@
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
     ctx.stroke();
+  }
+
+  // ─────────── Mini graph (outlook strip) ───────────
+
+  // Draws one day's busyness curve into a small canvas so the 7-day
+  // strip can be scanned without opening each day. Same smoothing as
+  // the main chart. Two deliberate differences: the vertical scale is
+  // ABSOLUTE (the Severe threshold, or the day's peak when higher), so
+  // a Quiet day reads as a low line and a Severe day fills the box,
+  // where the main chart stretches each day to its own peak; and the
+  // time window is passed in, so every card covers the same hours.
+  //
+  //   options.from / options.to  bucket range (to exclusive)
+  //   options.verdict            colour source (defaults to the day's)
+  //   options.now                bucket to mark with a thin line (today)
+  var SPARK_PAD = 2;
+  var SPARK_TOP = 4;
+  var SPARK_TICK_STEP = 24;   // 6 h in 15-minute buckets
+
+  function sparkline(canvas, forecast, options) {
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext('2d');
+    var size = fitCanvas(canvas, ctx, 16, 40);
+    if (!size) return;
+    var opts = options || {};
+    var timeline = (forecast && forecast.timeline) || [];
+    var n = timeline.length || DEFAULT_BUCKETS;
+    var from = clamp(typeof opts.from === 'number' ? opts.from : DAY_START_BUCKET, 0, n - 2);
+    var to = clamp(typeof opts.to === 'number' ? opts.to : n, from + 2, n);
+    var peakValue = (forecast && forecast.peak_value) || 0;
+    var peakBucket = (forecast && typeof forecast.peak_bucket === 'number') ? forecast.peak_bucket : -1;
+    var t = forecast && forecast.thresholds;
+    var maxV = Math.max(peakValue, (t && typeof t.T3 === 'number') ? t.T3 : 0) || 1;
+    var color = verdictColor(opts.verdict || (forecast && forecast.verdict));
+
+    var W = size.w, H = size.h;
+    var plotTop = SPARK_TOP, plotBot = H - SPARK_PAD;
+    var inner = W - SPARK_PAD * 2;
+    var xOf = function (b) { return SPARK_PAD + ((b - from) / (to - from)) * inner; };
+    var yOf = function (v) { return valueToY(v, plotTop, plotBot, maxV); };
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Baseline with 6-hour stubs, so the cards line up by time.
+    ctx.strokeStyle = tokenColor('color.border.base', 'rgba(255,255,255,0.10)');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(SPARK_PAD, plotBot + 0.5);
+    ctx.lineTo(W - SPARK_PAD, plotBot + 0.5);
+    for (var b = Math.ceil(from / SPARK_TICK_STEP) * SPARK_TICK_STEP; b < to; b += SPARK_TICK_STEP) {
+      if (b <= from) continue;
+      var tx = Math.round(xOf(b)) + 0.5;
+      ctx.moveTo(tx, plotBot + 0.5);
+      ctx.lineTo(tx, plotBot - 2.5);
+    }
+    ctx.stroke();
+
+    // Today: where the day is right now.
+    if (typeof opts.now === 'number' && opts.now >= from && opts.now < to) {
+      var nx = Math.round(xOf(opts.now + 0.5)) + 0.5;
+      ctx.strokeStyle = tokenColor('color.text.tertiary', '#94A3B8');
+      ctx.beginPath();
+      ctx.moveTo(nx, plotTop);
+      ctx.lineTo(nx, plotBot);
+      ctx.stroke();
+    }
+
+    if (peakValue <= 0) return;   // nothing modeled: the baseline says so
+
+    var pts = curvePoints(timeline, from, to, xOf, yOf);
+    strokeAndFillCurve(ctx, pts, plotBot, color, hexToRgba(color, 0.22), 1.5);
+
+    // Peak dot, ringed in the card surface so it stays crisp on the fill.
+    if (peakBucket >= from && peakBucket < to) {
+      var px = xOf(peakBucket + 0.5), py = yOf(timeline[peakBucket] || 0);
+      ctx.beginPath();
+      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = tokenColor('color.bg.raised', '#141A22');
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px, py, 2.25, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
   }
 
   // ─────────── Main chart ───────────
@@ -1225,6 +1311,8 @@
     setStations: setStations,
     setBucket: setBucket,
     getBucket: getBucket,
+    sparkline: sparkline,
+    nowBucketForDate: nowBucketForDate,
     destroy: destroy
   };
 })();

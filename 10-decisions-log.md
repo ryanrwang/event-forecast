@@ -390,3 +390,26 @@ before 9 AM (a 6 AM marathon), expands on its own down to that hour.
 - **Badge first, number only.** Line badges read "1" instead of
   "Line 1" (the coloured badge already says it's a line) and sit before
   the station name: [1] Union, [504] King St West at Bay St.
+
+### Mini graphs in the day cards
+
+Each card in the 7-day strip carries a small canvas of that day's
+busyness curve, so the week can be scanned without opening each day.
+Same monotone smoothing as the main chart, drawn by the timeline module
+(`EFTimeline.sparkline`). Two deliberate differences from the main
+chart:
+
+- **Absolute scale.** Every card is normalized to the Severe threshold
+  (or the day's own peak when higher), so a Quiet day reads as a low
+  line and a Severe day fills the box. The main chart stretches each
+  day to its own peak, which is right for reading one day and wrong
+  for comparing seven.
+- **Shared window.** All cards cover the same hours: 9 AM to 2 AM,
+  pulled earlier to the hour when any day in the outlook has modeled
+  activity at or above the Quiet threshold before 9 AM. Faint stubs on
+  the baseline mark 12 PM, 6 PM and midnight so the cards line up by
+  time; today's card also carries a thin "now" line.
+
+The graph follows the view filters like the peak time and the
+sub-line, and is decorative for assistive tech: the verdict and the
+"Peak" line carry the same information in text. Operator-requested.
