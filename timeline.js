@@ -24,6 +24,7 @@
  *
  *   window.EFTimeline.ensureTimeline(hostEl, onBucketChange)
  *   window.EFTimeline.setForecast(forecast, cityConfig)   // resets bucket
+ *   window.EFTimeline.setEvents(rows)                     // event lane above the chart
  *   window.EFTimeline.setStations(rows, options)          // lanes + toggles
  *   window.EFTimeline.setBucket(bucket)                   // external set
  *   window.EFTimeline.getBucket() -> int|null
@@ -75,6 +76,9 @@
   var _brushDrag = null;
   var _lanes = null;
   var _scrubLine = null;
+  var _eventsHost = null;
+  var _eventScrub = null;
+  var _eventRows = [];
   var _pop = null;
   var _pinnedChip = null;
   var _ro = null;
@@ -87,7 +91,12 @@
   var _dragging = false;
   // Persisted custom range {from, to} in buckets (to exclusive), or
   // null for the default.
-  var _range = loadRange();
+  // What the range follows: {mode: 'default'|'all'|'fit'|'custom', from, to}.
+  // 'all' and 'fit' re-resolve on every day, so the choice carries
+  // across dates; 'custom' is a brushed range and keeps its numbers.
+  var _view = loadView();
+  var _anim = null;          // range tween in flight: {a, b, start, eased}
+  var _scrubMode = 'peak';   // 'peak' | 'now' | null: which chip placed the scrubber
 
   // ─────────── small utils ───────────
 
@@ -100,19 +109,30 @@
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-  function loadRange() {
+  function loadView() {
     try {
       var parsed = JSON.parse(localStorage.getItem(RANGE_KEY) || 'null');
-      if (parsed && typeof parsed.from === 'number' && typeof parsed.to === 'number') return parsed;
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.mode === 'all' || parsed.mode === 'fit') return { mode: parsed.mode };
+        if (typeof parsed.from === 'number' && typeof parsed.to === 'number') {
+          return { mode: 'custom', from: parsed.from, to: parsed.to };
+        }
+      }
     } catch (_) {}
-    return null;
+    return { mode: 'default' };
   }
 
-  function saveRange(range) {
+  function saveView(view) {
     try {
-      if (range) localStorage.setItem(RANGE_KEY, JSON.stringify(range));
-      else localStorage.removeItem(RANGE_KEY);
+      if (!view || view.mode === 'default') localStorage.removeItem(RANGE_KEY);
+      else localStorage.setItem(RANGE_KEY, JSON.stringify(view));
     } catch (_) {}
+  }
+
+  function reducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (_) { return false; }
   }
 
   function tokenColor(path, fallback) {
@@ -253,13 +273,35 @@
     return { from: start, to: n };
   }
 
-  // {from, to} bucket range (to exclusive) currently drawn.
-  function visibleRange() {
+  // The range the current mode resolves to for this day (integers).
+  function targetRange() {
     var n = bucketCount();
-    var r = _range ? { from: _range.from, to: _range.to } : defaultRange();
+    var r;
+    if (_view.mode === 'all') r = { from: 0, to: n };
+    else if (_view.mode === 'fit') r = activityRange();
+    else if (_view.mode === 'custom') r = { from: _view.from, to: _view.to };
+    else r = defaultRange();
     r.from = clamp(Math.round(r.from), 0, n - MIN_SPAN);
     r.to = clamp(Math.round(r.to), r.from + MIN_SPAN, n);
     return r;
+  }
+
+  // {from, to} bucket range (to exclusive) currently drawn. Fractional
+  // while a re-scale tween is in flight, so the chart, brush and lanes
+  // glide between ranges instead of jumping.
+  function visibleRange() {
+    if (_anim) {
+      var e = _anim.eased;
+      return {
+        from: _anim.a.from + (_anim.b.from - _anim.a.from) * e,
+        to: _anim.a.to + (_anim.b.to - _anim.a.to) * e
+      };
+    }
+    return targetRange();
+  }
+
+  function sameRange(a, b) {
+    return !!a && !!b && a.from === b.from && a.to === b.to;
   }
 
   function isFullDay(vis) {
@@ -297,49 +339,95 @@
     return { from: lo, to: hi };
   }
 
-  function updateFitChip() {
-    if (!_fitChip || !_forecast) return;
-    var vis = visibleRange();
-    var fit = activityRange();
-    _fitChip.setAttribute('aria-pressed', (vis.from === fit.from && vis.to === fit.to) ? 'true' : 'false');
+  // All day / Fit read as pressed when that mode is on, or when the
+  // range happens to equal what the mode would give.
+  function updateRangeChips() {
+    if (!_forecast) return;
+    var t = targetRange();
+    if (_allDayChip) {
+      _allDayChip.setAttribute('aria-pressed', (_view.mode === 'all' || isFullDay(t)) ? 'true' : 'false');
+    }
+    if (_fitChip) {
+      _fitChip.setAttribute('aria-pressed', (_view.mode === 'fit' || sameRange(t, activityRange())) ? 'true' : 'false');
+    }
   }
 
-  // Apply a new range (persisted), keep the scrubber inside it, and
-  // redraw the chart, brush, and lanes.
+  // Switch what the range follows. Everything but a brush drag glides
+  // to the new range; `persist` writes the choice to localStorage.
+  function setView(view, animate, persist) {
+    var prev = _forecast ? visibleRange() : null;
+    _view = view;
+    if (persist) saveView(_view);
+    var next = targetRange();
+    if (animate && prev && !sameRange(prev, next)) animateRange(prev, next);
+    else { _anim = null; refreshRange(); }
+  }
+
+  // Brushed range: immediate, no tween (the pointer is the animation).
   function setRange(from, to, persist) {
     var n = bucketCount();
     from = clamp(Math.round(from), 0, n - MIN_SPAN);
     to = clamp(Math.round(to), from + MIN_SPAN, n);
-    _range = { from: from, to: to };
-    if (persist) saveRange(_range);
-    refreshRange();
+    setView({ mode: 'custom', from: from, to: to }, false, persist);
   }
 
-  function clearRange() {
-    _range = null;
-    saveRange(null);
-    refreshRange();
+  function keepScrubberInside() {
+    var t = targetRange();
+    if (typeof _bucket === 'number' && (_bucket < t.from || _bucket >= t.to)) {
+      setBucket(clamp(_bucket, t.from, t.to - 1), true);
+    }
   }
 
   function refreshRange() {
-    var vis = visibleRange();
-    if (typeof _bucket === 'number' && (_bucket < vis.from || _bucket >= vis.to)) {
-      setBucket(clamp(_bucket, vis.from, vis.to - 1), true);
-    }
+    keepScrubberInside();
     draw();
     drawBrush();
-    updateAllDayChip();
-    updateFitChip();
+    updateRangeChips();
     layoutLanes();
+  }
+
+  // Glide from range `a` to range `b` (ease-out), redrawing the chart,
+  // brush and lanes every frame. Chip states and the scrubber clamp
+  // reflect the destination right away.
+  var RANGE_TWEEN_MS = 320;
+  function animateRange(a, b) {
+    if (reducedMotion() || !window.requestAnimationFrame) {
+      _anim = null;
+      refreshRange();
+      return;
+    }
+    var token = { a: a, b: b, start: null, eased: 0 };
+    _anim = token;
+    keepScrubberInside();
+    updateRangeChips();
+    draw();
+    drawBrush();
+    layoutLanes();
+    var step = function (ts) {
+      if (_anim !== token) return;   // superseded by a newer range change
+      if (token.start == null) token.start = ts;
+      var t = clamp((ts - token.start) / RANGE_TWEEN_MS, 0, 1);
+      token.eased = 1 - Math.pow(1 - t, 3);
+      if (t >= 1) {
+        _anim = null;
+        refreshRange();
+        return;
+      }
+      draw();
+      drawBrush();
+      layoutLanes();
+      window.requestAnimationFrame(step);
+    };
+    window.requestAnimationFrame(step);
   }
 
   // Slide the range (keeping its width) so `bucket` is inside it.
   function bringIntoRange(bucket) {
-    var vis = visibleRange();
+    var vis = targetRange();
     if (bucket >= vis.from && bucket < vis.to) return;
     var span = vis.to - vis.from;
     var from = clamp(bucket - Math.floor(span / 2), 0, bucketCount() - span);
-    setRange(from, from + span, true);
+    setView({ mode: 'custom', from: from, to: from + span }, true, true);
   }
 
   // ─────────── Canvas geometry ───────────
@@ -574,12 +662,16 @@
     var firstHour = Math.ceil(startHour / step - 1e-9) * step;
     var ticks = [];
     for (var hr = firstHour; hr <= lastHour + 1e-9; hr += step) ticks.push(Math.round(hr * 4) / 4);
+    // Range-end labels only when settled: mid-tween they'd read as
+    // odd minutes and flicker.
     var MIN_LABEL_PX = 48;
-    if (ticks.length === 0 || (ticks[0] - startHour) * pxPerHour >= MIN_LABEL_PX) {
-      if (ticks[0] !== startHour) ticks.unshift(startHour);
-    }
-    if ((lastHour - ticks[ticks.length - 1]) * pxPerHour >= MIN_LABEL_PX) {
-      ticks.push(lastHour);
+    if (!_anim) {
+      if (ticks.length === 0 || (ticks[0] - startHour) * pxPerHour >= MIN_LABEL_PX) {
+        if (ticks[0] !== startHour) ticks.unshift(startHour);
+      }
+      if ((lastHour - ticks[ticks.length - 1]) * pxPerHour >= MIN_LABEL_PX) {
+        ticks.push(lastHour);
+      }
     }
 
     _ctx.strokeStyle = tokenColor('color.border.subtle', '#1C232E');
@@ -629,10 +721,17 @@
     var grad = _ctx.createLinearGradient(0, plotTop, 0, plotBot);
     grad.addColorStop(0, hexToRgba(accentRgb, 0.45));
     grad.addColorStop(1, hexToRgba(accentRgb, 0.02));
-    var pts = curvePoints(timeline, vis.from, vis.to,
+    // Whole buckets either side of the range, clipped to the plot, so
+    // a fractional (tweening) range still draws a continuous curve.
+    _ctx.save();
+    _ctx.beginPath();
+    _ctx.rect(ML - 1, 0, inner + 2, H);
+    _ctx.clip();
+    var pts = curvePoints(timeline, Math.floor(vis.from), Math.ceil(vis.to),
       function (b) { return bucketToX(b, size, vis); },
       function (v) { return valueToY(v, plotTop, plotBot, peakValue); });
     strokeAndFillCurve(_ctx, pts, plotBot, hexToRgba(accentRgb, 0.95), grad, 1.5);
+    _ctx.restore();
 
     // Scrubber: vertical line + handle dot at curve height.
     var bIdx = (typeof _bucket === 'number') ? _bucket : peakBucket;
@@ -730,15 +829,17 @@
     _hTo.style.left = xTo + 'px';
     _brushSel.style.left = xFrom + 'px';
     _brushSel.style.width = Math.max(0, xTo - xFrom) + 'px';
-    _hFrom.querySelector('.ef-brush__label').textContent = clock12(vis.from * BUCKET_MIN);
-    _hTo.querySelector('.ef-brush__label').textContent = clock12(vis.to * BUCKET_MIN);
-    _hFrom.setAttribute('aria-valuetext', clock12(vis.from * BUCKET_MIN));
-    _hTo.setAttribute('aria-valuetext', clock12(vis.to * BUCKET_MIN));
-    _hFrom.setAttribute('aria-valuenow', String(vis.from));
-    _hTo.setAttribute('aria-valuenow', String(vis.to));
-    // Keep the two labels from colliding on a narrow range: push them
-    // outward when the handles are close.
-    var close = (xTo - xFrom) < 96;
+    var fromLabel = clock12(Math.round(vis.from) * BUCKET_MIN);
+    var toLabel = clock12(Math.round(vis.to) * BUCKET_MIN);
+    _hFrom.querySelector('.ef-brush__label').textContent = fromLabel;
+    _hTo.querySelector('.ef-brush__label').textContent = toLabel;
+    _hFrom.setAttribute('aria-valuetext', fromLabel);
+    _hTo.setAttribute('aria-valuetext', toLabel);
+    _hFrom.setAttribute('aria-valuenow', String(Math.round(vis.from)));
+    _hTo.setAttribute('aria-valuenow', String(Math.round(vis.to)));
+    // Labels sit inside the range, flush with their handle. On a narrow
+    // range they'd meet in the middle, so flip them to the outside.
+    var close = (xTo - xFrom) < 120;
     _hFrom.classList.toggle('ef-brush__handle--tight', close);
     _hTo.classList.toggle('ef-brush__handle--tight', close);
   }
@@ -811,11 +912,6 @@
     }
   }
 
-  function updateAllDayChip() {
-    if (!_allDayChip || !_forecast) return;
-    _allDayChip.setAttribute('aria-pressed', isFullDay(visibleRange()) ? 'true' : 'false');
-  }
-
   // ─────────── Readout / chips ───────────
 
   // Title: "Peak at 10:00 PM" (the day's peak), or "Quiet all day".
@@ -836,30 +932,53 @@
     var nb = nowBucketForDate(_forecast.date, _cityConfig.timezone);
     if (nb == null) {
       _nowChip.hidden = true;
+      delete _nowChip.dataset.bucket;
     } else {
       _nowChip.hidden = false;
       _nowChip.dataset.bucket = String(nb);
     }
   }
 
+  function nowBucket() {
+    var nb = _nowChip && !_nowChip.hidden ? parseInt(_nowChip.dataset.bucket || '', 10) : NaN;
+    return isNaN(nb) ? null : nb;
+  }
+
+  function peakBucket() {
+    return (_forecast && _forecast.peak_value > 0 && typeof _forecast.peak_bucket === 'number')
+      ? _forecast.peak_bucket : null;
+  }
+
+  // Peak / Now light up while the scrubber sits on that bucket.
+  function updateScrubChips() {
+    if (!_forecast) return;
+    var pb = peakBucket(), nb = nowBucket();
+    if (_peakChip) _peakChip.setAttribute('aria-pressed', (pb != null && _bucket === pb) ? 'true' : 'false');
+    if (_nowChip) _nowChip.setAttribute('aria-pressed', (nb != null && _bucket === nb) ? 'true' : 'false');
+  }
+
   // ─────────── Station lanes ───────────
 
   function positionScrubLine(vis) {
-    if (!_scrubLine || !_forecast) return;
+    if (!_forecast) return;
     var b = (typeof _bucket === 'number') ? _bucket : (_forecast.peak_bucket || 0);
     vis = vis || visibleRange();
-    if (b < vis.from || b >= vis.to || !_rows.length) {
-      _scrubLine.hidden = true;
-      return;
+    var inside = b >= vis.from && b < vis.to;
+    var left = (bucketToFrac(b + 0.5, vis) * 100) + '%';
+    if (_scrubLine) {
+      _scrubLine.hidden = !inside || !_rows.length;
+      _scrubLine.style.left = left;
     }
-    _scrubLine.hidden = false;
-    _scrubLine.style.left = (bucketToFrac(b + 0.5, vis) * 100) + '%';
+    if (_eventScrub) {
+      _eventScrub.hidden = !inside || !_eventRows.length;
+      _eventScrub.style.left = left;
+    }
   }
 
   function applyActiveChips() {
-    if (!_lanes) return;
+    if (!_wrap) return;
     var b = (typeof _bucket === 'number') ? _bucket : null;
-    var chips = _lanes.querySelectorAll('.ef-lane__chip');
+    var chips = _wrap.querySelectorAll('.ef-lane__chip');
     for (var i = 0; i < chips.length; i++) {
       var c = chips[i];
       var from = parseFloat(c.getAttribute('data-from'));
@@ -880,6 +999,27 @@
     return pill;
   }
 
+  // Hover / focus shows the details; click pins them and moves the
+  // scrubber to `scrubTo` (a bucket).
+  function wireChip(chip, scrubTo) {
+    chip.addEventListener('mouseenter', function () { if (!_pinnedChip) showPop(chip); });
+    chip.addEventListener('mouseleave', function () { if (!_pinnedChip) hidePop(); });
+    chip.addEventListener('focus', function () { showPop(chip); });
+    chip.addEventListener('blur', function () { if (_pinnedChip !== chip) hidePop(); });
+    chip.addEventListener('click', function (evt) {
+      evt.stopPropagation();
+      var vis = targetRange();
+      setBucket(clamp(Math.floor(scrubTo), vis.from, vis.to - 1), true);
+      if (_pinnedChip === chip) {
+        _pinnedChip = null;
+        hidePop();
+      } else {
+        _pinnedChip = chip;
+        showPop(chip);
+      }
+    });
+  }
+
   function buildChip(row, span) {
     var chip = el('button', 'ef-lane__chip');
     chip.type = 'button';
@@ -893,24 +1033,71 @@
     chip.appendChild(el('span', 'ef-lane__name', row.name));
     chip._row = row;
     chip._span = span;
-
-    chip.addEventListener('mouseenter', function () { if (!_pinnedChip) showPop(chip); });
-    chip.addEventListener('mouseleave', function () { if (!_pinnedChip) hidePop(); });
-    chip.addEventListener('focus', function () { showPop(chip); });
-    chip.addEventListener('blur', function () { if (_pinnedChip !== chip) hidePop(); });
-    chip.addEventListener('click', function (evt) {
-      evt.stopPropagation();
-      // Click: jump the scrubber to the window start and pin the details.
-      setBucket(Math.floor(span.fromBucket), true);
-      if (_pinnedChip === chip) {
-        _pinnedChip = null;
-        hidePop();
-      } else {
-        _pinnedChip = chip;
-        showPop(chip);
-      }
-    });
+    wireChip(chip, span.fromBucket);
     return chip;
+  }
+
+  // Event chip: start time badge first, then the name. Spans the
+  // event's whole modeled crowd window (first In minute to last Out).
+  function buildEventChip(row) {
+    var chip = el('button', 'ef-lane__chip ef-lane__chip--event');
+    chip.type = 'button';
+    chip.setAttribute('data-phase', 'event');
+    chip.setAttribute('data-from', String(row.fromBucket));
+    chip.setAttribute('data-to', String(row.toBucket));
+    chip.setAttribute('aria-label', row.name + (row.time ? ', ' + row.time : ''));
+    if (row.badge) chip.appendChild(el('span', 'ef-lane__badge', row.badge));
+    chip.appendChild(el('span', 'ef-lane__name', row.name));
+    chip._event = row;
+    wireChip(chip, typeof row.startBucket === 'number' ? row.startBucket : row.fromBucket);
+    return chip;
+  }
+
+  // Place a chip at its window, as percentages of the visible range.
+  function placeChip(chip, fromBucket, toBucket, vis) {
+    var f0 = bucketToFrac(fromBucket, vis);
+    var f1 = bucketToFrac(toBucket, vis);
+    chip.style.left = (f0 * 100) + '%';
+    chip.style.minWidth = ((f1 - f0) * 100) + '%';
+  }
+
+  // A chip is at least as wide as its label, so one near the right
+  // edge can run past the axis. Measure once and anchor those to the
+  // window's END instead, so the chip grows leftwards.
+  function anchorRightEdges(root, vis) {
+    var width = root.clientWidth;
+    var chips = root.querySelectorAll('.ef-lane__chip');
+    for (var i = 0; i < chips.length; i++) {
+      var c = chips[i];
+      if (c.offsetLeft + c.offsetWidth > width + 1) {
+        var f1 = bucketToFrac(parseFloat(c.getAttribute('data-to')), vis);
+        c.style.left = 'auto';
+        c.style.right = ((1 - f1) * 100) + '%';
+      }
+    }
+  }
+
+  // The event lane above the chart: one chip per event in view.
+  function layoutEventLane(vis) {
+    if (!_eventsHost) return;
+    _eventsHost.innerHTML = '';
+    _eventScrub = el('span', 'ef-lanes__scrub');
+    _eventScrub.setAttribute('aria-hidden', 'true');
+    _eventsHost.appendChild(_eventScrub);
+    var lane = el('div', 'ef-lane ef-lane--events');
+    var any = false;
+    _eventRows.forEach(function (row) {
+      if (row.toBucket <= vis.from || row.fromBucket >= vis.to) return;
+      var chip = buildEventChip(row);
+      placeChip(chip, row.fromBucket, row.toBucket, vis);
+      lane.appendChild(chip);
+      any = true;
+    });
+    _eventsHost.hidden = !any;
+    if (!any) return;
+    _eventsHost.appendChild(lane);
+    anchorRightEdges(_eventsHost, vis);
+    stackOverlaps(_eventsHost);
   }
 
   function layoutLanes() {
@@ -918,8 +1105,12 @@
     _lanes.innerHTML = '';
     _pinnedChip = null;
     hidePop();
-    if (!_forecast) return;
+    if (!_forecast) {
+      if (_eventsHost) { _eventsHost.innerHTML = ''; _eventsHost.hidden = true; }
+      return;
+    }
     var vis = visibleRange();
+    layoutEventLane(vis);
 
     _scrubLine = el('span', 'ef-lanes__scrub');
     _scrubLine.setAttribute('aria-hidden', 'true');
@@ -938,29 +1129,14 @@
       (row.spans || []).forEach(function (span) {
         if (span.toBucket <= vis.from || span.fromBucket >= vis.to) return;
         var chip = buildChip(row, span);
-        var f0 = bucketToFrac(span.fromBucket, vis);
-        var f1 = bucketToFrac(span.toBucket, vis);
-        chip.style.left = (f0 * 100) + '%';
-        chip.style.minWidth = ((f1 - f0) * 100) + '%';
+        placeChip(chip, span.fromBucket, span.toBucket, vis);
         lane.appendChild(chip);
         any = true;
       });
       if (any) _lanes.appendChild(lane);
     });
-    // A chip is at least as wide as its label, so one near the right
-    // edge can run past the axis. Measure once and anchor those to the
-    // window's END instead, so the chip grows leftwards.
-    var laneWidth = _lanes.clientWidth;
-    var chips = _lanes.querySelectorAll('.ef-lane__chip');
-    for (var i = 0; i < chips.length; i++) {
-      var c = chips[i];
-      if (c.offsetLeft + c.offsetWidth > laneWidth + 1) {
-        var f1b = bucketToFrac(parseFloat(c.getAttribute('data-to')), vis);
-        c.style.left = 'auto';
-        c.style.right = ((1 - f1b) * 100) + '%';
-      }
-    }
-    stackOverlaps();
+    anchorRightEdges(_lanes, vis);
+    stackOverlaps(_lanes);
     applyActiveChips();
     positionScrubLine(vis);
   }
@@ -969,8 +1145,8 @@
   // range, or a phone) drop to a second row instead of covering each
   // other. Measured, so it adapts to any width.
   var CHIP_H = 24, ROW_GAP = 4, MIN_CHIP_GAP = 4;
-  function stackOverlaps() {
-    var lanes = _lanes.querySelectorAll('.ef-lane');
+  function stackOverlaps(root) {
+    var lanes = root.querySelectorAll('.ef-lane');
     for (var li = 0; li < lanes.length; li++) {
       var lane = lanes[li];
       var chips = Array.prototype.slice.call(lane.querySelectorAll('.ef-lane__chip'));
@@ -993,11 +1169,7 @@
 
   // ─────────── Details popover ───────────
 
-  function showPop(chip) {
-    if (!_pop || !chip || !chip._row) return;
-    var row = chip._row, span = chip._span;
-    _pop.innerHTML = '';
-
+  function fillStationPop(row, span) {
     var head = el('div', 'ef-pop__head');
     (row.lines || []).forEach(function (l) { head.appendChild(linePillNode(row, l)); });
     head.appendChild(el('span', 'ef-pop__name', row.name));
@@ -1014,13 +1186,42 @@
     if (span.cause) _pop.appendChild(el('div', 'ef-pop__cause', span.cause));
     if (span.via) _pop.appendChild(el('div', 'ef-pop__via', 'via ' + span.via));
     _pop.appendChild(el('div', 'ef-pop__fine', 'Modeled from venue proximity and event timing, not measured.'));
+  }
+
+  function fillEventPop(ev) {
+    var head = el('div', 'ef-pop__head');
+    head.appendChild(el('span', 'ef-pop__name', ev.name));
+    if (ev.kindLabel) head.appendChild(el('span', 'ef-pop__kind', ev.kindLabel));
+    _pop.appendChild(head);
+
+    if (ev.time) {
+      var when = el('div', 'ef-pop__when');
+      when.appendChild(el('span', 'ef-pop__time', ev.time));
+      _pop.appendChild(when);
+    }
+    var place = ev.venue || '';
+    if (ev.people) place += (place ? ' · ' : '') + 'about ' + ev.people + ' people';
+    if (place) _pop.appendChild(el('div', 'ef-pop__cause', place));
+    var windows = [];
+    if (ev.inWindow) windows.push('In ' + ev.inWindow);
+    if (ev.outWindow) windows.push('Out ' + ev.outWindow);
+    if (windows.length) _pop.appendChild(el('div', 'ef-pop__via', windows.join(' · ')));
+    _pop.appendChild(el('div', 'ef-pop__fine', 'Crowd window modeled from capacity and timing, not measured.'));
+  }
+
+  function showPop(chip) {
+    if (!_pop || !chip || !_wrap) return;
+    _pop.innerHTML = '';
+    if (chip._event) fillEventPop(chip._event);
+    else if (chip._row) fillStationPop(chip._row, chip._span);
+    else return;
 
     _pop.hidden = false;
-    var lanesRect = _lanes.getBoundingClientRect();
+    var box = _wrap.getBoundingClientRect();
     var chipRect = chip.getBoundingClientRect();
-    var left = chipRect.left - lanesRect.left;
-    var top = chipRect.bottom - lanesRect.top + 4;
-    var maxLeft = Math.max(0, lanesRect.width - _pop.offsetWidth);
+    var left = chipRect.left - box.left;
+    var top = chipRect.bottom - box.top + 4;
+    var maxLeft = Math.max(0, box.width - _pop.offsetWidth);
     _pop.style.left = clamp(left, 0, maxLeft) + 'px';
     _pop.style.top = top + 'px';
   }
@@ -1097,10 +1298,12 @@
   function setBucket(bucket, fire) {
     if (typeof bucket !== 'number') return;
     bucket = clamp(Math.round(bucket), 0, bucketCount() - 1);
-    if (bucket === _bucket) return;
+    _scrubMode = null;   // Peak / Now set it back after calling this
+    if (bucket === _bucket) { updateScrubChips(); return; }
     _bucket = bucket;
     draw();
     applyActiveChips();
+    updateScrubChips();
     if (fire && typeof _onBucketChange === 'function') {
       _onBucketChange(bucket);
     }
@@ -1109,29 +1312,53 @@
   function getBucket() { return _bucket; }
 
   function setForecast(forecast, cityConfig) {
+    var prev = (_forecast && _canvas) ? visibleRange() : null;
+    var prevN = bucketCount();
     _forecast = forecast || null;
     _cityConfig = cityConfig || null;
     _pinnedChip = null;
+    _anim = null;
     hidePop();
     if (!_forecast) {
       _bucket = null;
       _rows = [];
+      _eventRows = [];
       if (_ctx) _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
       if (_brushCtx) _brushCtx.clearRect(0, 0, _brushCanvas.width, _brushCanvas.height);
       if (_lanes) _lanes.innerHTML = '';
+      if (_eventsHost) { _eventsHost.innerHTML = ''; _eventsHost.hidden = true; }
       return;
     }
-    // Reset scrubber to the new day's peak bucket (M3 spec). A view with
-    // nothing in it has no peak; park the scrubber at the visible start.
-    var vis = visibleRange();
-    _bucket = (_forecast.peak_value > 0 && typeof _forecast.peak_bucket === 'number')
-      ? clamp(_forecast.peak_bucket, vis.from, vis.to - 1) : vis.from;
-    draw();
-    drawBrush();
-    updateAllDayChip();
-    updateFitChip();
-    updateTitle();
     updateNowChip();
+    // The range mode carries over: All day stays all day, Fit re-fits
+    // to this day, a brushed range keeps its hours. Scrubber: "Now" if
+    // that was the last choice and this is today, else the new day's
+    // peak (M3 spec); a view with nothing in it parks at the start.
+    var target = targetRange();
+    var keep = _scrubMode;
+    var want = (keep === 'now') ? nowBucket() : null;
+    if (want == null) {
+      // "Now" stays the choice through days that aren't today; the
+      // scrubber just sits on those days' peaks meanwhile.
+      want = peakBucket();
+      if (keep !== 'now') keep = 'peak';
+    }
+    _bucket = (want != null) ? clamp(want, target.from, target.to - 1) : target.from;
+    _scrubMode = keep;
+    updateTitle();
+    updateScrubChips();
+    if (prev && prevN === bucketCount() && !sameRange(prev, target)) {
+      animateRange(prev, target);
+    } else {
+      refreshRange();
+    }
+  }
+
+  // rows: [{id, name, badge, kindLabel, fromBucket, toBucket, startBucket,
+  //         time, venue, people, inWindow, outWindow}] — the event lane
+  // above the chart, one chip per event over its crowd window.
+  function setEvents(rows) {
+    _eventRows = rows || [];
     layoutLanes();
   }
 
@@ -1158,8 +1385,8 @@
     layoutLanes();
   }
 
-  function buildHandle(label) {
-    var h = el('button', 'ef-brush__handle');
+  function buildHandle(label, side) {
+    var h = el('button', 'ef-brush__handle ef-brush__handle--' + side);
     h.type = 'button';
     h.setAttribute('role', 'slider');
     h.setAttribute('aria-label', label);
@@ -1192,8 +1419,8 @@
     _allDayChip.title = 'Show the whole day, midnight to 2 AM';
     _allDayChip.addEventListener('click', function () {
       if (!_forecast) return;
-      if (isFullDay(visibleRange())) clearRange();
-      else setRange(0, bucketCount(), true);
+      var on = _view.mode === 'all' || isFullDay(targetRange());
+      setView({ mode: on ? 'default' : 'all' }, true, true);
     });
     _chips.appendChild(_allDayChip);
 
@@ -1203,8 +1430,7 @@
     _fitChip.title = 'Fit the range to when things are happening';
     _fitChip.addEventListener('click', function () {
       if (!_forecast) return;
-      var fit = activityRange();
-      setRange(fit.from, fit.to, true);
+      setView({ mode: _view.mode === 'fit' ? 'default' : 'fit' }, true, true);
     });
     _chips.appendChild(_fitChip);
 
@@ -1215,15 +1441,17 @@
       var pb = _forecast.peak_bucket || 0;
       bringIntoRange(pb);
       setBucket(pb, true);
+      _scrubMode = 'peak';
     });
     _nowChip = el('button', 'ef-timeline__chip', 'Now');
     _nowChip.type = 'button';
     _nowChip.hidden = true;
     _nowChip.addEventListener('click', function () {
-      var nb = parseInt(_nowChip.dataset.bucket || '', 10);
-      if (isNaN(nb)) return;
+      var nb = nowBucket();
+      if (nb == null) return;
       bringIntoRange(nb);
       setBucket(nb, true);
+      _scrubMode = 'now';
     });
     _chips.appendChild(_peakChip);
     _chips.appendChild(_nowChip);
@@ -1238,13 +1466,19 @@
     _brushSel = el('span', 'ef-brush__sel');
     _brushSel.setAttribute('aria-hidden', 'true');
     _brush.appendChild(_brushSel);
-    _hFrom = buildHandle('Range start');
-    _hTo = buildHandle('Range end');
+    _hFrom = buildHandle('Range start', 'from');
+    _hTo = buildHandle('Range end', 'to');
     _brush.appendChild(_hFrom);
     _brush.appendChild(_hTo);
     _wrap.appendChild(_brush);
     _brushCtx = _brushCanvas.getContext('2d');
     attachBrushEvents();
+
+    // Event lane: what's on, placed over the same axis as the chart.
+    _eventsHost = el('div', 'ef-lanes ef-lanes--events');
+    _eventsHost.setAttribute('aria-label', 'Events, placed on the timeline');
+    _eventsHost.hidden = true;
+    _wrap.appendChild(_eventsHost);
 
     _canvas = el('canvas', 'ef-timeline__canvas');
     _canvas.tabIndex = 0;
@@ -1252,17 +1486,15 @@
     _canvas.setAttribute('aria-label', 'Day busyness timeline. Drag to scrub through the day in 15-minute steps.');
     _wrap.appendChild(_canvas);
 
-    // Station lanes + the details popover live in one positioned box so
-    // the popover can be placed relative to its chip.
-    var lanesWrap = el('div', 'ef-lanes-wrap');
     _lanes = el('div', 'ef-lanes');
     _lanes.setAttribute('aria-label', 'Stations likely packed, placed on the timeline');
-    lanesWrap.appendChild(_lanes);
+    _wrap.appendChild(_lanes);
+    // One details popover for event and station chips, positioned
+    // against the timeline box.
     _pop = el('div', 'ef-pop');
     _pop.setAttribute('role', 'tooltip');
     _pop.hidden = true;
-    lanesWrap.appendChild(_pop);
-    _wrap.appendChild(lanesWrap);
+    _wrap.appendChild(_pop);
 
     var legend = el('div', 'ef-timeline__legend');
     var lg1 = el('span', 'ef-timeline__legend-item');
@@ -1299,15 +1531,17 @@
     if (_ro) { _ro.disconnect(); _ro = null; }
     _host = _wrap = _readout = _chips = _peakChip = _nowChip = _allDayChip = _fitChip = _toggleHost = null;
     _canvas = _ctx = _brush = _brushCanvas = _brushCtx = _brushSel = _hFrom = _hTo = null;
-    _lanes = _scrubLine = _pop = _pinnedChip = null;
-    _forecast = _cityConfig = null;
+    _lanes = _scrubLine = _pop = _pinnedChip = _eventsHost = _eventScrub = null;
+    _forecast = _cityConfig = _anim = null;
     _rows = [];
+    _eventRows = [];
     _bucket = null;
   }
 
   window.EFTimeline = {
     ensureTimeline: ensureTimeline,
     setForecast: setForecast,
+    setEvents: setEvents,
     setStations: setStations,
     setBucket: setBucket,
     getBucket: getBucket,

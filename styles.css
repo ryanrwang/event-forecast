@@ -314,12 +314,21 @@ a:visited {
   margin: 0;
 }
 
-.event-filter__chip {
+/* Chips — one look for the view filters (Sports, Concerts, Smaller
+   venues) and the timeline controls (Streetcar, GO, All day, Fit, Peak,
+   Now). Three states that read at a glance:
+     on        accent border + tint, primary text
+     off       plain outline, secondary text: readable, just not lit
+     disabled  muted and dimmed, no pointer */
+.event-filter__chip,
+.ef-timeline__chip {
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
+  font-weight: var(--typography-weight-medium);
+  line-height: 1.2;
   color: var(--color-text-secondary);
   background: var(--color-bg-raised);
-  border: 1px solid var(--color-border-base);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-pill);
   padding: var(--spacing-xs) var(--spacing-md);
   cursor: pointer;
@@ -329,22 +338,39 @@ a:visited {
               opacity var(--transition-fast);
 }
 
-.event-filter__chip:hover {
-  border-color: var(--color-border-strong);
-  color: var(--color-text-primary);
+.ef-timeline__chip {
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
-.event-filter__chip[aria-pressed="true"] {
+.event-filter__chip:hover,
+.ef-timeline__chip:hover {
   color: var(--color-text-primary);
-  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 12%, transparent), transparent 80%),
+  border-color: var(--color-text-tertiary);
+}
+
+.event-filter__chip:focus-visible,
+.ef-timeline__chip:focus-visible {
+  outline: 2px solid var(--color-interactive-focus);
+  outline-offset: 2px;
+}
+
+.event-filter__chip[aria-pressed="true"],
+.ef-timeline__chip[aria-pressed="true"] {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-action-primary) 70%, transparent);
+  background: linear-gradient(180deg,
+                color-mix(in srgb, var(--color-action-primary) 20%, transparent),
+                color-mix(in srgb, var(--color-action-primary) 8%, transparent)),
               var(--color-bg-raised);
 }
 
-.event-filter__chip[aria-pressed="false"] {
+.event-filter__chip:disabled,
+.ef-timeline__chip:disabled {
   color: var(--color-text-muted);
+  border-color: var(--color-border-subtle);
   background: transparent;
-  opacity: var(--opacity-75);
+  opacity: var(--opacity-50);
+  cursor: not-allowed;
 }
 
 .event-filter__note {
@@ -580,14 +606,6 @@ a:visited {
   flex-direction: column;
   gap: var(--spacing-xs);
   min-width: 0;
-}
-
-.forecast-detail__eyebrow {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
 }
 
 .forecast-detail__title {
@@ -1007,6 +1025,7 @@ a:visited {
 }
 
 .ef-timeline {
+  position: relative;   /* the details popover is placed against this box */
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
@@ -1039,28 +1058,6 @@ a:visited {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--spacing-xs);
-}
-
-.ef-timeline__chip {
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: var(--color-bg-raised);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-pill);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast),
-              background var(--transition-fast);
-}
-
-.ef-timeline__chip:hover,
-.ef-timeline__chip:focus-visible {
-  border-color: var(--color-border-strong);
-  color: var(--color-text-primary);
-  outline: none;
 }
 
 .ef-timeline__canvas {
@@ -1134,19 +1131,6 @@ a:visited {
 
 .ef-timeline__toggles:empty {
   display: none;
-}
-
-.ef-timeline__chip--toggle[aria-pressed="true"] {
-  color: var(--color-text-primary);
-  border-color: color-mix(in srgb, var(--color-action-primary) 55%, transparent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-action-primary) 12%, transparent), transparent 80%),
-              var(--color-bg-raised);
-}
-
-.ef-timeline__chip--toggle[aria-pressed="false"] {
-  color: var(--color-text-muted);
-  background: transparent;
-  opacity: var(--opacity-75);
 }
 
 /* Line pills. With a configured agency colour (city.json line_colors)
@@ -1246,11 +1230,12 @@ a:visited {
   box-shadow: 0 0 0 2px var(--color-interactive-focus);
 }
 
+/* Handle times sit INSIDE the range, flush with the grip (left edge
+   of the start handle, right edge of the end handle), so nothing hangs
+   past the handles. On a narrow range they'd meet, so they flip out. */
 .ef-brush__label {
   position: absolute;
   top: 30px;
-  left: 10px;
-  transform: translateX(-50%);
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
   font-variant-numeric: tabular-nums;
@@ -1259,24 +1244,32 @@ a:visited {
   pointer-events: none;
 }
 
-/* Handles close together: push the labels outward so they don't touch. */
-.ef-brush__handle--tight:first-of-type .ef-brush__label { transform: translateX(-100%); }
-.ef-brush__handle--tight:last-of-type  .ef-brush__label { transform: translateX(0); }
+.ef-brush__handle--from .ef-brush__label { left: 6px; }
+.ef-brush__handle--to   .ef-brush__label { right: 6px; }
 
-/* Station lanes: one row per station, a chip anchored at each busy
-   window. Side margins match the canvas plot margins (16px) so chips
-   line up with the axis. Positions are percentages of the visible
-   range, so a resize never needs a re-measure. */
-.ef-lanes-wrap {
-  position: relative;
-}
+.ef-brush__handle--tight.ef-brush__handle--from .ef-brush__label { left: auto; right: 14px; }
+.ef-brush__handle--tight.ef-brush__handle--to   .ef-brush__label { right: auto; left: 14px; }
 
+/* Lanes: a chip anchored at each window, over the same axis as the
+   chart. The event lane sits above the curve (one row, stacked when
+   events overlap); station lanes sit under it, one row per station.
+   Side margins match the canvas plot margins (16px) so chips line up
+   with the axis. Positions are percentages of the visible range, so a
+   resize never needs a re-measure. */
 .ef-lanes {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
   margin: var(--spacing-xs) var(--spacing-md) 0;
+}
+
+.ef-lanes--events {
+  margin-bottom: 0;
+}
+
+.ef-lanes--events[hidden] {
+  display: none;
 }
 
 .ef-lane {
@@ -1320,6 +1313,28 @@ a:visited {
   background: color-mix(in srgb, var(--color-verdict-severe) 16%, var(--color-bg-raised));
 }
 
+/* Event chips take the curve's accent so they read as "the event",
+   not as an In / Out window. */
+.ef-lane__chip[data-phase="event"] {
+  border-color: color-mix(in srgb, var(--color-text-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--color-text-accent) 12%, var(--color-bg-raised));
+}
+
+/* Start-time badge inside an event chip: same footprint as a line
+   badge, neutral colour. */
+.ef-lane__badge {
+  flex: none;
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-tiny);
+  font-weight: var(--typography-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
 .ef-lane__chip:hover,
 .ef-lane__chip:focus-visible {
   border-color: var(--color-border-strong);
@@ -1338,6 +1353,11 @@ a:visited {
   max-width: 160px;
 }
 
+/* Event chips span a whole crowd window, so the name gets more room. */
+.ef-lane--events .ef-lane__name {
+  max-width: 320px;
+}
+
 /* Badge inside a lane chip: one step smaller than elsewhere. */
 .ef-lane__chip .line-pill {
   font-size: var(--typography-tiny);
@@ -1350,7 +1370,8 @@ a:visited {
    chips are stacked into extra rows by the timeline itself, measured. */
 @media (max-width: 720px) {
   .ef-lane__chip .line-pill { display: none; }
-  .ef-lane__name { max-width: 120px; }
+  .ef-lane__name,
+  .ef-lane--events .ef-lane__name { max-width: 120px; }
 }
 
 .ef-lanes__scrub {

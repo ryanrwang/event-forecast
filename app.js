@@ -808,7 +808,6 @@
 
     var header = el('div', 'forecast-detail__header');
     var left = el('div', 'forecast-detail__header-main');
-    left.appendChild(el('div', 'forecast-detail__eyebrow', 'Selected day'));
     var title = el('div', 'forecast-detail__title');
     title.id = 'forecast-detail-title';
     left.appendChild(title);
@@ -869,12 +868,15 @@
     var driver = document.getElementById('forecast-detail-driver');
     if (driver) driver.textContent = driverText(forecast, tz);
 
-    // Reset bucket selection to the new day's peak (M3 spec).
-    var newBucket = (typeof view.peak_bucket === 'number') ? view.peak_bucket : 0;
-    state.selectedBucket = newBucket;
-
+    // The timeline places the scrubber for the new day (its peak, or
+    // "now" when that was the last choice and it's today) and is the
+    // single source of truth for state.selectedBucket.
+    state.selectedBucket = (typeof view.peak_bucket === 'number') ? view.peak_bucket : 0;
     if (window.EFTimeline) {
       window.EFTimeline.setForecast(view, state.cityConfig);
+      var tb = window.EFTimeline.getBucket();
+      if (typeof tb === 'number') state.selectedBucket = tb;
+      window.EFTimeline.setEvents(eventLaneRows(view));
       renderTimelineStations(view);
     }
 
@@ -891,6 +893,9 @@
         window.EFMap.setStations(stationCollectionFromForecast(view));
       }
       window.EFMap.setForecast(view, state.cityConfig);
+      if (window.EFMap.setBucket && typeof state.selectedBucket === 'number') {
+        window.EFMap.setBucket(state.selectedBucket);
+      }
     }
     renderRail();
   }
@@ -1044,6 +1049,60 @@
       };
     });
     return { rows: rows, hiddenKinds: result.hiddenKinds };
+  }
+
+  // Minutes into the selected day for an ISO local time; an event that
+  // ends after midnight lands past 1440 (the modeled day runs to 2 AM).
+  function minutesIntoDay(iso, selDay) {
+    var m = isoMinutesOfDay(iso);
+    if (m == null || !selDay) return null;
+    return m + dayDelta(selDay, (iso || '').slice(0, 10)) * 24 * 60;
+  }
+
+  // Rows for the timeline's event lane: one chip per event over its
+  // modeled crowd window (first In minute to last Out minute), with the
+  // start time as the badge and the full details for the popover.
+  function eventLaneRows(view) {
+    if (!view) return [];
+    var selDay = view.date || state.selectedDate;
+    var winsByEvent = {};
+    (view.avoid_windows || []).forEach(function (w) {
+      (winsByEvent[w.event_id] = winsByEvent[w.event_id] || []).push(w);
+    });
+    var rows = [];
+    (view.events || []).forEach(function (ev) {
+      var startMin = minutesIntoDay(ev.start_local, selDay);
+      var endMin = minutesIntoDay(ev.end_local, selDay);
+      var wins = winsByEvent[ev.id || ''] || [];
+      var from = Infinity, to = -Infinity;
+      var ins = { from: Infinity, to: -Infinity }, outs = { from: Infinity, to: -Infinity };
+      wins.forEach(function (w) {
+        if (w.from_minute < from) from = w.from_minute;
+        if (w.to_minute > to) to = w.to_minute;
+        var bag = w.kind === 'dispersal' ? outs : ins;
+        if (w.from_minute < bag.from) bag.from = w.from_minute;
+        if (w.to_minute > bag.to) bag.to = w.to_minute;
+      });
+      if (startMin != null && startMin < from) from = startMin;
+      if (endMin != null && endMin > to) to = endMin;
+      if (!isFinite(from) || !isFinite(to) || to <= from) return;
+      rows.push({
+        id: ev.id || '',
+        name: ev.name || '(untitled event)',
+        badge: startMin != null ? clockFromMinutes(startMin) : '',
+        kindLabel: humanCategory(ev.category),
+        fromBucket: from / BUCKET_MIN,
+        toBucket: to / BUCKET_MIN,
+        startBucket: Math.floor((startMin != null ? startMin : from) / BUCKET_MIN),
+        time: (startMin != null && endMin != null) ? rangeLabel(startMin, endMin) : '',
+        venue: ev.venue_name || '',
+        people: roundPeople(ev.venue_capacity),
+        inWindow: isFinite(ins.from) ? rangeLabel(ins.from, ins.to) : '',
+        outWindow: isFinite(outs.from) ? rangeLabel(outs.from, outs.to) : ''
+      });
+    });
+    rows.sort(function (a, b) { return (a.fromBucket - b.fromBucket) || (b.toBucket - a.toBucket); });
+    return rows;
   }
 
   function stationsEmptyText(view, hiddenKinds) {

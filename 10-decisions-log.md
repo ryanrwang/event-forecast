@@ -413,3 +413,30 @@ chart:
 The graph follows the view filters like the peak time and the
 sub-line, and is decorative for assistive tech: the verdict and the
 "Peak" line carry the same information in text. Operator-requested.
+
+### Range mode persists across days; event lane; one chip look
+
+- **The range follows a mode, not a number.** "All day", "Fit" and the
+  default are remembered as the choice itself, so switching days keeps
+  All day at all day and re-fits Fit to the new day's activity; only a
+  hand-brushed range keeps its hours. The chart, brush and lanes glide
+  to the new range (320 ms ease-out; skipped under
+  `prefers-reduced-motion`). Peak / Now light up while the scrubber
+  sits on that bucket, and "Now" stays the choice across days: on a day
+  that isn't today the scrubber sits on the peak and returns to now on
+  today. Operator-requested.
+- **Handle times sit inside the range.** The start time is flush with
+  the start handle and reads rightward, the end time flush with the end
+  handle reading leftward, so nothing hangs past the handles into the
+  drag area. On a narrow range they flip to the outside.
+- **Event lane above the curve.** One chip per event over its modeled
+  crowd window (first In minute to last Out), start time as the badge,
+  name after it; hover or focus for the venue, size, and the In / Out
+  windows; click to scrub to the start. Same chip machinery as the
+  station lanes (percent positions, right-edge anchoring, measured
+  stacking when events overlap).
+- **One chip look.** View filters and timeline controls share one
+  style with three legible states: on (accent border + tint), off
+  (plain outline, secondary text, no dimming), disabled (muted, 50 %).
+  The previous off state dimmed to 75 % on muted text and read as
+  disabled. The "Selected day" eyebrow is gone; the date line says it.
