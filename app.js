@@ -181,22 +181,20 @@
     return Math.round((b.getTime() - a.getTime()) / 86400000);
   }
 
-  // "Today", "Tomorrow", or the short weekday ("Mon") for the strip.
-  function relativeDayLabel(isoDate, tz) {
-    var delta = dayDelta(todayIso(tz), isoDate);
-    if (delta === 0) return 'Today';
-    if (delta === 1) return 'Tomorrow';
+  // "Mon Sep 3" for the strip. Every pill names its weekday so the day of
+  // the week is never hidden behind a relative word.
+  function weekdayDate(isoDate, tz) {
     var d = new Date(isoDate + 'T12:00:00Z');
-    var opts = { weekday: 'short' };
+    var opts = { weekday: 'short', month: 'short', day: 'numeric' };
     if (tz) opts.timeZone = tz;
-    return new Intl.DateTimeFormat('en-US', opts).format(d);
+    // "Mon, Sep 3" -> "Mon Sep 3"
+    return new Intl.DateTimeFormat('en-US', opts).format(d).replace(',', '');
   }
 
-  function shortDate(isoDate, tz) {
-    var d = new Date(isoDate + 'T12:00:00Z');
-    var opts = { month: 'short', day: 'numeric' };
-    if (tz) opts.timeZone = tz;
-    return new Intl.DateTimeFormat('en-US', opts).format(d);
+  // "Today" on today only. Every other day, including tomorrow, carries no
+  // marker — the weekday and date already say where it sits.
+  function todayMarker(isoDate, tz) {
+    return dayDelta(todayIso(tz), isoDate) === 0 ? 'Today' : '';
   }
 
   // 12-hour clock, the one time format used everywhere in the UI.
@@ -663,8 +661,9 @@
     pill.style.setProperty('--i', String(index));
 
     var when = el('span', 'day-pill__when');
-    when.appendChild(el('span', 'day-pill__day', relativeDayLabel(date, tz)));
-    when.appendChild(el('span', 'day-pill__date', shortDate(date, tz)));
+    when.appendChild(el('span', 'day-pill__day', weekdayDate(date, tz)));
+    var marker = todayMarker(date, tz);
+    if (marker) when.appendChild(el('span', 'day-pill__today', marker));
     pill.appendChild(when);
 
     pill.appendChild(el('span', 'day-pill__verdict', verdictLabelText));

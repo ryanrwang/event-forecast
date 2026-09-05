@@ -474,24 +474,32 @@ a:visited {
 
 .day-pill__when {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: baseline;
   gap: var(--spacing-xs);
   width: 100%;
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  letter-spacing: 0.06em;
+  /* Tighter than the usual 0.06em: the date and the "Today" marker have to
+     share one line inside a 152px pill on mobile. */
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
 }
 
 .day-pill__day,
-.day-pill__date {
+.day-pill__today {
   white-space: nowrap;
 }
 
 .day-pill__day {
   color: var(--color-text-secondary);
+}
+
+/* "Today" sits at the far right of the date line, quieter than the date. */
+.day-pill__today {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
 }
 
 .day-pill__verdict {
