@@ -680,6 +680,47 @@
     return bucketMap.get(stationId) || null;
   }
 
+  // ─────────── Scroll-wheel zoom gate ───────────
+
+  // A bare wheel over the map zoomed it instead of scrolling the page, so
+  // the map swallowed the scroll on the way down to the events rail. The
+  // wheel now zooms only while Ctrl (or ⌘) is held — the same contract as
+  // an embedded Google map, and the one a Mac trackpad already sends for a
+  // pinch. The +/− control, double-click zoom, and touch pinch are untouched.
+  var ZOOM_HINT_MS = 1400;
+
+  function zoomHintText() {
+    var ua = navigator.userAgent || '';
+    var mac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || ua);
+    return mac ? 'Pinch or ⌘ + scroll to zoom the map'
+               : 'Use Ctrl + scroll to zoom the map';
+  }
+
+  // The listener sits on the map's PARENT in the capture phase so it runs
+  // before Leaflet's own wheel handler on the container: stopping
+  // propagation there means a plain wheel never reaches the map at all, and
+  // leaving preventDefault alone lets the page scroll as it normally would.
+  function gateScrollZoom(hostEl) {
+    var gateEl = hostEl.parentNode || hostEl;
+    var hint = el('div', 'ef-zoom-hint', zoomHintText());
+    hint.setAttribute('aria-hidden', 'true');
+    hostEl.appendChild(hint);
+    var timer = null;
+
+    gateEl.addEventListener('wheel', function (e) {
+      if (e.ctrlKey || e.metaKey) {
+        // Leaflet zooms from here. Its handler preventDefaults, which also
+        // suppresses the browser's own ctrl+wheel page zoom.
+        hint.removeAttribute('data-show');
+        return;
+      }
+      e.stopPropagation();
+      hint.setAttribute('data-show', 'true');
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () { hint.removeAttribute('data-show'); }, ZOOM_HINT_MS);
+    }, true);
+  }
+
   // ─────────── Public API ───────────
 
   function ensureMap(hostEl, bbox, options) {
@@ -716,6 +757,8 @@
     // touches the heat or event-marker layers.
     _stationLayer = L.layerGroup().addTo(_map);
     _legendControl = buildLegendControl().addTo(_map);
+
+    gateScrollZoom(hostEl);
 
     // Initial view: prefer the city config's map_default_view (e.g.
     // Toronto opens on the downtown core where most whitelisted venues

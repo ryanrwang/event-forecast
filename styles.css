@@ -917,6 +917,38 @@ a:visited {
   color: var(--color-text-muted);
 }
 
+/* Wheel-zoom hint. A bare wheel over the map scrolls the page instead of
+   zooming (see gateScrollZoom in map.js); this says so for a beat when it
+   happens. z-index clears Leaflet's panes (max 700) and stays under its
+   controls (800) so +/− keeps working while the hint is up. */
+
+.ef-zoom-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 750;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--color-bg-page) 60%, transparent);
+  backdrop-filter: blur(2px);
+  color: var(--color-text-primary);
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-body);
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.ef-zoom-hint[data-show="true"] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-zoom-hint { transition: none; }
+}
+
 /* M6: map-level transit empty-state notice. Renders top-left as a
    subdued chip — enough presence to explain why no station markers
    are visible without crowding the heat field or the legend. */
