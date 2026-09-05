@@ -17,6 +17,12 @@ on:
     - cron: '0 20 * * *'   # ~16:00 ET (15:00 in winter) — before end of workday
     - cron: '0 1  * * *'   # ~21:00 ET (20:00 in winter) — night
 
+# Needed to commit the compact day archive back to main. The forecast
+# data itself is never committed — only history/, which accumulates and
+# cannot be regenerated (Ticketmaster only serves upcoming events).
+permissions:
+  contents: write
+
 # A manual dispatch overlapping a scheduled run would race the FTP
 # upload; queue instead of running concurrently.
 concurrency:
@@ -82,3 +88,58 @@ jobs:
           server-dir: ./apps/eventforecast/data/
           exclude: |
             **/cache/**
+
+      # The compact archive. Separate from data/ on purpose: data/ is
+      # regenerated every run and mirrored with deletions, history/
+      # accumulates. Mirroring with deletions is still safe here because
+      # the checkout carries every committed month, so the local tree is
+      # the complete archive plus this run's upsert — never a subset.
+      #
+      # This has to be its own FTP step rather than riding deploy.yml:
+      # the commit below is made with GITHUB_TOKEN, and pushes made with
+      # that token deliberately do not trigger other workflows. Without
+      # this step the archive would reach the server only on the next
+      # human push.
+      # Same class of guard as the data one above, for the same reason:
+      # this upload syncs WITH deletions, so an empty or missing
+      # history/ would wipe the server's accumulated archive — the one
+      # artifact that cannot be regenerated. A checkout always restores
+      # every committed month, so an empty tree here means something is
+      # wrong; skip rather than mirror the emptiness.
+      - name: Verify archive before upload
+        id: archive_check
+        run: |
+          if [ -z "$(find history -name '*.json' -type f 2>/dev/null | head -1)" ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::history/ has no month files; skipping archive upload and commit."
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "archive: $(find history -name '*.json' | wc -l) month file(s)"
+          fi
+
+      - name: Upload day archive to Bluehost
+        if: steps.archive_check.outputs.ok == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./history/
+          server-dir: ./apps/eventforecast/history/
+
+      # Commit the archive back to main so it survives the next clean
+      # checkout. Each run rewrites today's record, so in practice this
+      # commits once a day and is a no-op on the other three runs.
+      - name: Commit day archive (if changed)
+        if: steps.archive_check.outputs.ok == 'true'
+        run: |
+          if [ -z "$(git status --porcelain -- history)" ]; then
+            echo "Archive unchanged; nothing to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add history
+            git commit -m "chore: archive forecast day records"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

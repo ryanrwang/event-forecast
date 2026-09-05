@@ -15,6 +15,10 @@ define('REPO_ROOT', dirname(__DIR__));
 define('CONFIG_ROOT', REPO_ROOT . '/config');
 define('DATA_ROOT',   REPO_ROOT . '/data');
 define('STATUS_PATH', DATA_ROOT . '/status.json');
+// The compact per-day archive. Deliberately a sibling of data/ rather
+// than a child: data/ is regenerated and mirrored-with-deletions on every
+// refresh, history/ accumulates and is committed. See pipeline/history.py.
+define('HISTORY_ROOT', REPO_ROOT . '/history');
 
 // Required attribution strings. The PHP layer carries every attribution
 // the rendered UI is required to display. The frontend reads them off
@@ -221,6 +225,87 @@ function valid_city_id(string $id): bool {
 
 function valid_date(string $date): bool {
     return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
+}
+
+function valid_month(string $month): bool {
+    return (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month);
+}
+
+/**
+ * Sorted YYYY-MM month ids that have an archive file for this city.
+ *
+ * Drives the calendar's month navigation: the frontend will not offer a
+ * month that has no file behind it. An empty list is the normal state on
+ * a fresh install — history accumulates from the first pipeline run
+ * onward and is never backfilled.
+ */
+function list_history_months(string $city_id): array {
+    $dir = HISTORY_ROOT . '/' . $city_id;
+    if (!is_dir($dir)) {
+        return [];
+    }
+    $months = [];
+    foreach (scandir($dir) ?: [] as $entry) {
+        if (substr($entry, -5) !== '.json') continue;
+        $month = substr($entry, 0, -5);
+        if (valid_month($month)) {
+            $months[] = $month;
+        }
+    }
+    sort($months);
+    return $months;
+}
+
+/**
+ * Load one month's archive file. Returns null when absent or malformed.
+ *
+ * Callers must treat null as "no history for that month" rather than an
+ * error: a month the calendar can page to may legitimately predate the
+ * archive.
+ */
+function load_history_month(string $city_id, string $month): ?array {
+    $path = HISTORY_ROOT . '/' . $city_id . '/' . $month . '.json';
+    if (!is_file($path)) {
+        return null;
+    }
+    $decoded = json_decode((string) file_get_contents($path), true);
+    if (!is_array($decoded) || !isset($decoded['days']) || !is_array($decoded['days'])) {
+        return null;
+    }
+    return $decoded;
+}
+
+/**
+ * Join venue coordinates and capacity onto each event of each archived
+ * day, in place.
+ *
+ * The archive is otherwise self-contained by design, but venue lat/lon
+ * is the one field it deliberately does NOT store: venues.json is the
+ * single source of truth for coordinates, exactly as in forecast.php, and
+ * a venue never moves in a way that should be frozen per-day.
+ */
+function join_history_venues(array &$days, string $city_id): void {
+    $venues = load_venues_index($city_id);
+    if (!$venues) {
+        return;
+    }
+    foreach ($days as &$day) {
+        if (!is_array($day) || !isset($day['events']) || !is_array($day['events'])) {
+            continue;
+        }
+        foreach ($day['events'] as &$ev) {
+            if (!is_array($ev)) continue;
+            $vid = $ev['venue_id'] ?? null;
+            if (is_string($vid) && isset($venues[$vid])) {
+                $v = $venues[$vid];
+                if (isset($v['lat'])) $ev['lat'] = $v['lat'];
+                if (isset($v['lon'])) $ev['lon'] = $v['lon'];
+                if (isset($v['capacity'])) $ev['venue_capacity'] = $v['capacity'];
+            }
+        }
+        unset($ev);
+    }
+    unset($day);
 }
 
 /**

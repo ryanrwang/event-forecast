@@ -38,6 +38,9 @@ $city_payload = [
 send_json([
     'city'              => $city_payload,
     'days'              => list_forecast_days($id),
+    // Months that have an archived day behind them, so the calendar knows
+    // how far back it can page. Empty on a fresh install.
+    'history_months'    => list_history_months($id),
     'attribution'       => attribution(),
     'map_attribution'   => map_attribution(),
     'basemap'           => ['key' => basemap_key()],

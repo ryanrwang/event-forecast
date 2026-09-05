@@ -48,6 +48,11 @@ Expect: at least these four lines:
 Note: `api/config.php` (the real one) is gitignored, so it's never in
 the git tree to be uploaded. Verify on Bluehost in step 4 below.
 
+`history/` is deliberately NOT in that exclude list. It is committed
+source as far as the deploy is concerned, and shipping it on a normal
+push is how the archive reaches a freshly rebuilt server. Do not add it
+to the excludes.
+
 ## 3. Confirm the scheduled refresh workflow
 
 Data generation runs on GitHub Actions, not on Bluehost. Two workflows:
@@ -131,6 +136,39 @@ ls -la ~/public_html/apps/eventforecast/data/toronto/
 cat ~/public_html/apps/eventforecast/data/status.json | head -40
 # Expect: schema_version=1, cities.toronto.ticketmaster.last_success_at
 # within the last several hours (the refresh cadence is 4×/day).
+```
+
+## 5b. Confirm the day archive is accumulating
+
+`history/` is the compact per-day archive. Unlike `data/`, it accumulates
+and is committed back to `main` by the refresh workflow — it is the only
+pipeline output that cannot be regenerated, because Ticketmaster serves
+upcoming events only.
+
+```bash
+# On Bluehost
+ls -la ~/public_html/apps/eventforecast/history/toronto/
+# Expect: one YYYY-MM.json per month since the feature shipped, roughly
+# 140 KB per full month. Months must never disappear — if one does, the
+# emptiness guard in refresh.yml failed to stop a bad mirror.
+```
+
+```bash
+# On GitHub: the archive should be committed, not only uploaded
+git log --oneline -- history | head -5
+# Expect: "chore: archive forecast day records" commits, about one a day.
+# Four a day means the record is churning; none for over a day means the
+# archive step is being skipped — check the "Verify archive before
+# upload" step's warning in the workflow log.
+```
+
+Then confirm the API and the calendar agree:
+
+```bash
+curl -s "https://<domain>/apps/eventforecast/api/city.php?id=toronto"   | python3 -c "import json,sys; print(json.load(sys.stdin)['history_months'])"
+# Expect: the same month list as the directory above. An empty list here
+# hides the 7 days / Month switch entirely, which is the correct state
+# before the first archive run and a bug after it.
 ```
 
 ## 6. Confirm the PHP endpoints respond with today's data

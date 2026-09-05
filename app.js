@@ -25,6 +25,9 @@
   var VERDICT_MODE_KEY = 'eventforecast.verdictMode';
   var SMALL_VENUES_KEY = 'eventforecast.smallVenues';
   var TRANSIT_KINDS_KEY = 'eventforecast.transitKinds';
+  // '7day' (default) or 'month'. The month view is only useful once the
+  // archive has days in it, so the strip stays the landing view.
+  var OUTLOOK_VIEW_KEY = 'eventforecast.outlookView';
 
   // Venues under this capacity are "smaller venues": hidden from the
   // browsable view by default (they still count toward the verdict).
@@ -95,8 +98,26 @@
     currentCityId: null,
     cityConfig: null,
     days: [],
+    // Every day the UI can render, live and archived alike, keyed by
+    // date. Archived days are rehydrated into forecast shape on arrival
+    // (see rehydrateArchive) precisely so nothing downstream — the
+    // timeline, the map, the rail, the filters — has to know the
+    // difference.
     forecasts: {},
     selectedDate: null,
+    // 7-day strip or month calendar. Persisted, but see loadCurrentCity:
+    // month is downgraded to the strip when the archive is empty, so a
+    // saved preference can never strand someone on a blank grid.
+    outlookView: loadJson(OUTLOOK_VIEW_KEY, '7day') === 'month' ? 'month' : '7day',
+    // Month the calendar is showing, and the months whose archive has
+    // been fetched. Months are fetched once and cached for the session:
+    // an archived day is immutable, so there is nothing to invalidate.
+    calendarMonth: null,
+    historyMonths: [],
+    fetchedMonths: {},
+    pendingMonth: null,
+    // Dates that came from the archive rather than the live window.
+    archivedDates: {},
     // 15-minute bucket index [0, 95] for the day timeline / scrubber.
     // null until a forecast is loaded; reset to the new day's peak
     // bucket on day-change per M3 spec.
@@ -506,6 +527,9 @@
   function rerenderAll() {
     renderTypeFilter();
     renderForecastStrip();
+    // Calendar cells carry the same filtered verdict and mini graph as
+    // the strip pills, so a filter change has to reach both.
+    if (state.outlookView === 'month') renderCalendar();
     if (state.selectedDate) renderDetailForSelected();
   }
 
@@ -733,6 +757,257 @@
     observeStripResize(grid);
   }
 
+  // ─────────── Month calendar + archived days ───────────
+
+  /*
+   * Turn a compact archive record back into the forecast shape the rest
+   * of the app already speaks.
+   *
+   * pipeline/history.py stores a strict field-subset of the live
+   * forecast, so this is not a translation — it is two expansions:
+   *
+   *   1. each event's curve is stored as its non-zero span only
+   *      ({o, v}), because an event is active for ~23 of the day's 104
+   *      buckets and storing the zeros would quadruple the archive;
+   *   2. transit flags are stored per event rather than in a parallel
+   *      transit_flags block, which is the same information one nesting
+   *      level shallower.
+   *
+   * Everything else is already named exactly as the live shape names it.
+   */
+  function expandCurve(curve, buckets) {
+    var out = new Array(buckets);
+    for (var i = 0; i < buckets; i++) out[i] = 0;
+    if (!curve || !curve.v) return out;
+    var offset = curve.o || 0;
+    for (var j = 0; j < curve.v.length; j++) {
+      var at = offset + j;
+      if (at >= 0 && at < buckets) out[at] = curve.v[j];
+    }
+    return out;
+  }
+
+  function rehydrateArchive(record) {
+    if (!record || !record.date) return null;
+    var buckets = record.buckets || (record.timeline || []).length || 96;
+
+    var transitEvents = [];
+    var events = (record.events || []).map(function (src) {
+      var ev = {};
+      for (var k in src) {
+        if (Object.prototype.hasOwnProperty.call(src, k)) ev[k] = src[k];
+      }
+      ev.time_curve = expandCurve(src.curve, buckets);
+      delete ev.curve;
+      delete ev.stations;
+      if (src.stations && src.stations.length) {
+        transitEvents.push({
+          event_id: src.id,
+          venue_id: src.venue_id,
+          stations: src.stations
+        });
+      }
+      return ev;
+    });
+
+    var out = {};
+    for (var key in record) {
+      if (Object.prototype.hasOwnProperty.call(record, key)) out[key] = record[key];
+    }
+    out.events = events;
+    out.peak_proxy = record.score;
+    out.transit_flags = {
+      events: transitEvents,
+      service_profile: record.service_profile || null
+    };
+    // Marks the day as coming from the archive. Read by the detail
+    // header; nothing about rendering branches on it.
+    out.archived = true;
+    delete out.score;
+    delete out.service_profile;
+    return out;
+  }
+
+  // Months worth offering in the calendar: everything archived, plus
+  // whatever the live window reaches into.
+  function calendarBounds() {
+    var months = (state.historyMonths || []).slice();
+    (state.days || []).forEach(function (d) { months.push(d.slice(0, 7)); });
+    if (!months.length) return { min: null, max: null };
+    months.sort();
+    return { min: months[0], max: months[months.length - 1] };
+  }
+
+  /*
+   * Fetch a month's archive, plus the months either side of it.
+   *
+   * The neighbours are not speculative prefetching — a month grid always
+   * shows the tail of the previous month and the head of the next, and
+   * those cells are inert unless their days are loaded. One request
+   * covers all three; api/history.php takes a comma-separated list for
+   * exactly this reason.
+   */
+  function loadHistoryMonth(month) {
+    if (!month || !window.EFCalendar) return Promise.resolve();
+
+    var wanted = [
+      window.EFCalendar.addMonths(month, -1),
+      month,
+      window.EFCalendar.addMonths(month, 1)
+    ].filter(function (m) {
+      // Skip months already in hand, and months the archive has no file
+      // for — asking for those is a guaranteed empty round trip.
+      return !state.fetchedMonths[m] && (state.historyMonths || []).indexOf(m) !== -1;
+    });
+
+    // Mark every month in the visible range as handled, including the
+    // ones with no archive file, so paging back and forth doesn't retry
+    // them on every render.
+    [window.EFCalendar.addMonths(month, -1), month,
+     window.EFCalendar.addMonths(month, 1)].forEach(function (m) {
+      if ((state.historyMonths || []).indexOf(m) === -1) state.fetchedMonths[m] = true;
+    });
+
+    if (!wanted.length) return Promise.resolve();
+
+    state.pendingMonth = month;
+    var cityId = state.currentCityId;
+    return fetchJson(
+      'api/history.php?city=' + encodeURIComponent(cityId) +
+      '&months=' + encodeURIComponent(wanted.join(','))
+    ).then(function (resp) {
+      // A city switch mid-flight must not merge the wrong city's days.
+      if (state.currentCityId !== cityId) return;
+      (resp.days || []).forEach(function (record) {
+        // The live window always wins: today's forecast is fresher than
+        // an archive record written for the same date at 6am.
+        if (state.forecasts[record.date] && !state.archivedDates[record.date]) return;
+        var hydrated = rehydrateArchive(record);
+        if (!hydrated) return;
+        state.forecasts[record.date] = hydrated;
+        state.archivedDates[record.date] = true;
+      });
+      wanted.forEach(function (m) { state.fetchedMonths[m] = true; });
+    }).catch(function (err) {
+      // A month that fails to load is a gap in the calendar, not a
+      // broken app. Leave it unfetched so a later visit retries.
+      // eslint-disable-next-line no-console
+      console.error('history load failed for ' + wanted.join(','), err);
+    }).then(function () {
+      if (state.pendingMonth === month) state.pendingMonth = null;
+      if (state.outlookView === 'month') renderCalendar();
+    });
+  }
+
+  function calendarSummary(forecast) {
+    var sub = pillSubline(forecast);
+    return sub ? sub.text : '';
+  }
+
+  function renderCalendar() {
+    var host = document.getElementById('forecast-calendar');
+    if (!host || !window.EFCalendar) return;
+    var tz = state.cityConfig && state.cityConfig.timezone;
+    var bounds = calendarBounds();
+    var month = state.calendarMonth ||
+      window.EFCalendar.monthOf(state.selectedDate || todayIso(tz));
+
+    window.EFCalendar.render(host, {
+      month: month,
+      selected: state.selectedDate,
+      today: todayIso(tz),
+      minMonth: bounds.min,
+      maxMonth: bounds.max,
+      loading: state.pendingMonth === month,
+      forecastFor: function (date) { return state.forecasts[date] || null; },
+      isLive: function (date) { return !state.archivedDates[date]; },
+      verdictOf: displayVerdict,
+      summaryFor: calendarSummary,
+      drawSpark: function (canvas, forecast) {
+        var tl = window.EFTimeline;
+        if (!tl || !tl.sparkline) return;
+        var win = sparkWindow();
+        tl.sparkline(canvas, filteredForecast(forecast), {
+          from: win.from,
+          to: win.to,
+          verdict: displayVerdict(forecast),
+          now: (tl.nowBucketForDate && tz)
+            ? tl.nowBucketForDate(forecast.date, tz) : null
+        });
+      },
+      onSelect: function (date) { selectDate(date); },
+      onMonth: function (next) { showMonth(next); }
+    });
+  }
+
+  function showMonth(month) {
+    state.calendarMonth = month;
+    renderCalendar();
+    loadHistoryMonth(month);
+  }
+
+  function setOutlookView(view) {
+    var next = view === 'month' ? 'month' : '7day';
+    state.outlookView = next;
+    saveJson(OUTLOOK_VIEW_KEY, next);
+    applyOutlookView();
+  }
+
+  function applyOutlookView() {
+    var strip = document.getElementById('forecast-strip');
+    var cal = document.getElementById('forecast-calendar');
+    var isMonth = state.outlookView === 'month';
+    if (strip) strip.hidden = isMonth;
+    if (cal) cal.hidden = !isMonth;
+    renderOutlookSwitch();
+    if (isMonth) {
+      var tz = state.cityConfig && state.cityConfig.timezone;
+      if (!state.calendarMonth) {
+        state.calendarMonth = window.EFCalendar
+          ? window.EFCalendar.monthOf(state.selectedDate || todayIso(tz))
+          : null;
+      }
+      renderCalendar();
+      loadHistoryMonth(state.calendarMonth);
+    } else {
+      // Sparkline canvases are sized from their laid-out box, so they
+      // have to be redrawn after the strip becomes visible again.
+      scheduleSparklines();
+    }
+  }
+
+  // The switch is only worth showing when there is a second view to
+  // switch to — an install whose archive is still empty gets the strip
+  // and no chrome.
+  function outlookSwitchUseful() {
+    return (state.historyMonths || []).length > 0;
+  }
+
+  function renderOutlookSwitch() {
+    var host = document.getElementById('outlook-switch');
+    if (!host) return;
+    if (!outlookSwitchUseful()) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML = '';
+
+    [
+      { id: '7day', label: '7 days' },
+      { id: 'month', label: 'Month' }
+    ].forEach(function (opt) {
+      var on = state.outlookView === opt.id;
+      var btn = el('button', 'chip outlook-switch__chip', opt.label);
+      btn.type = 'button';
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) btn.setAttribute('data-active', 'true');
+      btn.addEventListener('click', function () { setOutlookView(opt.id); });
+      host.appendChild(btn);
+    });
+  }
+
   // ─────────── Mini graphs in the day cards ───────────
 
   var SPARK_DAY_START = 9 * 4;   // 9 AM in 15-minute buckets
@@ -807,9 +1082,12 @@
   function selectDate(date) {
     if (!date || !state.forecasts[date]) return;
     state.selectedDate = date;
-    var pills = document.querySelectorAll('.day-pill');
-    for (var i = 0; i < pills.length; i++) {
-      var p = pills[i];
+    // Both outlook views carry a selectable cell per day; only one is
+    // on screen at a time, but keeping both in sync means switching
+    // views never shows a stale selection.
+    var cells = document.querySelectorAll('.day-pill, button.cal-cell');
+    for (var i = 0; i < cells.length; i++) {
+      var p = cells[i];
       var match = p.getAttribute('data-date') === date;
       p.setAttribute('aria-pressed', match ? 'true' : 'false');
       if (match) p.setAttribute('data-selected', 'true');
@@ -1450,6 +1728,11 @@
     state.days = [];
     state.forecasts = {};
     state.selectedDate = null;
+    state.historyMonths = [];
+    state.fetchedMonths = {};
+    state.archivedDates = {};
+    state.calendarMonth = null;
+    state.pendingMonth = null;
     renderEmptyState('Loading ' + cityId + '…');
     loadCurrentCity().catch(function (err) {
       // eslint-disable-next-line no-console
@@ -1481,9 +1764,17 @@
       }
       renderGtfsAttribution(cityId);
       renderStatusBanner(state.freshness, state.cityConfig);
+      state.historyMonths = resp.history_months || [];
+      // A saved "month" preference is only honoured once there is an
+      // archive to show. Otherwise the calendar would open on an empty
+      // grid and look broken rather than new.
+      if (state.outlookView === 'month' && !outlookSwitchUseful()) {
+        state.outlookView = '7day';
+      }
       state.days = (resp.days || []).slice(0, 7);
       if (state.days.length === 0) {
         renderEmptyState(designedEmptyForecastMessage(state.cityConfig));
+        renderOutlookSwitch();
         return;
       }
       return Promise.all(
@@ -1499,6 +1790,10 @@
         state.selectedDate = pickInitialDate();
         renderTypeFilter();
         renderForecastStrip();
+        state.calendarMonth = window.EFCalendar
+          ? window.EFCalendar.monthOf(state.selectedDate)
+          : null;
+        applyOutlookView();
         if (state.selectedDate) renderDetailForSelected();
       });
     });

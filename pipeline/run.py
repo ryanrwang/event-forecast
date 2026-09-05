@@ -10,6 +10,12 @@ Writes per configured city:
     data/<city>/raw_events.json                 (full unfiltered fetch)
     data/<city>/<YYYY-MM-DD>/raw_events.json    (whitelist-matched, per day)
     data/<city>/<YYYY-MM-DD>/forecast.json      (scored + daily verdict)
+    history/<city>/<YYYY-MM>.json               (compact archive, one record per day)
+
+Everything under data/ is disposable: it is regenerated from scratch on
+every run and day folders older than today are pruned. history/ is the
+exception — it accumulates, is committed to the repo, and is the only
+record of days the Ticketmaster API will no longer serve.
 
 The pipeline is city-config-driven from the top: it reads
 config/cities.json to learn which cities to process. Adding NYC or
@@ -28,7 +34,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import budget, eventfilter, gtfs, manual_events, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
+from . import budget, eventfilter, gtfs, history, manual_events, scoring, status as status_writer, ticketmaster, timecurves, transit, whitelist
 from .config import REPO_ROOT, load_api_key, load_cities_list, load_city_config
 
 log = logging.getLogger("pipeline.run")
@@ -259,6 +265,12 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
     days_with_events = 0
     total_scored_events = 0
 
+    # Every day's forecast payload, collected for the compact archive.
+    # The archive is written once at the end of the loop so a mid-run
+    # failure leaves the previous month file untouched rather than
+    # half-updated.
+    archived_payloads: list[dict] = []
+
     for day_key in meta["day_keys"]:
         day_events = buckets.get(day_key, [])
 
@@ -343,6 +355,7 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
             "events": forecast_events,
         }
         _write_json(out_dir / day_key / "forecast.json", forecast_payload)
+        archived_payloads.append(forecast_payload)
         log.info(
             "[forecast] %s: verdict=%s peak_proxy=%.2f peak_bucket=%d peak_value=%.2f events=%d",
             day_key,
@@ -388,6 +401,16 @@ def run_city(city_id: str, api_key: str, window_days: int, force_refresh: bool) 
         total_events=total_scored_events,
         tz=tz,
     )
+
+    # Compact archive. Must run BEFORE the prune conceptually and after
+    # every day file is written; it reads the in-memory payloads, not the
+    # disk tree, so ordering against the prune is immaterial. Never let
+    # an archive failure fail the run — the live forecast is the product,
+    # the archive is a bonus surface.
+    try:
+        history.archive_forecasts(city_id, archived_payloads)
+    except Exception as exc:  # pragma: no cover - never bring down the cron
+        log.error("[history] %s: archive failed (%s)", city_id, exc)
 
     _prune_old_day_dirs(out_dir, tz)
 

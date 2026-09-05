@@ -289,6 +289,292 @@ a:visited {
   letter-spacing: 0.04em;
 }
 
+/* ────────────── Outlook view switch ────────────── */
+
+/*
+ * 7 days / Month. Two .chip buttons acting as one control — .chip is the
+ * project's single pill-control component, so the switch inherits its
+ * sizing, focus ring and transitions rather than inventing a second
+ * pill. Hidden by app.js until the archive has something to show.
+ */
+.outlook-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.outlook-switch__chip[data-active="true"] {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+  background: var(--color-bg-overlay);
+}
+
+/* ────────────── Month calendar ────────────── */
+
+/*
+ * The month view of the outlook. A calendar cell is a day pill with the
+ * peak line and the wide sub-line dropped for room — same verdict
+ * colours, same mini busyness graph, same selection model, so the two
+ * views read as one control in two densities.
+ */
+.forecast-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.cal-title {
+  font-family: var(--typography-font-display);
+  font-size: var(--typography-body);
+  font-weight: var(--typography-weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  margin: 0;
+  /* Fixed width so the arrows don't shuffle between "May" and
+     "September". */
+  min-width: 10.5em;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-xl);
+  height: var(--spacing-xl);
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-body);
+  line-height: 1;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.cal-nav:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.cal-nav:disabled {
+  opacity: var(--opacity-25);
+  cursor: default;
+}
+
+.cal-nav:focus-visible,
+.cal-cell:focus-visible {
+  outline: 2px solid var(--color-interactive-focus);
+  outline-offset: 2px;
+}
+
+.cal-today-btn {
+  margin-left: auto;
+}
+
+.cal-loading {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.cal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.cal-dow span {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.cal-cell {
+  --verdict-color: var(--color-text-tertiary);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  min-height: 88px;
+  text-align: left;
+  font-family: var(--typography-font-body);
+  color: var(--color-text-primary);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+/* The verdict stripe runs down the leading edge here rather than across
+   the top as it does on a day pill: a calendar cell is taller than it is
+   wide, and a top stripe would compete with the date. */
+.cal-cell::before {
+  content: "";
+  position: absolute;
+  inset: var(--spacing-xs) auto var(--spacing-xs) 0;
+  width: 3px;
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  background: var(--verdict-color);
+  opacity: 0.85;
+}
+
+.cal-cell--empty::before {
+  display: none;
+}
+
+.cal-cell[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
+.cal-cell[data-verdict="moderate"] { --verdict-color: var(--color-verdict-moderate); }
+.cal-cell[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
+.cal-cell[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
+
+button.cal-cell:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-overlay);
+}
+
+.cal-cell[data-selected="true"] {
+  border-color: var(--verdict-color);
+  box-shadow: 0 0 0 1px var(--verdict-color);
+  background: var(--color-bg-overlay);
+}
+
+/* A day with no forecast behind it: rendered so the grid keeps whole
+   weeks, but inert — not a button, not focusable. */
+.cal-cell--empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  min-height: 88px;
+}
+
+/* Leading and trailing days of the neighbouring months. Dimmed, but
+   still selectable when they carry a forecast. */
+.cal-cell--outside {
+  opacity: var(--opacity-50);
+}
+
+.cal-cell--today .cal-cell__num {
+  color: var(--color-text-primary);
+  font-weight: var(--typography-weight-semibold);
+}
+
+.cal-cell__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding-left: var(--spacing-sm);
+}
+
+.cal-cell__num {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-caption);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-text-secondary);
+}
+
+/* A day with nothing behind it keeps the same legible date — it is the
+   grid's skeleton, and dimming it further drops below the contrast
+   floor. What separates it from a real day is everything it lacks: no
+   verdict stripe, no verdict word, no graph, no border. */
+
+.cal-cell__today {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.cal-cell__verdict {
+  padding-left: var(--spacing-sm);
+  font-size: var(--typography-caption);
+  font-weight: var(--typography-weight-semibold);
+  line-height: 1.2;
+  color: var(--verdict-color);
+}
+
+.cal-cell__spark {
+  display: block;
+  width: 100%;
+  height: 26px;
+  margin-top: auto;
+}
+
+/* Secondary, matching .day-pill__sub. The greys below it (tertiary,
+   muted) land at 3.7:1 and 2.3:1 on the raised surface, both under the
+   4.5:1 small-text floor. Hierarchy in a cell comes from size and from
+   the verdict's colour and weight, not from dimming the text. */
+.cal-cell__sub {
+  width: 100%;
+  padding-left: var(--spacing-sm);
+  font-size: var(--typography-micro);
+  line-height: 1.25;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Phones: the sub-line and the "Today" tag are the first things to go —
+   seven columns of text at this width is unreadable, and the verdict
+   colour plus the mini graph still carry the day. */
+@media (max-width: 720px) {
+  .cal-cell {
+    min-height: 62px;
+    padding: 4px;
+  }
+
+  .cal-cell--empty {
+    min-height: 62px;
+  }
+
+  .cal-cell__sub,
+  .cal-cell__today {
+    display: none;
+  }
+
+  .cal-cell__verdict {
+    font-size: var(--typography-micro);
+  }
+
+  .cal-cell__spark {
+    height: 18px;
+  }
+
+  .cal-title {
+    font-size: var(--typography-caption);
+    min-width: 8.5em;
+  }
+}
+
 /* ────────────── Event-type filter ────────────── */
 
 /*
