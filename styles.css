@@ -303,6 +303,13 @@ a:visited {
   gap: var(--spacing-xs);
 }
 
+/* Any author `display` beats the UA stylesheet's [hidden] rule, so the
+   flex above would keep this on screen when app.js sets .hidden. Same
+   trap as .status-banner. */
+.outlook-switch[hidden] {
+  display: none;
+}
+
 .outlook-switch__chip[data-active="true"] {
   color: var(--color-text-primary);
   border-color: var(--color-text-tertiary);
@@ -321,6 +328,13 @@ a:visited {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+/* Without this the calendar stays on screen after switching back to the
+   7-day strip: applyOutlookView sets .hidden, but the flex above wins
+   over the UA stylesheet's display: none. */
+.forecast-calendar[hidden] {
+  display: none;
 }
 
 .cal-head {
