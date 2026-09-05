@@ -503,3 +503,117 @@ chart is gone, so the peak is said once, where it sits).
   own; the plot runs edge to edge inside the panel's padding, so it
   lines up with the header, chips and legend. The "Now" label clamps
   inside the plot.
+
+## 2026-09-05 — Day history + month calendar
+
+### Past days are archived compactly, not kept whole
+
+The pipeline deleted every trace of a finished day. `pipeline.run`
+pruned day folders dated before today, the GitHub Actions refresh
+regenerated the window from a clean checkout, and the FTP sync mirrored
+deletions to Bluehost. Ticketmaster only serves upcoming events, so a
+day, once past, was gone for good.
+
+`pipeline/history.py` now distils each day into a compact record in
+`history/<city>/<YYYY-MM>.json`. Measured against a real 7-day Toronto
+window (2026-09-05 → 09-11):
+
+| | per day | per year |
+|---|---|---|
+| full `forecast.json` | 12,286 B | 4.5 MB |
+| archive record | 4,585 B | 1.67 MB |
+
+**Why compact rather than keeping the whole file at 2.7x the size.** The
+size gap is real but not decisive on its own — 4.5 MB a year would also
+be affordable. The deciding reason is schema stability. `forecast.json`
+is an internal pipeline artifact whose shape tracks the model: it
+carries `flux_curve`, `spot_weights`, `scoring.spots`, `scoring.scopes`,
+`subscore_reference` and per-station `seats_per_hour`, none of which any
+frontend code reads. Committing that to a permanent, append-only record
+would couple years of history to model internals, and every future
+change to the scoring intermediates would silently bloat or break the
+archive. The archive instead holds exactly what the UI renders, so its
+shape is governed by the views, which change far more slowly.
+
+An earlier measurement suggested a 13x saving. That figure came from
+stale July fixture data written before `transit.STREETCAR_MAX_PER_EVENT`
+shipped, where a single day carried 184 station rows each with a
+24-float `seats_per_hour` array. On current output the honest ratio is
+2.7x.
+
+**What the archive keeps, and why each piece earns its bytes:**
+
+- verdict, score, thresholds, timeline — the calendar cell and the day curve
+- `avoid_windows`, with both the minute and bucket pairs — the timeline bands read buckets, the station lanes read minutes
+- per-event `during` windows — the event lane above the curve
+- per-event curves — the map heatmap and the time scrubber
+- per-event stations — the "stations likely packed" lanes
+
+Per-event curves cost almost nothing and were nearly dropped. An event
+is active for ~26 of the day's 104 buckets, so storing the non-zero span
+only (`{o, v}`) keeps the exact modeled shape for a few hundred bytes a
+day. Dropping them would have cost the map and the scrubber on past
+days for no meaningful saving.
+
+### The archive is a field-subset of the live shape, never a renamed one
+
+Station rows keep `station_id` / `station_name` / `via` rather than
+shorter keys, and `avoid_windows` keeps all four positional fields.
+Shorter names would save roughly 12 bytes a row and buy a translation
+layer that rots the first time someone adds a field. Rehydration in
+`app.js` is therefore only two expansions — curve spans back to full
+length, per-event stations back into a `transit_flags` block — after
+which `state.forecasts` holds archived and live days indistinguishably,
+and the timeline, map, rail and filters all work on a past day with no
+branching.
+
+### Archive records are self-contained; live days still join from config
+
+`api/forecast.php` deliberately does not denormalise venue lat/lon,
+so a coordinate fix doesn't require regenerating every day. The archive
+takes the opposite line for station name, kind and coordinates: it
+stores them with the day. A live day should track current config; an
+archived day should record what was actually modeled, and stay readable
+after a GTFS refresh renames a stop or a venue's curated station list is
+retuned. Venue lat/lon is the one exception — still joined from
+`venues.json` by `api/history.php`, because a venue does not move.
+
+### The whole rolling window is archived, not just today
+
+Every run upserts all seven days, so a date is rewritten repeatedly and
+the last run of the day wins. Archiving only today would leave a hole
+in the calendar for every day the cron missed; archiving the window
+leaves a slightly stale forecast instead, which is strictly better.
+
+### `history/` sits beside `data/`, not inside it
+
+`data/` is gitignored, regenerated every run, and FTP-mirrored with
+deletions — three properties that would each destroy an archive.
+`history/` is committed by `refresh.yml` (as `refresh-gtfs.yml` already
+does for station sets) so it survives the clean checkout, and gets its
+own FTP step because pushes made with `GITHUB_TOKEN` deliberately do not
+trigger `deploy.yml`. That upload has its own emptiness guard, matching
+the existing one on `data/`, since it also syncs with deletions.
+
+### Month calendar sits behind a switch, and hides itself when empty
+
+The 7-day strip stays the landing view; "7 days / Month" swaps in the
+grid. A calendar cell is a day pill with the peak line and the wide
+sub-line dropped for room — same verdict colours, same mini graph, same
+selection model. The switch is not rendered at all until the archive has
+a month in it, and a saved "month" preference is downgraded to the strip
+in that state, so a fresh install can never land on an empty grid.
+
+The month view fetches the displayed month plus its two neighbours in
+one request. That is not speculative prefetching: a month grid always
+shows the tail of the previous month and the head of the next, and those
+cells are inert unless their days are loaded.
+
+### Calendar text uses secondary, not tertiary or muted
+
+At 12px on `--color-bg-raised`, `--color-text-tertiary` measures 3.7:1
+and `--color-text-muted` 2.3:1, both under the 4.5:1 small-text floor.
+Cell numbers and sub-lines use `--color-text-secondary` (6.8:1), which
+also matches `.day-pill__sub`. Hierarchy in a cell comes from size and
+from the verdict's colour and weight, not from dimming text toward
+illegibility.

@@ -61,10 +61,12 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `tokens.js` | Two-layer design token system (primitives + semantic). Dark-first. Includes heatmap ramp (M2). |
 | `styles.css` | Global styles, references CSS custom properties only. `.chip` is the one pill-control component (filters + timeline controls). |
 | `index.html` | Frontend shell. Forecast strip + detail/map region + footer. Loads Leaflet from unpkg. |
-| `app.js` | Entry point. Loads cities, renders the 7-day verdict-pill strip (each pill carries a mini busyness graph on a shared time window and absolute scale), drives day selection, and renders the selected day today-first: "Because …" driver line, then the timeline (an event lane above the curve, the stations likely packed as lanes below it; subway by default, Streetcar / GO toggles), map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
+| `app.js` | Entry point. Owns the outlook view switch (7 days / Month), fetches + rehydrates archived days into `state.forecasts` so past days render through the same timeline / map / rail path as live ones. Loads cities, renders the 7-day verdict-pill strip (each pill carries a mini busyness graph on a shared time window and absolute scale), drives day selection, and renders the selected day today-first: "Because …" driver line, then the timeline (an event lane above the curve, the stations likely packed as lanes below it; subway by default, Streetcar / GO toggles), map, events-at-time rail. View filters (Sports / Concerts / Theatre & other / Smaller venues) are client-side; verdicts stay full-model unless the switch is on; all persisted in localStorage. |
 | `map.js` | Leaflet map + custom canvas heat overlay (absolute scale: normalized to the Severe threshold) + markers + kind-aware station markers + one-line legend (M2). |
+| `calendar.js` | Month view of the outlook. Calendar arithmetic + DOM only; holds no forecast state and makes no network calls, so filters and the archived/live distinction stay in `app.js`. A cell is a day pill with the peak line and sub-line dropped for room. |
 | `timeline.js` | Custom canvas day timeline (smooth monotone curve on an ABSOLUTE scale: Severe threshold + headroom, dashed Busy / Severe lines, a Now line on today) + `sparkline()` for the day-pill mini graphs + scrubber + per-event In / Out bands (M3), a dual-handle range brush above the chart whose MODE persists across days (default 9 AM → 2 AM, "All day", "Fit" re-fitted per day, or a brushed range) with a short tween between ranges, an event lane above the curve (start-time badge + name, hover for details), and station lanes under the curve (badge + name chip per busy window, hover for details, click to scrub). Bucket count comes from the day file. |
 | `pipeline/run.py` | City iterator: fetch → whitelist → score → time curves → write forecast JSON. |
+| `pipeline/history.py` | Compact per-day archive → `history/<city>/<YYYY-MM>.json`. A strict field-subset of the live forecast shape (never renamed), self-contained by design, stdlib-only so an archive write can never break the cron. ~4.6 KB/day vs ~12 KB for the full file. |
 | `pipeline/scoring.py` | Per-event impact score + daily verdict. M1-locked constants; verdict thresholds calibrated 2026-09-03 (5 / 30 / 65). |
 | `pipeline/timecurves.py` | Per-event time curve over a 26-hour modeled day (104 buckets, 12 AM → 2 AM next morning) + daily timeline + peak-bucket + sigma. M2-locked math. |
 | `pipeline/whitelist.py` | Apply venue whitelist to Ticketmaster events (TM id, name, alias). |
@@ -76,6 +78,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `pipeline/status.py` | M6: writes `data/status.json` (TM freshness, GTFS freshness, zero-event sanity flag per city). Single source of truth for "is the data fresh?". |
 | `pipeline/budget.py` | M6: per-city per-day Ticketmaster call counter (`data/cache/ticketmaster/budget.json`). |
 | `api/_common.php` | Shared PHP helpers: city allowlist, venues index, JSON response. M6: attribution loaders (TM, OSM+CARTO, per-city GTFS license), status reader, freshness summary. |
+| `api/history.php` | Archived days for one or more months (max 6/request), date-ordered and flattened, with venue coordinates joined from `venues.json`. A month with no file is an empty result, not an error. |
 | `api/forecast.php` | Per-day forecast JSON, joined with venue lat/lon from `venues.json`. |
 | `api/city.php` | Per-city config + list of available forecast days + M6 freshness summary + map / GTFS attribution. |
 | `api/cities.php` | Configured cities + all attribution surfaces (TM + OSM/CARTO + per-city GTFS licenses). |
@@ -89,7 +92,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `config/<city>/manual_events.json` | Hand-maintained non-ticketed crowd days. Entries with `date: null` are templates and are skipped. |
 | `config/<city>/stations_meta.json` | When the reduced station set was last regenerated. Written by `pipeline.gtfs`; `pipeline.run` copies it into `status.json` so GTFS freshness survives clean CI checkouts. |
 | `.github/workflows/deploy.yml` | SFTP deploy to Bluehost on push to `main`. |
-| `.github/workflows/refresh.yml` | Scheduled data refresh (GitHub Actions, 4×/day): runs `pipeline.run`, FTP-pushes `data/` to Bluehost. Needs the `TICKETMASTER_API_KEY` repo secret. |
+| `.github/workflows/refresh.yml` | Scheduled data refresh (GitHub Actions, 4×/day): runs `pipeline.run`, FTP-pushes `data/` **and** `history/` to Bluehost, then commits `history/` back to `main`. Needs `contents: write` and the `TICKETMASTER_API_KEY` repo secret. |
 | `.github/workflows/refresh-gtfs.yml` | Weekly GTFS refresh: runs `pipeline.gtfs`, commits the regenerated station set + meta back to `main`. |
 
 This table expands as milestones land (timeline UI, GTFS data, etc.).
@@ -195,5 +198,6 @@ If already on `main` with uncommitted changes AND the change qualifies as minor,
 - **Deploy:** GitHub Actions SFTP on push to `main` → `public_html/apps/eventforecast/`.
 - **Required secrets:** `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` (same as the other Clearful apps) + `TICKETMASTER_API_KEY` (used by the scheduled refresh workflow).
 - **Not deployed:** all `.md` files (including `00-overview.md` and milestone docs), `cache/`, `data/cache/`, `.claude/`, Python `__pycache__/` and `.venv/`, `node_modules/`.
-- **Data refresh:** GitHub Actions — `refresh.yml` (4×/day) runs the Python pipeline on GitHub runners and FTP-pushes the generated `data/` tree to Bluehost; `refresh-gtfs.yml` (weekly) regenerates the station set and commits it back to `main`. No Python runs on Bluehost.
+- **Data refresh:** GitHub Actions — `refresh.yml` (4×/day) runs the Python pipeline on GitHub runners and FTP-pushes the generated `data/` tree to Bluehost, plus the `history/` archive which it also commits back to `main`; `refresh-gtfs.yml` (weekly) regenerates the station set and commits it back to `main`. No Python runs on Bluehost.
 - Do not commit `cache/`, `data/cache/`, `error_log`, or any `api/config.php` / `includes/config.php` — these are gitignored.
+- **`history/` IS committed**, unlike `data/`. It is the compact per-day archive and the one pipeline artifact that cannot be regenerated — Ticketmaster only serves upcoming events, so a day that is not archived before it passes is gone. `refresh.yml` commits it; never add it to `.gitignore`.

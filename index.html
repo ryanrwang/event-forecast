@@ -40,6 +40,12 @@
          the day verdict unless the switch is on. -->
     <div class="event-filter" id="event-filter" role="group" aria-label="Filter events" hidden></div>
 
+    <!-- Outlook view switch: 7-day strip or month calendar. Rendered by
+         app.js and hidden entirely until the archive has a month in it,
+         so a fresh install shows no switch and no empty grid. -->
+    <div class="outlook-switch" id="outlook-switch" role="group"
+         aria-label="Outlook view" hidden></div>
+
     <!-- 7-day outlook: one compact verdict pill per day. Today first.
          Selecting a pill drives the detail panel below. -->
     <section class="forecast-strip" id="forecast-strip" aria-label="7-day outlook">
@@ -48,6 +54,12 @@
         Loading forecast&hellip;
       </div>
     </section>
+
+    <!-- Month outlook: the same day cards in a calendar grid, covering
+         the archived past as well as the live window. Populated by
+         calendar.js; hidden until the month view is chosen. -->
+    <section class="forecast-calendar" id="forecast-calendar"
+             aria-label="Month outlook" hidden></section>
 
     <!-- Selected day, today-first order: plain-English takeaway,
          stations likely packed, when it peaks, the map, then the
@@ -84,6 +96,7 @@
           crossorigin="anonymous"></script>
   <script src="map.js"></script>
   <script src="timeline.js"></script>
+  <script src="calendar.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
