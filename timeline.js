@@ -87,6 +87,7 @@
   var _eventScrub = null;
   var _eventRows = [];
   var _pop = null;
+  var _popScrim = null;        // phones: dims the page behind the details sheet
   var _popChip = null;         // chip the popover currently describes
   var _pinnedChip = null;
   var _ro = null;
@@ -371,19 +372,12 @@
     updateCanvasAria();
   }
 
-  // "Options ·n": how many settings inside the dropdown are switched on
-  // (station kinds), so the closed chip on a phone still says something
-  // is set. Peak / Now live there too but are actions, not settings.
+  // The "Options ▾" chip that opens the dropdown on phones. No count
+  // on it: the station lanes themselves show which kinds are on.
   function updateOptionsBtn() {
     if (!_optionsBtn) return;
-    var n = 0;
-    if (_toggleHost) n += _toggleHost.querySelectorAll('[aria-pressed="true"]').length;
     _optionsBtn.textContent = '';
     _optionsBtn.appendChild(document.createTextNode('Options'));
-    if (n > 0) {
-      _optionsBtn.appendChild(el('span', 'chip__count', String(n)));
-      _optionsBtn.appendChild(el('span', 'sr-only', ', ' + n + ' changed'));
-    }
     var caret = el('span', 'chip__caret');
     caret.setAttribute('aria-hidden', 'true');
     _optionsBtn.appendChild(caret);
@@ -1350,6 +1344,19 @@
 
   // ─────────── Details popover ───────────
 
+  // Phones show the details as a sheet pinned to the bottom of the
+  // screen over a scrim, not as a popover under the chip: the chip
+  // rows sit right above the map, and a popover hanging below them
+  // ran under it. Same breakpoint as styles.css.
+  function phoneLayout() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
+  }
+
+  function unpinPop() {
+    _pinnedChip = null;
+    hidePop();
+  }
+
   function fillStationPop(row, span) {
     var head = el('div', 'ef-pop__head');
     (row.lines || []).forEach(function (l) { head.appendChild(linePillNode(row, l)); });
@@ -1397,10 +1404,30 @@
     else if (chip._row) fillStationPop(chip._row, chip._span);
     else return;
 
+    var close = el('button', 'ef-pop__close');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function (evt) {
+      evt.stopPropagation();
+      unpinPop();
+      if (chip.focus) chip.focus();
+    });
+    _pop.appendChild(close);
+
     _pop.hidden = false;
     if (_popChip && _popChip !== chip) _popChip.removeAttribute('aria-describedby');
     _popChip = chip;
     chip.setAttribute('aria-describedby', _pop.id);
+    if (phoneLayout()) {
+      // The sheet: styles.css places it; only the scrim is ours.
+      _pop.style.left = '';
+      _pop.style.top = '';
+      _pop.setAttribute('data-sheet', 'true');
+      if (_popScrim) _popScrim.hidden = false;
+      return;
+    }
+    _pop.removeAttribute('data-sheet');
+    if (_popScrim) _popScrim.hidden = true;
     var box = _wrap.getBoundingClientRect();
     var chipRect = chip.getBoundingClientRect();
     var left = chipRect.left - box.left;
@@ -1412,6 +1439,7 @@
 
   function hidePop() {
     if (_pop) _pop.hidden = true;
+    if (_popScrim) _popScrim.hidden = true;
     if (_popChip) {
       _popChip.removeAttribute('aria-describedby');
       _popChip = null;
@@ -1784,7 +1812,15 @@
     _lanes.setAttribute('aria-label', 'Stations likely packed, placed on the timeline');
     _wrap.appendChild(_lanes);
     // One details popover for event and station chips, positioned
-    // against the timeline box.
+    // against the timeline box; a bottom sheet over a scrim on phones
+    // (see showPop). A tap on the scrim closes it.
+    _popScrim = el('div', 'ef-pop-scrim');
+    _popScrim.hidden = true;
+    _popScrim.addEventListener('click', function (evt) {
+      evt.stopPropagation();
+      unpinPop();
+    });
+    _wrap.appendChild(_popScrim);
     _pop = el('div', 'ef-pop');
     _pop.id = 'ef-timeline-pop';
     _pop.setAttribute('role', 'tooltip');
@@ -1828,7 +1864,7 @@
     _toggleGroup = _toggleSep = _optionsPanel = _optionsBtn = _popChip = null;
     _touchStart = _brushTouch = null;
     _canvas = _ctx = _brush = _brushCanvas = _brushCtx = _brushSel = _hFrom = _hTo = null;
-    _lanes = _scrubLine = _pop = _pinnedChip = _eventsHost = _eventScrub = null;
+    _lanes = _scrubLine = _pop = _popScrim = _pinnedChip = _eventsHost = _eventScrub = null;
     _forecast = _cityConfig = _anim = null;
     _rows = [];
     _eventRows = [];

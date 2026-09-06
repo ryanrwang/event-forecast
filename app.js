@@ -538,18 +538,6 @@
 
   // ─────────── View filters ───────────
 
-  // How many filter settings are off their defaults: a type switched
-  // off, smaller venues switched on, ratings following the filters.
-  // Shown as a count on the phone's Filters chip so a collapsed group
-  // never hides that something is filtered.
-  function filterChangeCount() {
-    var n = 0;
-    TYPE_GROUPS.forEach(function (g) { if (state.typeFilter[g.id] === false) n++; });
-    if (state.smallVenues) n++;
-    if (state.verdictMode === 'filtered') n++;
-    return n;
-  }
-
   // Say what the verdicts mean when a type chip hides something big, or
   // when the switch re-buckets them. Hidden smaller venues alone don't
   // earn the note — they barely move the verdict.
@@ -572,6 +560,8 @@
   // The Filters chip (phone only, see styles.css .controls), the
   // dropdown it opens, and the note that repeats the group's caveat
   // while the dropdown is closed. Outside click and Escape close it.
+  // The chip carries no count: the note below it already says when
+  // something is filtered, and a bare number read as noise.
   function renderFilterSummary() {
     var btn = document.getElementById('event-filter-summary');
     var note = document.getElementById('event-filter-note');
@@ -599,11 +589,6 @@
       btn.hidden = false;
       btn.textContent = '';
       btn.appendChild(document.createTextNode('Filters'));
-      var n = filterChangeCount();
-      if (n > 0) {
-        btn.appendChild(el('span', 'chip__count', String(n)));
-        btn.appendChild(el('span', 'sr-only', ', ' + n + ' changed'));
-      }
       var caret = el('span', 'chip__caret');
       caret.setAttribute('aria-hidden', 'true');
       btn.appendChild(caret);
