@@ -1302,6 +1302,46 @@ a:visited {
   }
 }
 
+/* ────────────── Boot: load-in ────────────── */
+
+/*
+ * The page opens with data-booting on <html> (set in index.html, before
+ * first paint) and every top-level block invisible. app.js removes the
+ * attribute once tokens, styles, fonts and the first forecast render
+ * are all in, and the blocks then fade and rise into place one after
+ * another, top to bottom; --reveal-i is a block's place in that order.
+ * fill-mode backwards keeps a block invisible while it waits its turn
+ * and leaves no transform behind afterwards, so Leaflet and the phone
+ * dropdowns keep positioning against the viewport as before. app.js
+ * drops the .reveal hook once the entrance has played, so a block that
+ * is hidden and shown again later doesn't replay it.
+ */
+html[data-booting] .reveal {
+  opacity: 0;
+}
+
+html:not([data-booting]) .reveal {
+  animation: reveal-in var(--duration-slow) var(--easing-decelerate) backwards;
+  animation-delay: calc(var(--reveal-i, 0) * var(--duration-stagger));
+}
+
+@keyframes reveal-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-booting]) .reveal {
+    animation-name: reveal-fade;
+    animation-delay: 0ms;
+  }
+}
+
+@keyframes reveal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ────────────── Placeholder loading state ────────────── */
 
 .placeholder {

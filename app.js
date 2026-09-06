@@ -1889,11 +1889,40 @@
     });
   }
 
+  // ─────────── Boot: load-in ───────────
+
+  // The page opens with data-booting on <html> and every block invisible
+  // (see styles.css). Reveal once the first render is done and the web
+  // font is in, so the entrance is one smooth pass rather than a flash
+  // of unstyled text followed by pop-in. A deadline caps the wait so a
+  // slow font or a hung request can't hold a blank page; index.html has
+  // a longer last-resort timer for when this script never runs at all.
+  var BOOT_DEADLINE_MS = 4000;
+  var BOOT_SETTLE_MS = 1000;   // past the last block's delay + duration
+  var revealed = false;
+
+  function fontsReady() {
+    if (!(document.fonts && document.fonts.ready)) return Promise.resolve();
+    return document.fonts.ready.then(function () {}, function () {});
+  }
+
+  function bootReveal() {
+    if (revealed) return;
+    revealed = true;
+    window.requestAnimationFrame(function () {
+      document.documentElement.removeAttribute('data-booting');
+      setTimeout(function () {
+        var blocks = document.querySelectorAll('.reveal');
+        for (var i = 0; i < blocks.length; i++) blocks[i].classList.remove('reveal');
+      }, BOOT_SETTLE_MS);
+    });
+  }
+
   // ─────────── Bootstrap ───────────
 
   function init() {
     applyTheme();
-    fetchJson('api/cities.php').then(function (resp) {
+    var firstRender = fetchJson('api/cities.php').then(function (resp) {
       state.cities = resp.cities || [];
       renderAttribution(resp.attribution);
       if (resp.map_attribution) {
@@ -1924,6 +1953,11 @@
         'If the issue persists, the cron may not be running.'
       );
     });
+
+    Promise.race([
+      Promise.all([firstRender, fontsReady()]),
+      new Promise(function (resolve) { setTimeout(resolve, BOOT_DEADLINE_MS); })
+    ]).then(bootReveal, bootReveal);
   }
 
   if (document.readyState === 'loading') {

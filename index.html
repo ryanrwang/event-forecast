@@ -1,10 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<!-- data-booting: set here, before first paint, so nothing shows until
+     the tokens, styles, fonts and the first forecast render are all in.
+     app.js removes it (see bootReveal); the inline fallback below removes
+     it anyway if a slow script or a hung request holds things up. -->
+<html lang="en" data-theme="dark" data-booting>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A weather-style forecast for crowd impact from major live events.">
   <title>Event Forecast</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <!-- Tokens first: they inject the CSS custom properties every rule
+       below reads, so they must run before the stylesheets apply. -->
+  <script src="tokens.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
@@ -14,9 +22,18 @@
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="anonymous">
   <link rel="stylesheet" href="styles.css">
+  <script>
+    // Boot fallback: if Leaflet or app.js never arrive, or a request
+    // hangs, show the page anyway rather than a blank one. app.js
+    // normally clears this long before it fires.
+    setTimeout(function () {
+      document.documentElement.removeAttribute('data-booting');
+    }, 6000);
+  </script>
+  <noscript><style>html[data-booting] .reveal { opacity: 1; }</style></noscript>
 </head>
 <body>
-  <header class="app-header">
+  <header class="app-header reveal" style="--reveal-i: 0">
     <div class="app-header__brand">
       <span class="app-header__mark" aria-hidden="true"></span>
       <h1 class="app-header__name">Event Forecast</h1>
@@ -51,7 +68,7 @@
          on wider screens the button is hidden and the group is always
          open. The note repeats the group's own note when the group is
          collapsed, so the verdict caveat never disappears with it. -->
-    <div class="controls" id="controls">
+    <div class="controls reveal" id="controls" style="--reveal-i: 1">
       <div class="outlook-switch" id="outlook-switch" role="group"
            aria-label="Outlook view" hidden></div>
       <button class="chip controls__filters-btn" id="event-filter-summary" type="button"
@@ -63,7 +80,8 @@
 
     <!-- 7-day outlook: one compact verdict pill per day. Today first.
          Selecting a pill drives the detail panel below. -->
-    <section class="forecast-strip" id="forecast-strip" aria-label="7-day outlook">
+    <section class="forecast-strip reveal" id="forecast-strip" aria-label="7-day outlook"
+             style="--reveal-i: 2">
       <div class="placeholder" role="status">
         <span class="placeholder__dot" aria-hidden="true"></span>
         Loading forecast&hellip;
@@ -79,7 +97,8 @@
     <!-- Selected day, today-first order: plain-English takeaway,
          stations likely packed, when it peaks, the map, then the
          events at the scrubbed time. Scaffolded once by app.js. -->
-    <section class="forecast-detail" id="forecast-detail" aria-label="Selected day detail">
+    <section class="forecast-detail reveal" id="forecast-detail" aria-label="Selected day detail"
+             style="--reveal-i: 3">
       <div class="forecast-detail__placeholder">
         <span class="forecast-detail__placeholder-eyebrow">Select a day</span>
         <p class="forecast-detail__placeholder-text">
@@ -90,7 +109,7 @@
     </section>
   </main>
 
-  <footer class="app-footer">
+  <footer class="app-footer reveal" style="--reveal-i: 4">
     <small class="app-footer__attribution" id="ticketmaster-attribution">
       Event discovery powered by Ticketmaster.
     </small>
@@ -112,7 +131,6 @@
     </div>
   </footer>
 
-  <script src="tokens.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin="anonymous"></script>
