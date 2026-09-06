@@ -1163,7 +1163,22 @@
       if (match) p.setAttribute('data-selected', 'true');
       else p.removeAttribute('data-selected');
     }
+    centerSelectedPill();
     renderDetailForSelected();
+  }
+
+  // On narrow screens the strip scrolls sideways; bring the selected
+  // pill to the middle so the days either side stay in reach without
+  // scrolling the row first. Scrolls the row only, never the page.
+  function centerSelectedPill() {
+    var grid = document.querySelector('.forecast-strip__grid');
+    if (!grid || grid.scrollWidth <= grid.clientWidth + 1) return;
+    var pill = grid.querySelector('.day-pill[data-selected="true"]');
+    if (!pill) return;
+    var left = pill.offsetLeft - (grid.clientWidth - pill.offsetWidth) / 2;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (grid.scrollTo) grid.scrollTo({ left: left, behavior: reduce ? 'auto' : 'smooth' });
+    else grid.scrollLeft = left;
   }
 
   // ─────────── Detail scaffold ───────────

@@ -307,13 +307,19 @@ a:visited {
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     padding-bottom: var(--spacing-xs);
-    scrollbar-width: thin;
+    scrollbar-width: none;   /* the fade says there's more; no bar flashing in */
     -webkit-overflow-scrolling: touch;
   }
 
+  .forecast-strip__grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Pills snap to the centre, and app.js scrolls the selected one
+     there, so the day either side is always on screen to tap next. */
   .forecast-strip__grid .day-pill {
     flex: 0 0 144px;
-    scroll-snap-align: start;
+    scroll-snap-align: center;
   }
 
   .forecast-strip::after {
