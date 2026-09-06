@@ -1160,11 +1160,14 @@
   }
 
   // Hover / focus shows the details; click pins them and moves the
-  // scrubber to `scrubTo` (a bucket).
+  // scrubber to `scrubTo` (a bucket). On phones only the tap opens the
+  // sheet: a tap fires a synthetic hover and focus first, and if those
+  // opened the sheet its scrim would sit under the finger by the time
+  // the click lands, and the click would close it again.
   function wireChip(chip, scrubTo) {
-    chip.addEventListener('mouseenter', function () { if (!_pinnedChip) showPop(chip); });
+    chip.addEventListener('mouseenter', function () { if (!_pinnedChip && !phoneLayout()) showPop(chip); });
     chip.addEventListener('mouseleave', function () { if (!_pinnedChip) hidePop(); });
-    chip.addEventListener('focus', function () { showPop(chip); });
+    chip.addEventListener('focus', function () { if (!phoneLayout()) showPop(chip); });
     chip.addEventListener('blur', function () { if (_pinnedChip !== chip) hidePop(); });
     chip.addEventListener('click', function (evt) {
       evt.stopPropagation();
