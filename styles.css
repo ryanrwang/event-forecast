@@ -307,13 +307,19 @@ a:visited {
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     padding-bottom: var(--spacing-xs);
-    scrollbar-width: thin;
+    scrollbar-width: none;   /* the fade says there's more; no bar flashing in */
     -webkit-overflow-scrolling: touch;
   }
 
+  .forecast-strip__grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Pills snap to the centre, and app.js scrolls the selected one
+     there, so the day either side is always on screen to tap next. */
   .forecast-strip__grid .day-pill {
     flex: 0 0 144px;
-    scroll-snap-align: start;
+    scroll-snap-align: center;
   }
 
   .forecast-strip::after {
@@ -359,7 +365,7 @@ a:visited {
 
 /*
  * One row: [7 days | Month] [Sports] [Concerts] … note … [switch].
- * On phones the row reads [7 days | Month] …………… [Filters ·1 ▾] and the
+ * On phones the row reads [7 days | Month] …………… [Filters ▾] and the
  * filter group opens as a dropdown under the chip (see .event-filter),
  * with the verdict caveat repeated under the row while it is closed.
  */
@@ -811,25 +817,6 @@ a:visited {
     top: calc(-1 * var(--spacing-sm));
     bottom: calc(-1 * var(--spacing-sm));
   }
-}
-
-/* Count badge and caret inside a disclosure chip ("Filters ·1 ▾"). */
-.chip__count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--spacing-md);
-  height: var(--spacing-md);
-  margin-left: var(--spacing-xs);
-  padding: 0 var(--spacing-xs);
-  border-radius: var(--radius-pill);
-  font-family: var(--typography-font-mono);
-  font-size: var(--typography-tiny);
-  font-weight: var(--typography-weight-semibold);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--color-action-primaryText);
-  background: var(--color-action-primary);
 }
 
 /* Chevron drawn from two borders, so it never depends on a symbol
@@ -2183,11 +2170,11 @@ html:not([data-booting]) .reveal {
   padding: 0 var(--spacing-xs);
 }
 
-/* Phones: the axis is short, so chips drop their line badge and keep
-   the name tight (the popover still carries the lines). Overlapping
-   chips are stacked into extra rows by the timeline itself, measured. */
+/* Phones: the axis is short, so chips keep the line badge (the number
+   is the fastest way to tell stations apart) but cap the name tighter.
+   Overlapping chips are stacked into extra rows by the timeline itself,
+   measured. */
 @media (max-width: 720px) {
-  .ef-lane__chip .line-pill { display: none; }
   .ef-lane__name,
   .ef-lane--events .ef-lane__name { max-width: 160px; }
 }
@@ -2211,10 +2198,12 @@ html:not([data-booting]) .reveal {
   line-height: 1.45;
 }
 
-/* Details popover for a chip: the full time, phase, cause. */
+/* Details popover for a chip: the full time, phase, cause. z-index
+   clears Leaflet's panes (max 700) and controls (800): the lanes sit
+   right above the map and a popover under a low chip overlaps it. */
 .ef-pop {
   position: absolute;
-  z-index: 5;
+  z-index: 900;
   min-width: 240px;
   max-width: min(320px, 100%);
   padding: var(--spacing-sm) var(--spacing-md);
@@ -2290,6 +2279,80 @@ html:not([data-booting]) .reveal {
   color: var(--color-text-tertiary);
   padding-top: var(--spacing-xs);
   border-top: 1px dashed var(--color-border-subtle);
+}
+
+/* Close button and scrim exist only for the phone sheet below. */
+.ef-pop__close,
+.ef-pop-scrim {
+  display: none;
+}
+
+/* Phones: the popover becomes a sheet at the bottom of the screen over
+   a scrim (timeline.js showPop sets data-sheet), so it can never hide
+   under the map. Tap the scrim or the x to close. */
+@keyframes ef-pop-sheet-in {
+  from { opacity: 0; transform: translateY(var(--spacing-md)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 720px) {
+  .ef-pop-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;   /* over the map (Leaflet controls top out at 800) */
+    background: color-mix(in srgb, var(--color-bg-page) 60%, transparent);
+  }
+
+  .ef-pop[data-sheet="true"] {
+    position: fixed;
+    top: auto;
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+    z-index: 1001;
+    min-width: 0;
+    max-width: none;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-right: calc(var(--spacing-lg) + var(--size-tap));
+    gap: var(--spacing-sm);
+    background: var(--color-bg-modal);
+    animation: ef-pop-sheet-in var(--duration-fast) var(--easing-decelerate);
+  }
+
+  .ef-pop[data-sheet="true"] .ef-pop__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    width: var(--size-tap);
+    height: var(--size-tap);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: var(--typography-title);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .ef-pop[data-sheet="true"] .ef-pop__close::before {
+    content: "\00D7";
+  }
+
+  .ef-pop[data-sheet="true"] .ef-pop__close:focus-visible {
+    outline: 2px solid var(--color-interactive-focus);
+    outline-offset: -4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ef-pop[data-sheet="true"] { animation: none; }
 }
 
 /* ────────────── Detail rail (M3) ────────────── */
