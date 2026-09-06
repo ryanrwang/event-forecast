@@ -182,7 +182,9 @@
       fast:    '120ms',
       base:    '200ms',
       slow:    '360ms',
-      slower:  '600ms'
+      slower:  '600ms',
+      // Gap between one block and the next in a staggered entrance.
+      stagger: '70ms'
     },
 
     easing: {
@@ -455,8 +457,8 @@
   }
 
   // Browser chrome follows the tokens too: the phone address bar takes
-  // the page colour, and the tab gets the brand mark. Built here rather
-  // than hardcoded in index.html so a palette change reaches them.
+  // the page colour. Built here rather than hardcoded in index.html so a
+  // palette change reaches it. (The tab icon is the static favicon.svg.)
   function injectBrowserChrome() {
     var light = document.documentElement.getAttribute('data-theme') === 'light';
     var theme = light ? semanticLight : semanticDark;
@@ -467,19 +469,6 @@
       document.head.appendChild(meta);
     }
     meta.content = theme.color.bg.page;
-
-    if (!document.querySelector('link[rel="icon"]')) {
-      var svg =
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
-        '<rect width="32" height="32" rx="8" fill="' + theme.color.bg.page + '"/>' +
-        '<rect x="8" y="8" width="16" height="16" rx="4" fill="' + theme.color.action.primary + '"/>' +
-        '</svg>';
-      var link = document.createElement('link');
-      link.rel = 'icon';
-      link.type = 'image/svg+xml';
-      link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
-      document.head.appendChild(link);
-    }
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -495,9 +484,8 @@
     }
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectTokens);
-  } else {
-    injectTokens();
-  }
+  // Runs from <head>, before the stylesheets apply and before first
+  // paint, so the page never renders without its custom properties.
+  // Waiting for DOMContentLoaded here is what caused a white flash.
+  injectTokens();
 })();
