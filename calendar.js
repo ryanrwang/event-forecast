@@ -225,6 +225,12 @@
 
       var top = el('span', 'cal-cell__top');
       top.appendChild(el('span', 'cal-cell__num', String(dayNum)));
+      // Verdict dot: shown only on phones, where a 43px cell has no room
+      // for the word. The word stays in the DOM (visually hidden there)
+      // and in the aria-label below, so nothing is lost to a reader.
+      var dot = el('span', 'cal-cell__dot');
+      dot.setAttribute('aria-hidden', 'true');
+      top.appendChild(dot);
       if (date === o.today) top.appendChild(el('span', 'cal-cell__today', 'Today'));
       cell.appendChild(top);
 

@@ -43,6 +43,10 @@
         100: '#E2E8F0',
         200: '#CBD5E1',
         300: '#94A3B8',
+        // Between 300 and 400: the darkest grey that still clears 4.5:1
+        // as small text on every dark surface (5.1:1 on raised, 4.6:1 on
+        // overlay). 400 measured 3.7:1 on raised.
+        350: '#7C8BA1',
         400: '#64748B',
         500: '#475569',
         600: '#334155',
@@ -207,7 +211,9 @@
       text: {
         primary:   primitives.color.gray[50],
         secondary: primitives.color.gray[300],
-        tertiary:  primitives.color.gray[400],
+        tertiary:  primitives.color.gray[350],
+        // Decorative / disabled only (2.5:1). Never for text someone has
+        // to read — that floor is tertiary.
         muted:     primitives.color.gray[500],
         inverse:   primitives.color.gray[900],
         accent:    primitives.color.emerald[400]
@@ -275,6 +281,14 @@
       xxl: primitives.spacing[48],
       xxxl: primitives.spacing[64]
     },
+    // Control sizing on touch screens. `control` is the visual height a
+    // pill control grows to under a coarse pointer; `tap` is the hit
+    // area it is padded out to (Material and WCAG 2.5.5 both land on 48).
+    // Fine pointers keep the compact 27px chip.
+    size: {
+      control: primitives.spacing[32],
+      tap:     primitives.spacing[48]
+    },
     typography: {
       display1: primitives.fontSize.display1,
       display2: primitives.fontSize.display2,
@@ -331,7 +345,7 @@
       text: {
         primary:   primitives.color.gray[900],
         secondary: primitives.color.gray[700],
-        tertiary:  primitives.color.gray[500],
+        tertiary:  primitives.color.gray[600],
         muted:     primitives.color.gray[400],
         inverse:   primitives.color.gray[50],
         accent:    primitives.color.emerald[700]
@@ -385,6 +399,7 @@
       highlight: primitives.color.white
     },
     spacing:    semanticDark.spacing,
+    size:       semanticDark.size,
     typography: semanticDark.typography,
     radius:     semanticDark.radius,
     shadow: {
@@ -436,6 +451,35 @@
       document.head.appendChild(style);
     }
     style.textContent = css;
+    injectBrowserChrome();
+  }
+
+  // Browser chrome follows the tokens too: the phone address bar takes
+  // the page colour, and the tab gets the brand mark. Built here rather
+  // than hardcoded in index.html so a palette change reaches them.
+  function injectBrowserChrome() {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    var theme = light ? semanticLight : semanticDark;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.content = theme.color.bg.page;
+
+    if (!document.querySelector('link[rel="icon"]')) {
+      var svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+        '<rect width="32" height="32" rx="8" fill="' + theme.color.bg.page + '"/>' +
+        '<rect x="8" y="8" width="16" height="16" rx="4" fill="' + theme.color.action.primary + '"/>' +
+        '</svg>';
+      var link = document.createElement('link');
+      link.rel = 'icon';
+      link.type = 'image/svg+xml';
+      link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+      document.head.appendChild(link);
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────

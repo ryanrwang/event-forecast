@@ -54,6 +54,37 @@ a:visited {
   color: var(--color-link-visited);
 }
 
+/* ────────────── Global a11y + utilities ────────────── */
+
+/* `hidden` always wins. Several components set an author `display`
+   (flex, grid) that would otherwise beat the UA stylesheet's
+   display: none and leave an empty box on screen. */
+[hidden] {
+  display: none !important;
+}
+
+/* One keyboard focus ring for every control. Components that draw
+   their own indicator (the brush grips, the chart canvas) opt out
+   individually. */
+:focus-visible {
+  outline: 2px solid var(--color-interactive-focus);
+  outline-offset: 2px;
+}
+
+/* Visually hidden, still read by assistive tech: section headings the
+   layout already says visually, and short descriptions of controls. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ────────────── Header / Brand ────────────── */
 
 .app-header {
@@ -65,6 +96,12 @@ a:visited {
               var(--color-bg-surface);
   border-bottom: 1px solid var(--color-border-subtle);
   backdrop-filter: saturate(140%) blur(6px);
+}
+
+@media (max-width: 720px) {
+  .app-header {
+    padding: var(--spacing-smd) var(--spacing-md);
+  }
 }
 
 .app-header__brand {
@@ -88,6 +125,7 @@ a:visited {
   font-weight: var(--typography-weight-semibold);
   letter-spacing: 0.005em;
   line-height: 1;
+  margin: 0;   /* it is the page's h1 */
 }
 
 /* ────────────── City selector ────────────── */
@@ -114,9 +152,8 @@ a:visited {
 }
 
 .city-selector__input:hover,
-.city-selector__input:focus {
+.city-selector__input:focus-visible {
   border-color: var(--color-border-strong);
-  outline: none;
 }
 
 /* ────────────── Main layout ────────────── */
@@ -130,6 +167,27 @@ a:visited {
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
+}
+
+/*
+ * Phones (max-width 720px, the one phone breakpoint in this file): the
+ * page goes edge to edge. The outer gutter is dropped and each block
+ * carries its own 16px inset — or none: the detail card loses its side
+ * borders and radius, so the chart, the map and the event list get the
+ * full width (343px instead of 278px on a 375px screen).
+ */
+@media (max-width: 720px) {
+  .app-main {
+    padding: var(--spacing-md) 0;
+    gap: var(--spacing-md);
+  }
+
+  .status-banner,
+  .controls,
+  .forecast-calendar {
+    margin-left: var(--spacing-md);
+    margin-right: var(--spacing-md);
+  }
 }
 
 .forecast-detail {
@@ -171,14 +229,6 @@ a:visited {
   background: linear-gradient(180deg, color-mix(in srgb, var(--color-highlight) 2%, transparent), transparent 60%),
               var(--color-bg-raised);
   box-shadow: var(--shadow-sm);
-}
-
-/* The `hidden` attribute (set whenever there's nothing to report) must
- * beat the display: flex above — the UA stylesheet's display: none
- * loses to any author display rule, which left an empty bordered box
- * above the strip when the data was fresh. */
-.status-banner[hidden] {
-  display: none;
 }
 
 .status-banner[data-kind="info"] {
@@ -262,7 +312,7 @@ a:visited {
   }
 
   .forecast-strip__grid .day-pill {
-    flex: 0 0 152px;
+    flex: 0 0 144px;
     scroll-snap-align: start;
   }
 
@@ -289,6 +339,56 @@ a:visited {
   letter-spacing: 0.04em;
 }
 
+/* Phones: the scroller runs to the screen edges with the page's 16px
+   inset inside it, so the first pill lines up with the header and the
+   last one can scroll fully into view. 144px pills show 2.4 days on a
+   375px screen — a clear peek of the next day says "swipe". */
+@media (max-width: 720px) {
+  .forecast-strip__grid {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+    scroll-padding-inline: var(--spacing-md);
+  }
+
+  .forecast-strip__grid .day-pill {
+    padding: var(--spacing-smd);
+  }
+}
+
+/* ────────────── Controls toolbar ────────────── */
+
+/*
+ * One row: [7 days | Month] [Sports] [Concerts] … note … [switch].
+ * On phones the row reads [7 days | Month] …………… [Filters ·1 ▾] and the
+ * filter group opens as a dropdown under the chip (see .event-filter),
+ * with the verdict caveat repeated under the row while it is closed.
+ */
+.controls {
+  position: relative;   /* anchors the phone dropdown */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm) var(--spacing-md);
+}
+
+/* The Filters chip and the closed-state note are phone-only. */
+@media (min-width: 721px) {
+  .controls__filters-btn,
+  .controls__note {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .controls__filters-btn {
+    margin-left: auto;
+  }
+
+  .controls__note {
+    flex-basis: 100%;
+  }
+}
+
 /* ────────────── Outlook view switch ────────────── */
 
 /*
@@ -301,13 +401,6 @@ a:visited {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-}
-
-/* Any author `display` beats the UA stylesheet's [hidden] rule, so the
-   flex above would keep this on screen when app.js sets .hidden. Same
-   trap as .status-banner. */
-.outlook-switch[hidden] {
-  display: none;
 }
 
 .outlook-switch__chip[data-active="true"] {
@@ -328,13 +421,6 @@ a:visited {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-}
-
-/* Without this the calendar stays on screen after switching back to the
-   7-day strip: applyOutlookView sets .hidden, but the flex above wins
-   over the UA stylesheet's display: none. */
-.forecast-calendar[hidden] {
-  display: none;
 }
 
 .cal-head {
@@ -372,9 +458,18 @@ a:visited {
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.cal-nav:hover:not(:disabled) {
-  color: var(--color-text-primary);
-  border-color: var(--color-border-strong);
+@media (hover: hover) {
+  .cal-nav:hover:not(:disabled) {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-strong);
+  }
+}
+
+@media (pointer: coarse) {
+  .cal-nav {
+    width: var(--size-tap);
+    height: var(--size-tap);
+  }
 }
 
 .cal-nav:disabled {
@@ -411,7 +506,7 @@ a:visited {
   font-size: var(--typography-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   text-align: center;
 }
 
@@ -466,9 +561,11 @@ a:visited {
 .cal-cell[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
 .cal-cell[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
 
-button.cal-cell:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-bg-overlay);
+@media (hover: hover) {
+  button.cal-cell:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-bg-overlay);
+  }
 }
 
 .cal-cell[data-selected="true"] {
@@ -535,6 +632,17 @@ button.cal-cell:hover {
   color: var(--verdict-color);
 }
 
+/* Verdict dot beside the date: phones only, where a 43px cell cannot
+   fit the word "Moderate" (61px). Wider screens show the word. */
+.cal-cell__dot {
+  display: none;
+  flex: none;
+  width: var(--spacing-sm);
+  height: var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  background: var(--verdict-color);
+}
+
 .cal-cell__spark {
   display: block;
   width: 100%;
@@ -575,8 +683,20 @@ button.cal-cell:hover {
     display: none;
   }
 
+  /* The word gives way to the dot; it stays in the tree for readers
+     (and in the cell's aria-label). */
+  .cal-cell__dot {
+    display: block;
+  }
+
   .cal-cell__verdict {
-    font-size: var(--typography-micro);
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .cal-cell__spark {
@@ -602,6 +722,37 @@ button.cal-cell:hover {
   flex-wrap: wrap;
   gap: var(--spacing-sm);
   margin: 0;
+  flex: 1 1 auto;
+}
+
+/* Phones: the group is a dropdown hanging from the right end of the
+   toolbar, under the Filters chip. app.js sets data-collapsed and
+   closes it on outside click / Escape; wider screens ignore the
+   attribute and show the group inline. */
+@media (max-width: 720px) {
+  .event-filter {
+    position: absolute;
+    top: calc(100% + var(--spacing-xs));
+    right: 0;
+    z-index: 20;
+    width: min(320px, calc(100vw - var(--spacing-xl)));
+    padding: var(--spacing-smd);
+    background: var(--color-bg-overlay);
+    border: 1px solid var(--color-border-base);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .event-filter[data-collapsed="true"] {
+    display: none;
+  }
+
+  /* The verdict switch takes its own line: label left, knob right. */
+  .event-filter__toggle-wrap {
+    flex-basis: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
 }
 
 /* ────────────── Chip (shared component) ──────────────
@@ -616,6 +767,7 @@ button.cal-cell:hover {
  *   off       plain outline, secondary text: readable, just not lit
  *   disabled  muted and dimmed, no pointer */
 .chip {
+  position: relative;   /* anchors the touch halo below */
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
   font-weight: var(--typography-weight-medium);
@@ -632,9 +784,70 @@ button.cal-cell:hover {
               opacity var(--transition-fast);
 }
 
-.chip:hover {
-  color: var(--color-text-primary);
-  border-color: var(--color-text-tertiary);
+/* Hover only where hover exists: on a touch screen the style would
+   stick to the last chip tapped. */
+@media (hover: hover) {
+  .chip:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-tertiary);
+  }
+}
+
+/* Touch screens: the chip grows to 32px and an invisible halo pads the
+   hit area out to 48px (Material's pattern), so a row of chips stays
+   visually compact. Wrapped rows are 8px apart, so neighbouring halos
+   meet without overlapping. */
+@media (pointer: coarse) {
+  .chip {
+    min-height: var(--size-control);
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
+
+  .chip::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(-1 * var(--spacing-sm));
+    bottom: calc(-1 * var(--spacing-sm));
+  }
+}
+
+/* Count badge and caret inside a disclosure chip ("Filters ·1 ▾"). */
+.chip__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--spacing-md);
+  height: var(--spacing-md);
+  margin-left: var(--spacing-xs);
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-pill);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-tiny);
+  font-weight: var(--typography-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-action-primaryText);
+  background: var(--color-action-primary);
+}
+
+/* Chevron drawn from two borders, so it never depends on a symbol
+   font: a bordered square turned 45° points down; turned the other
+   way it points up. */
+.chip__caret {
+  display: inline-block;
+  width: var(--spacing-sm);
+  height: var(--spacing-sm);
+  margin-left: var(--spacing-sm);
+  border-right: 2px solid var(--color-text-tertiary);
+  border-bottom: 2px solid var(--color-text-tertiary);
+  transform: translateY(-25%) rotate(45deg);
+  transition: transform var(--transition-fast);
+}
+
+.chip[aria-expanded="true"] .chip__caret {
+  transform: translateY(25%) rotate(-135deg);
 }
 
 .chip:focus-visible {
@@ -674,7 +887,14 @@ button.cal-cell:hover {
   align-items: center;
   gap: var(--spacing-sm);
   margin-left: auto;
+  padding: var(--spacing-xs) 0;
   cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .event-filter__toggle-wrap {
+    min-height: var(--size-control);
+  }
 }
 
 .event-filter__toggle-label {
@@ -766,10 +986,12 @@ button.cal-cell:hover {
 .day-pill[data-verdict="busy"]     { --verdict-color: var(--color-verdict-busy); }
 .day-pill[data-verdict="severe"]   { --verdict-color: var(--color-verdict-severe); }
 
-.day-pill:hover {
-  transform: translateY(-2px);
-  border-color: var(--color-border-base);
-  box-shadow: var(--shadow-md);
+@media (hover: hover) {
+  .day-pill:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-border-base);
+    box-shadow: var(--shadow-md);
+  }
 }
 
 .day-pill__when {
@@ -835,13 +1057,18 @@ button.cal-cell:hover {
   font-size: var(--typography-caption);
   color: var(--color-text-secondary);
   line-height: 1.3;
-  white-space: nowrap;
+  /* Two lines, then an ellipsis. The biggest event's name is the reason
+     to tap a day, and one truncated line hid most of it — on phones
+     ("4 events · RÜFÜ…") and in the desktop 7-up grid alike. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .day-pill__sub--muted {
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .day-pill[data-selected="true"] {
@@ -910,6 +1137,7 @@ button.cal-cell:hover {
   line-height: 1;
   color: var(--color-text-primary);
   letter-spacing: -0.005em;
+  margin: 0;   /* it is an h2 */
 }
 
 .forecast-detail__title[data-verdict="quiet"]    { --verdict-color: var(--color-verdict-quiet); }
@@ -941,6 +1169,17 @@ button.cal-cell:hover {
 
 @media (max-width: 720px) {
   .forecast-detail__map { height: 320px; }
+
+  /* Edge to edge: no side borders or radius on phones (see .app-main). */
+  .forecast-detail {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .forecast-detail__header {
+    padding: var(--spacing-md);
+  }
 }
 
 /* ────────────── Forecast detail — placeholder before selection ────────────── */
@@ -959,7 +1198,7 @@ button.cal-cell:hover {
   font-size: var(--typography-micro);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .forecast-detail__placeholder-text {
@@ -987,6 +1226,11 @@ button.cal-cell:hover {
   font-size: var(--typography-micro);
 }
 
+/* <small> would otherwise shrink the 12px footer to 10px. */
+.app-footer small {
+  font-size: inherit;
+}
+
 .app-footer__attribution a {
   color: var(--color-text-tertiary);
   text-decoration: underline dotted;
@@ -997,10 +1241,65 @@ button.cal-cell:hover {
   color: var(--color-text-secondary);
 }
 
+@media (max-width: 720px) {
+  .app-footer {
+    padding: var(--spacing-md);
+    line-height: var(--typography-lineHeight-relaxed);
+  }
+}
+
 .app-footer__disclaimer {
   font-family: var(--typography-font-mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* Back to /apps/: the shared Clearful mark on its own centred line at
+   the very bottom, same size, rest opacity and hover spin as the other
+   apps, expressed in this project's tokens. */
+.app-footer__home {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+  padding-top: var(--spacing-sm);
+}
+
+.rw-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm);   /* 40px hit area around a 24px mark */
+  border-radius: var(--radius-pill);
+}
+
+.rw-back-logo {
+  display: block;
+  width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  opacity: var(--opacity-25);
+  transition: opacity var(--transition-base), transform var(--transition-slow);
+}
+
+.rw-back-link:focus-visible .rw-back-logo {
+  opacity: var(--opacity-75);
+}
+
+@media (hover: hover) {
+  .rw-back-link:hover .rw-back-logo {
+    opacity: var(--opacity-75);
+    animation: rw-spin var(--duration-slower) var(--easing-standard);
+  }
+}
+
+@keyframes rw-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-back-link:hover .rw-back-logo {
+    animation: none;
+  }
 }
 
 /* ────────────── Placeholder loading state ────────────── */
@@ -1044,7 +1343,12 @@ button.cal-cell:hover {
   background: var(--color-bg-page);
   font-family: var(--typography-font-body);
   font-size: var(--typography-caption);
-  outline: none;
+}
+
+/* The map itself is focusable (Leaflet's keyboard panning); the ring
+   sits inside the box so the card's clipping doesn't eat it. */
+.leaflet-container:focus-visible {
+  outline-offset: -2px;
 }
 
 .leaflet-control-attribution {
@@ -1077,8 +1381,20 @@ button.cal-cell:hover {
   border-bottom-color: var(--color-border-subtle) !important;
 }
 
-.leaflet-bar a:hover {
-  background: var(--color-bg-overlay) !important;
+@media (hover: hover) {
+  .leaflet-bar a:hover {
+    background: var(--color-bg-overlay) !important;
+  }
+}
+
+/* Touch screens: finger-sized zoom buttons (Leaflet's own are 30px). */
+@media (pointer: coarse) {
+  .leaflet-touch .leaflet-bar a {
+    width: var(--size-tap);
+    height: var(--size-tap);
+    line-height: var(--size-tap);
+    font-size: var(--typography-title);
+  }
 }
 
 /* Heat canvas — sits above tiles, below markers. */
@@ -1163,7 +1479,7 @@ button.cal-cell:hover {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
   letter-spacing: 0.04em;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   margin-top: 2px;
 }
 
@@ -1214,7 +1530,57 @@ button.cal-cell:hover {
 }
 
 .ef-legend__note {
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
+}
+
+/* (i) opens the long wording as a line under the legend — the hover
+   title is unreachable on touch. */
+.ef-legend__info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  font-weight: var(--typography-weight-semibold);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.ef-legend__info[aria-expanded="true"] {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+  background: var(--color-bg-overlay);
+}
+
+@media (pointer: coarse) {
+  .ef-legend__info::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--spacing-sm));
+  }
+}
+
+.ef-legend__detail {
+  flex-basis: 100%;
+  margin: 0;
+  padding-top: var(--spacing-xs);
+  border-top: 1px dashed var(--color-border-subtle);
+  font-family: var(--typography-font-body);
+  font-size: var(--typography-micro);
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
 }
 
 /* Wheel-zoom hint. A bare wheel over the map scrolls the page instead of
@@ -1332,18 +1698,107 @@ button.cal-cell:hover {
 
 .ef-timeline__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-md);
   flex-wrap: wrap;
 }
 
+/* Chip row: Range All day Fit · [Stations Streetcar GO · Jump to Peak Now].
+   On wide screens the bracketed options panel is display: contents, so
+   its groups sit in the row like the others. On a phone the row is
+   [All day Fit …………… Options ▾] and the panel is a dropdown under the
+   Options chip. */
+.ef-timeline__head {
+  position: relative;   /* anchors the phone dropdown */
+}
+
 .ef-timeline__chips {
   margin-left: auto;
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-xs);
+}
+
+.ef-timeline__options {
+  display: contents;
+}
+
+.ef-timeline__group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* Group caption ("Stations", "Range"): says what the chips beside it
+   do, which the hover titles alone could not on touch. */
+.ef-timeline__cap {
+  font-family: var(--typography-font-mono);
+  font-size: var(--typography-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin: 0 var(--spacing-xs) 0 var(--spacing-sm);
+  user-select: none;
+}
+
+.ef-timeline__chips > .ef-timeline__group:first-child .ef-timeline__cap {
+  margin-left: 0;
+}
+
+.ef-timeline__options-btn {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .ef-timeline__chips {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* The row: the two range chips (their caption is implied), then the
+     Options chip at the far right. */
+  .ef-timeline__group--range .ef-timeline__cap {
+    display: none;
+  }
+
+  .ef-timeline__options-btn {
+    display: inline-block;
+    margin-left: auto;
+  }
+
+  /* The dropdown: one group per line, captions leading. */
+  .ef-timeline__options {
+    position: absolute;
+    top: calc(100% + var(--spacing-xs));
+    right: 0;
+    z-index: 6;   /* over the brush and lanes, under nothing that matters */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-smd);
+    background: var(--color-bg-overlay);
+    border: 1px solid var(--color-border-base);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .ef-timeline__options[data-collapsed="true"] {
+    display: none;
+  }
+
+  .ef-timeline__options .ef-timeline__cap {
+    margin-left: 0;
+    min-width: var(--spacing-xxxl);   /* captions align, chips line up */
+  }
+
+  .ef-timeline__sep {
+    display: none;
+  }
 }
 
 .ef-timeline__canvas {
@@ -1351,7 +1806,9 @@ button.cal-cell:hover {
   width: 100%;
   height: 160px;
   cursor: ew-resize;
-  touch-action: none;
+  /* Vertical swipes scroll the page; the scrubber only takes over once
+     a touch moves sideways (see attachPointerEvents in timeline.js). */
+  touch-action: pan-y;
   user-select: none;
   outline: none;
 }
@@ -1400,7 +1857,13 @@ button.cal-cell:hover {
   margin-left: auto;
   text-transform: none;
   letter-spacing: 0.04em;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
+}
+
+@media (max-width: 720px) {
+  .forecast-detail__timeline {
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+  }
 }
 
 /* ────────────── Timeline chips + station lanes ────────────── */
@@ -1424,10 +1887,6 @@ button.cal-cell:hover {
   font-size: var(--typography-caption);
   line-height: 1;
   user-select: none;
-}
-
-.ef-timeline__toggles:empty + .ef-timeline__sep {
-  display: none;
 }
 
 /* Line pills. With a configured agency colour (city.json line_colors)
@@ -1465,7 +1924,7 @@ button.cal-cell:hover {
   position: relative;
   height: 48px;
   margin: var(--spacing-md) 0 var(--spacing-xs);
-  touch-action: none;
+  touch-action: pan-y;   /* as the chart: sideways drags only */
   user-select: none;
 }
 
@@ -1487,24 +1946,26 @@ button.cal-cell:hover {
   cursor: grabbing;
 }
 
+/* The handle's hit area is the full 48px brush height and 32px wide;
+   the visible grip stays an 8px bar in the middle of it. */
 .ef-brush__handle {
   position: absolute;
   top: 0;
-  width: 20px;
-  height: 28px;
-  margin-left: -10px;
+  width: var(--spacing-xl);
+  height: 100%;
+  margin-left: calc(-1 * var(--spacing-md));
   padding: 0;
   background: transparent;
   border: 0;
   cursor: ew-resize;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .ef-brush__grip {
   position: absolute;
   top: 2px;
-  bottom: 2px;
-  left: 6px;
+  height: var(--spacing-lg);
+  left: var(--spacing-smd);
   width: 8px;
   border-radius: var(--radius-xs);
   background: var(--color-bg-overlay);
@@ -1541,11 +2002,11 @@ button.cal-cell:hover {
   pointer-events: none;
 }
 
-.ef-brush__handle--from .ef-brush__label { left: 6px; }
-.ef-brush__handle--to   .ef-brush__label { right: 6px; }
+.ef-brush__handle--from .ef-brush__label { left: var(--spacing-smd); }
+.ef-brush__handle--to   .ef-brush__label { right: var(--spacing-smd); }
 
-.ef-brush__handle--tight.ef-brush__handle--from .ef-brush__label { left: auto; right: 14px; }
-.ef-brush__handle--tight.ef-brush__handle--to   .ef-brush__label { right: auto; left: 14px; }
+.ef-brush__handle--tight.ef-brush__handle--from .ef-brush__label { left: auto; right: calc(var(--spacing-md) + var(--spacing-xs)); }
+.ef-brush__handle--tight.ef-brush__handle--to   .ef-brush__label { right: auto; left: calc(var(--spacing-md) + var(--spacing-xs)); }
 
 /* Lanes: a chip anchored at each window, over the same axis as the
    chart. The event lane sits above the curve (one row, stacked when
@@ -1554,30 +2015,38 @@ button.cal-cell:hover {
    axis. Positions are percentages of the visible range, so a resize
    never needs a re-measure. */
 .ef-lanes {
+  /* Chip height and the gap between stacked rows. timeline.js reads
+     both when it stacks overlapping chips, so touch sizing below
+     needs no JS change. */
+  --lane-chip-h: var(--spacing-lg);
+  --lane-row-gap: var(--spacing-xs);
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--lane-row-gap);
   margin: var(--spacing-xs) 0 0;
+}
+
+@media (pointer: coarse) {
+  .ef-lanes {
+    --lane-chip-h: var(--size-control);
+    --lane-row-gap: var(--spacing-sm);
+  }
 }
 
 .ef-lanes--events {
   margin-bottom: 0;
 }
 
-.ef-lanes--events[hidden] {
-  display: none;
-}
-
 .ef-lane {
   position: relative;
-  height: 24px;
+  height: var(--lane-chip-h);
 }
 
 .ef-lane__chip {
   position: absolute;
   top: 0;
-  height: 24px;
+  height: var(--lane-chip-h);
   max-width: 100%;
   display: inline-flex;
   align-items: center;
@@ -1632,10 +2101,15 @@ button.cal-cell:hover {
   background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
 }
 
-.ef-lane__chip:hover,
+@media (hover: hover) {
+  .ef-lane__chip:hover {
+    border-color: var(--color-border-strong);
+    z-index: 2;
+  }
+}
+
 .ef-lane__chip:focus-visible {
   border-color: var(--color-border-strong);
-  outline: none;
   z-index: 2;
 }
 
@@ -1675,7 +2149,7 @@ button.cal-cell:hover {
 @media (max-width: 720px) {
   .ef-lane__chip .line-pill { display: none; }
   .ef-lane__name,
-  .ef-lane--events .ef-lane__name { max-width: 120px; }
+  .ef-lane--events .ef-lane__name { max-width: 160px; }
 }
 
 .ef-lanes__scrub {
@@ -1686,10 +2160,6 @@ button.cal-cell:hover {
   background: color-mix(in srgb, var(--color-text-primary) 45%, transparent);
   pointer-events: none;
   z-index: 0;
-}
-
-.ef-lanes__scrub[hidden] {
-  display: none;
 }
 
 .ef-lanes__empty {
@@ -1706,7 +2176,7 @@ button.cal-cell:hover {
   position: absolute;
   z-index: 5;
   min-width: 240px;
-  max-width: 320px;
+  max-width: min(320px, 100%);
   padding: var(--spacing-sm) var(--spacing-md);
   display: flex;
   flex-direction: column;
@@ -1716,10 +2186,6 @@ button.cal-cell:hover {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   color: var(--color-text-primary);
-}
-
-.ef-pop[hidden] {
-  display: none;
 }
 
 .ef-pop__head {
@@ -1739,7 +2205,7 @@ button.cal-cell:hover {
   font-size: var(--typography-micro);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .ef-pop__when {
@@ -1781,7 +2247,7 @@ button.cal-cell:hover {
 
 .ef-pop__fine {
   font-size: var(--typography-micro);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
   padding-top: var(--spacing-xs);
   border-top: 1px dashed var(--color-border-subtle);
 }
@@ -1794,11 +2260,17 @@ button.cal-cell:hover {
   background: var(--color-bg-surface);
 }
 
+@media (max-width: 720px) {
+  .forecast-detail__rail {
+    padding: var(--spacing-md);
+  }
+}
+
 .rail__head {
   display: flex;
   align-items: baseline;
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  margin: 0 0 var(--spacing-sm);   /* it is an h3 */
 }
 
 .rail__eyebrow {
@@ -1875,9 +2347,12 @@ button.cal-cell:hover {
   font-weight: var(--typography-weight-semibold);
   color: var(--color-text-primary);
   line-height: 1.3;
-  white-space: nowrap;
+  /* Two lines before the ellipsis, as on the day pills. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .rail__meta {
@@ -1900,12 +2375,32 @@ button.cal-cell:hover {
   color: var(--color-text-secondary);
 }
 
+/* A small pill, not bare text: 24px tall on desktop (the WCAG 2.5.8
+   floor), 32px on touch screens. */
 .rail__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--spacing-lg);
+  padding: 0 var(--spacing-sm);
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--color-link-base) 35%, transparent);
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.rail__link:hover {
+  border-color: var(--color-link-hover);
+}
+
+@media (pointer: coarse) {
+  .rail__link {
+    min-height: var(--size-control);
+    padding: 0 var(--spacing-smd);
+  }
 }
 
 /* ────────────── M4 Transit station markers ────────────── */
@@ -1991,14 +2486,20 @@ button.cal-cell:hover {
   .ef-station-marker__dot { transition: none; }
 }
 
-/* Phones: ramp + modeled note only, so the legend doesn't sit on the
-   heat field. The station glyphs are explained by the lane chips. */
+/* Phones: one line — ramp, modeled note, (i) — so the legend covers as
+   little of a 320px map as possible. The ramp's end words go (the
+   colours speak for themselves and the detail line explains them); the
+   station glyphs are explained by the lane chips. */
 @media (max-width: 720px) {
   .ef-legend {
-    max-width: 200px;
+    max-width: 280px;
   }
-  .ef-legend__stations {
+  .ef-legend__stations,
+  .ef-legend__end {
     display: none;
+  }
+  .ef-legend__note {
+    white-space: nowrap;
   }
 }
 
@@ -2032,7 +2533,7 @@ button.cal-cell:hover {
 .ef-popup__lines-empty {
   font-family: var(--typography-font-mono);
   font-size: var(--typography-micro);
-  color: var(--color-text-muted);
+  color: var(--color-text-tertiary);
 }
 
 .ef-popup__fine {

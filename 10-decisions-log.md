@@ -617,3 +617,62 @@ Cell numbers and sub-lines use `--color-text-secondary` (6.8:1), which
 also matches `.day-pill__sub`. Hierarchy in a cell comes from size and
 from the verdict's colour and weight, not from dimming text toward
 illegibility.
+
+## 2026-09-05 — Mobile polish
+
+### Phones go edge to edge; touch sizing lives behind `(pointer: coarse)`
+
+Under 720px the outer gutter and the detail card's side chrome go, so
+the chart grows from 278px to 341px on a 375px screen. Tap-target
+growth is keyed to the pointer, not the width: a phone in landscape and
+a touch laptop both get 32px chips padded to a 48px hit area, while a
+narrow desktop window keeps the compact 27px chip. Two new semantic
+tokens carry those sizes (`size.control`, `size.tap`).
+
+### One finger scrolls past the map on touch screens
+
+Leaflet's one-finger drag is off under a coarse pointer
+(`dragging: false`); pinch still pans and zooms, and a one-finger move
+shows "Use two fingers to move the map". Reason: the map, the chart and
+the brush together took about 500px of an 812px phone screen and none
+of them let a thumb scroll through. The chart and the brush keep their
+gestures but only claim a touch once it has moved sideways
+(`touch-action: pan-y` plus an 8px intent check), so vertical swipes
+scroll the page and a tap still places the scrubber.
+
+### Chips behind dropdowns on phones only
+
+Under 720px the view filters open as a dropdown from a `Filters` chip at
+the right end of the toolbar, and the timeline's Stations and Jump-to
+(Peak / Now) chips open from an `Options` chip at the right end of the
+chip row. The two Range chips (All day / Fit) stay in the row: with Fit
+now the default they are the range control people reach for first.
+Both chips carry a count of settings switched on, the verdict caveat
+note is repeated under the toolbar while the filter dropdown is closed,
+and both dropdowns close on outside click or Escape. Desktop keeps every
+chip inline — the rows fit, and hiding them there would cost
+discoverability for nothing.
+
+### Fit is the default range, everywhere
+
+A first visit used to open on 9 AM → 2 AM; it now opens on Fit, the
+tightest range around the day's activity, on every screen size. The
+9 AM → 2 AM window is still there (both Fit and All day off) and a saved
+choice is respected, but the plain window is now stored explicitly
+rather than being the unstored fallback.
+
+### `--color-text-tertiary` lightened to a new `gray.350`
+
+`gray.400` measured 3.7:1 on the raised surface, under the 4.5:1
+small-text floor, and was the colour of date lines, meta lines, the
+chart legend and the map attribution. `gray.350` (#7C8BA1) clears 4.5:1
+on every dark surface (5.1 raised, 4.6 overlay). `--color-text-muted`
+(2.5:1) is now reserved for disabled controls and decorative separators;
+every "modeled, not measured" note moved to tertiary, since that
+disclaimer is the one line that must always be legible.
+
+### Global `[hidden] { display: none !important }`
+
+Three components had grown their own `[hidden]` override after the same
+bug (an author `display: flex` beating the UA stylesheet's
+`display: none`). One global rule replaces them.

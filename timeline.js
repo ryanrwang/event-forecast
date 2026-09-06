@@ -10,9 +10,10 @@
  * Above the chart sits the RANGE BRUSH: a miniature of the whole
  * modeled day with two handles. Drag a handle to pick any start or end
  * time (15-minute steps), drag the window to slide it; the main chart,
- * the lanes, and the scrubber follow. The range is persisted. "All day"
- * resets to the full 26 hours; the default is 9 AM → 2 AM, or earlier
- * when the day has real early activity.
+ * the lanes, and the scrubber follow. The range is persisted. The
+ * default is "Fit" (the day's activity, re-fitted per day); "All day"
+ * is the full 26 hours; with both off the range is 9 AM → 2 AM, or
+ * earlier when the day has real early activity.
  *
  * Under the chart sit the STATION LANES: one row per station likely
  * packed, with a compact chip anchored at each busy window (line badge
@@ -67,6 +68,10 @@
   var _allDayChip = null;
   var _fitChip = null;
   var _toggleHost = null;
+  var _toggleGroup = null;     // "Stations" caption + kind toggles
+  var _toggleSep = null;       // dot after it; both hide when a city has no toggles
+  var _optionsPanel = null;    // toggles + range shortcuts, collapsible on phones
+  var _optionsBtn = null;      // the "Options" chip that opens it (phones)
   var _canvas = null;
   var _ctx = null;
   var _brush = null;
@@ -82,6 +87,7 @@
   var _eventScrub = null;
   var _eventRows = [];
   var _pop = null;
+  var _popChip = null;         // chip the popover currently describes
   var _pinnedChip = null;
   var _ro = null;
   var _onBucketChange = null;
@@ -91,11 +97,18 @@
   var _emptyText = '';
   var _bucket = null;
   var _dragging = false;
+  // Touch gestures start undecided (see touchIntent); these hold the
+  // start point until the finger commits to sideways or up-and-down.
+  var _touchStart = null;      // chart canvas
+  var _brushTouch = null;      // range brush
   // Persisted custom range {from, to} in buckets (to exclusive), or
   // null for the default.
   // What the range follows: {mode: 'default'|'all'|'fit'|'custom', from, to}.
   // 'all' and 'fit' re-resolve on every day, so the choice carries
   // across dates; 'custom' is a brushed range and keeps its numbers.
+  // 'default' is the plain 9 AM → 2 AM window (see defaultRange), which
+  // is what you get with both Fit and All day switched off. A visitor
+  // with nothing saved starts on 'fit'.
   var _view = loadView();
   var _anim = null;          // range tween in flight: {a, b, start, eased}
   var _scrubMode = 'peak';   // 'peak' | 'now' | null: which chip placed the scrubber
@@ -115,18 +128,20 @@
     try {
       var parsed = JSON.parse(localStorage.getItem(RANGE_KEY) || 'null');
       if (parsed && typeof parsed === 'object') {
-        if (parsed.mode === 'all' || parsed.mode === 'fit') return { mode: parsed.mode };
+        if (parsed.mode === 'all' || parsed.mode === 'fit' || parsed.mode === 'default') {
+          return { mode: parsed.mode };
+        }
         if (typeof parsed.from === 'number' && typeof parsed.to === 'number') {
           return { mode: 'custom', from: parsed.from, to: parsed.to };
         }
       }
     } catch (_) {}
-    return { mode: 'default' };
+    return { mode: 'fit' };
   }
 
   function saveView(view) {
     try {
-      if (!view || view.mode === 'default') localStorage.removeItem(RANGE_KEY);
+      if (!view) localStorage.removeItem(RANGE_KEY);
       else localStorage.setItem(RANGE_KEY, JSON.stringify(view));
     } catch (_) {}
   }
@@ -351,6 +366,39 @@
     }
     if (_fitChip) {
       _fitChip.setAttribute('aria-pressed', (_view.mode === 'fit' || sameRange(t, activityRange())) ? 'true' : 'false');
+    }
+    updateOptionsBtn();
+    updateCanvasAria();
+  }
+
+  // "Options ·n": how many settings inside the dropdown are switched on
+  // (station kinds), so the closed chip on a phone still says something
+  // is set. Peak / Now live there too but are actions, not settings.
+  function updateOptionsBtn() {
+    if (!_optionsBtn) return;
+    var n = 0;
+    if (_toggleHost) n += _toggleHost.querySelectorAll('[aria-pressed="true"]').length;
+    _optionsBtn.textContent = '';
+    _optionsBtn.appendChild(document.createTextNode('Options'));
+    if (n > 0) {
+      _optionsBtn.appendChild(el('span', 'chip__count', String(n)));
+      _optionsBtn.appendChild(el('span', 'sr-only', ', ' + n + ' changed'));
+    }
+    var caret = el('span', 'chip__caret');
+    caret.setAttribute('aria-hidden', 'true');
+    _optionsBtn.appendChild(caret);
+  }
+
+  // The chart is a slider to assistive tech: the scrubbed time is its
+  // value and the visible range its bounds.
+  function updateCanvasAria() {
+    if (!_canvas || !_forecast) return;
+    var vis = targetRange();
+    _canvas.setAttribute('aria-valuemin', String(Math.round(vis.from)));
+    _canvas.setAttribute('aria-valuemax', String(Math.round(vis.to) - 1));
+    if (typeof _bucket === 'number') {
+      _canvas.setAttribute('aria-valuenow', String(_bucket));
+      _canvas.setAttribute('aria-valuetext', bucketLabel(_bucket));
     }
   }
 
@@ -802,15 +850,37 @@
       _ctx.stroke();
     }
 
-    // Time labels along the bottom.
+    // Time labels along the bottom. Measured: a label that would run
+    // into its neighbour is dropped rather than overprinted (a phone at
+    // 9 AM → 2 AM used to set "9 AM" under "12 PM"). The range-end
+    // labels give way first, then any interior one that still collides.
     _ctx.fillStyle = tokenColor('color.text.tertiary', '#94A3B8');
     _ctx.font = '12px ' + tokenColor('typography.font.mono', FONT_FALLBACK);
     _ctx.textBaseline = 'top';
+    var LABEL_GAP = 8;
+    var labels = [];
     for (var li = 0; li < ticks.length; li++) {
       var hh = ticks[li];
       var lx = bucketToX(hh * 4, size, vis);
-      _ctx.textAlign = (li === 0) ? 'left' : (li === ticks.length - 1) ? 'right' : 'center';
-      _ctx.fillText(tickLabel(hh), lx, plotBot + 6);
+      var text = tickLabel(hh);
+      var tw = _ctx.measureText(text).width;
+      var align = (li === 0) ? 'left' : (li === ticks.length - 1) ? 'right' : 'center';
+      var x0 = align === 'left' ? lx : align === 'right' ? lx - tw : lx - tw / 2;
+      // A centred label at either edge would be clipped; pin it inside.
+      if (x0 < 0) { align = 'left'; lx = 0; x0 = 0; }
+      if (x0 + tw > W) { align = 'right'; lx = W; x0 = W - tw; }
+      labels.push({ text: text, x: lx, align: align, x0: x0, x1: x0 + tw });
+    }
+    var collide = function (a, b) { return a.x1 + LABEL_GAP > b.x0; };
+    if (labels.length > 1 && collide(labels[0], labels[1])) labels.shift();
+    if (labels.length > 1 && collide(labels[labels.length - 2], labels[labels.length - 1])) labels.pop();
+    var lastX1 = -Infinity;
+    for (var lj = 0; lj < labels.length; lj++) {
+      var lab = labels[lj];
+      if (lab.x0 < lastX1 + LABEL_GAP) continue;
+      _ctx.textAlign = lab.align;
+      _ctx.fillText(lab.text, lab.x, plotBot + 6);
+      lastX1 = lab.x1;
     }
 
     // Peak label above the band (display face, semibold).
@@ -901,6 +971,10 @@
     _hTo.setAttribute('aria-valuetext', toLabel);
     _hFrom.setAttribute('aria-valuenow', String(Math.round(vis.from)));
     _hTo.setAttribute('aria-valuenow', String(Math.round(vis.to)));
+    _hFrom.setAttribute('aria-valuemin', '0');
+    _hFrom.setAttribute('aria-valuemax', String(n));
+    _hTo.setAttribute('aria-valuemin', '0');
+    _hTo.setAttribute('aria-valuemax', String(n));
     // Labels sit inside the range, flush with their handle. On a narrow
     // range they'd meet in the middle, so flip them to the outside.
     var close = (xTo - xFrom) < 120;
@@ -915,28 +989,69 @@
     return Math.round(frac * bucketCount());
   }
 
+  // Touch gestures on the brush and the chart start as "undecided": a
+  // finger that moves mostly sideways drives the control; one that moves
+  // mostly up or down is left to the browser, which scrolls the page
+  // (touch-action: pan-y) and cancels the pointer. A tap counts as a
+  // sideways gesture of zero length. Mouse and pen commit at once.
+  var TOUCH_SLOP = 8;
+  function touchIntent(start, evt) {
+    var dx = evt.clientX - start.x, dy = evt.clientY - start.y;
+    if (Math.abs(dx) >= TOUCH_SLOP && Math.abs(dx) > Math.abs(dy)) return 'horizontal';
+    if (Math.abs(dy) >= TOUCH_SLOP) return 'vertical';
+    return null;
+  }
+
   function attachBrushEvents() {
-    _brush.addEventListener('pointerdown', function (evt) {
-      if (!_forecast) return;
+    // Start a drag from where the pointer first went down: a handle
+    // moves that end, inside the window slides it, outside jumps the
+    // nearer end.
+    var beginDrag = function (evt, startX, startTarget) {
       var vis = visibleRange();
-      var handle = evt.target.closest ? evt.target.closest('.ef-brush__handle') : null;
-      var b = brushBucketAt(evt.clientX);
+      var handle = (startTarget && startTarget.closest) ? startTarget.closest('.ef-brush__handle') : null;
+      var b = brushBucketAt(startX);
       var mode;
       if (handle === _hFrom) mode = 'from';
       else if (handle === _hTo) mode = 'to';
       else if (b >= vis.from && b < vis.to) mode = 'move';
       else mode = (Math.abs(b - vis.from) <= Math.abs(b - vis.to)) ? 'from' : 'to';
       _brushDrag = { mode: mode, offset: b - vis.from, span: vis.to - vis.from };
-      _brush.setPointerCapture(evt.pointerId);
+      try { _brush.setPointerCapture(evt.pointerId); } catch (_) {}
       _brush.classList.add('ef-brush--dragging');
-      evt.preventDefault();
       applyBrushDrag(evt.clientX, false);
+    };
+    _brush.addEventListener('pointerdown', function (evt) {
+      if (!_forecast) return;
+      if (evt.pointerType === 'touch') {
+        _brushTouch = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, target: evt.target };
+        return;
+      }
+      evt.preventDefault();
+      beginDrag(evt, evt.clientX, evt.target);
     });
     _brush.addEventListener('pointermove', function (evt) {
+      if (_brushTouch && evt.pointerId === _brushTouch.id) {
+        var intent = touchIntent(_brushTouch, evt);
+        if (intent === 'horizontal') {
+          var t = _brushTouch;
+          _brushTouch = null;
+          beginDrag(evt, t.x, t.target);
+        } else if (intent === 'vertical') {
+          _brushTouch = null;
+        }
+        return;
+      }
       if (!_brushDrag) return;
       applyBrushDrag(evt.clientX, false);
     });
     var stop = function (evt) {
+      if (_brushTouch && evt.pointerId === _brushTouch.id) {
+        // A tap: the nearer end (or the window) jumps to the finger.
+        var tap = _brushTouch;
+        _brushTouch = null;
+        if (evt.type !== 'pointerup') return;
+        beginDrag(evt, tap.x, tap.target);
+      }
       if (!_brushDrag) return;
       applyBrushDrag(evt.clientX, true);
       _brushDrag = null;
@@ -1194,9 +1309,24 @@
 
   // Chips in one lane that would overlap (a wide label, a narrow
   // range, or a phone) drop to a second row instead of covering each
-  // other. Measured, so it adapts to any width.
-  var CHIP_H = 24, ROW_GAP = 4, MIN_CHIP_GAP = 4;
+  // other. Measured, so it adapts to any width. Chip height and row gap
+  // come from the stylesheet (--lane-chip-h / --lane-row-gap on
+  // .ef-lanes), which grows them on touch screens.
+  var MIN_CHIP_GAP = 4;
+  function laneMetrics(root) {
+    var h = 24, gap = 4;
+    try {
+      var cs = window.getComputedStyle(root);
+      var ch = parseFloat(cs.getPropertyValue('--lane-chip-h'));
+      var cg = parseFloat(cs.getPropertyValue('--lane-row-gap'));
+      if (ch > 0) h = ch;
+      if (cg >= 0) gap = cg;
+    } catch (_) {}
+    return { h: h, gap: gap };
+  }
   function stackOverlaps(root) {
+    var m = laneMetrics(root);
+    var CHIP_H = m.h, ROW_GAP = m.gap;
     var lanes = root.querySelectorAll('.ef-lane');
     for (var li = 0; li < lanes.length; li++) {
       var lane = lanes[li];
@@ -1268,6 +1398,9 @@
     else return;
 
     _pop.hidden = false;
+    if (_popChip && _popChip !== chip) _popChip.removeAttribute('aria-describedby');
+    _popChip = chip;
+    chip.setAttribute('aria-describedby', _pop.id);
     var box = _wrap.getBoundingClientRect();
     var chipRect = chip.getBoundingClientRect();
     var left = chipRect.left - box.left;
@@ -1279,6 +1412,10 @@
 
   function hidePop() {
     if (_pop) _pop.hidden = true;
+    if (_popChip) {
+      _popChip.removeAttribute('aria-describedby');
+      _popChip = null;
+    }
   }
 
   // ─────────── Pointer interaction (scrubber) ───────────
@@ -1292,15 +1429,36 @@
 
   function attachPointerEvents() {
     _canvas.addEventListener('pointerdown', function (evt) {
+      if (evt.pointerType === 'touch') {
+        _touchStart = { id: evt.pointerId, x: evt.clientX, y: evt.clientY };
+        return;
+      }
       _canvas.setPointerCapture(evt.pointerId);
       _dragging = true;
       onPointer(evt);
     });
     _canvas.addEventListener('pointermove', function (evt) {
+      if (_touchStart && evt.pointerId === _touchStart.id) {
+        var intent = touchIntent(_touchStart, evt);
+        if (intent === 'horizontal') {
+          _touchStart = null;
+          try { _canvas.setPointerCapture(evt.pointerId); } catch (_) {}
+          _dragging = true;
+          onPointer(evt);
+        } else if (intent === 'vertical') {
+          _touchStart = null;
+        }
+        return;
+      }
       if (!_dragging) return;
       onPointer(evt);
     });
     var stop = function (evt) {
+      if (_touchStart && evt.pointerId === _touchStart.id) {
+        _touchStart = null;
+        if (evt.type === 'pointerup') onPointer(evt);   // a tap places the scrubber
+        return;
+      }
       if (!_dragging) return;
       _dragging = false;
       try { _canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
@@ -1335,10 +1493,26 @@
       }
     });
 
-    // A click anywhere else unpins the details popover.
+    // A click anywhere else unpins the details popover, and closes the
+    // options dropdown (phones) when it lands outside it.
     document.addEventListener('click', function (evt) {
+      if (optionsOpen() && !eventHits(evt, _optionsPanel) && !eventHits(evt, _optionsBtn)) {
+        setOptionsOpen(false);
+      }
       if (!_pinnedChip) return;
       if (_pop && _pop.contains(evt.target)) return;
+      _pinnedChip = null;
+      hidePop();
+    });
+
+    // Escape closes both too.
+    document.addEventListener('keydown', function (evt) {
+      if (evt.key !== 'Escape') return;
+      if (optionsOpen()) {
+        setOptionsOpen(false);
+        _optionsBtn.focus();
+      }
+      if (!_pop || _pop.hidden) return;
       _pinnedChip = null;
       hidePop();
     });
@@ -1355,6 +1529,7 @@
     draw();
     applyActiveChips();
     updateScrubChips();
+    updateCanvasAria();
     if (fire && typeof _onBucketChange === 'function') {
       _onBucketChange(bucket);
     }
@@ -1431,8 +1606,32 @@
         chip.addEventListener('click', function () { if (t.onToggle) t.onToggle(); });
         _toggleHost.appendChild(chip);
       });
+      var none = !(options.toggles || []).length;
+      if (_toggleGroup) _toggleGroup.hidden = none;
+      if (_toggleSep) _toggleSep.hidden = none;
+      updateOptionsBtn();
     }
     layoutLanes();
+  }
+
+  function setOptionsOpen(open) {
+    if (!_optionsPanel || !_optionsBtn) return;
+    _optionsPanel.setAttribute('data-collapsed', open ? 'false' : 'true');
+    _optionsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function optionsOpen() {
+    return !!_optionsPanel && _optionsPanel.getAttribute('data-collapsed') === 'false';
+  }
+
+  // Was `node` on the event's path? composedPath is fixed at dispatch,
+  // so this still works when a handler earlier on the path re-rendered
+  // the target out of the DOM (the station toggles do exactly that).
+  function eventHits(evt, node) {
+    if (!node) return false;
+    var path = evt.composedPath ? evt.composedPath() : null;
+    if (path) return path.indexOf(node) >= 0;
+    return node.contains(evt.target);
   }
 
   function chipSep() {
@@ -1464,11 +1663,19 @@
 
     // Head: just the chip row. The peak is labelled on the canvas,
     // where it sits, rather than repeated in a title.
+    //
+    //   Range: All day Fit · [Stations: Streetcar GO · Jump to: Peak Now] [Options]
+    //
+    // The range chips are always in the row. The bracketed part is the
+    // options panel: on wide screens it is inline (display: contents)
+    // and the Options chip is hidden; on a phone the row is
+    // [All day Fit … Options] and the panel opens as a dropdown under
+    // the chip. Outside click and Escape close it.
     var head = el('div', 'ef-timeline__head');
     _chips = el('div', 'ef-timeline__chips');
-    _toggleHost = el('span', 'ef-timeline__toggles');
-    _chips.appendChild(_toggleHost);
-    _chips.appendChild(chipSep());
+
+    var rangeGroup = el('span', 'ef-timeline__group ef-timeline__group--range');
+    rangeGroup.appendChild(el('span', 'ef-timeline__cap', 'Range'));
 
     _allDayChip = el('button', 'chip ef-timeline__chip', 'All day');
     _allDayChip.type = 'button';
@@ -1478,7 +1685,7 @@
       var on = _view.mode === 'all' || isFullDay(targetRange());
       setView({ mode: on ? 'default' : 'all' }, true, true);
     });
-    _chips.appendChild(_allDayChip);
+    rangeGroup.appendChild(_allDayChip);
 
     // Fit: tighten the range to the day's activity.
     _fitChip = el('button', 'chip ef-timeline__chip', 'Fit');
@@ -1488,8 +1695,26 @@
       if (!_forecast) return;
       setView({ mode: _view.mode === 'fit' ? 'default' : 'fit' }, true, true);
     });
-    _chips.appendChild(_fitChip);
+    rangeGroup.appendChild(_fitChip);
+    _chips.appendChild(rangeGroup);
     _chips.appendChild(chipSep());
+
+    _optionsPanel = el('div', 'ef-timeline__options');
+    _optionsPanel.id = 'ef-timeline-options';
+    _optionsPanel.setAttribute('data-collapsed', 'true');
+
+    _toggleGroup = el('span', 'ef-timeline__group');
+    _toggleGroup.appendChild(el('span', 'ef-timeline__cap', 'Stations'));
+    _toggleHost = el('span', 'ef-timeline__toggles');
+    _toggleGroup.appendChild(_toggleHost);
+    _toggleGroup.hidden = true;   // until setStations brings toggles
+    _optionsPanel.appendChild(_toggleGroup);
+    _toggleSep = chipSep();
+    _toggleSep.hidden = true;
+    _optionsPanel.appendChild(_toggleSep);
+
+    var jumpGroup = el('span', 'ef-timeline__group');
+    jumpGroup.appendChild(el('span', 'ef-timeline__cap', 'Jump to'));
 
     _peakChip = el('button', 'chip ef-timeline__chip', 'Peak');
     _peakChip.type = 'button';
@@ -1510,8 +1735,20 @@
       setBucket(nb, true);
       _scrubMode = 'now';
     });
-    _chips.appendChild(_peakChip);
-    _chips.appendChild(_nowChip);
+    jumpGroup.appendChild(_peakChip);
+    jumpGroup.appendChild(_nowChip);
+    _optionsPanel.appendChild(jumpGroup);
+    _chips.appendChild(_optionsPanel);
+
+    _optionsBtn = el('button', 'chip ef-timeline__options-btn');
+    _optionsBtn.type = 'button';
+    _optionsBtn.setAttribute('aria-expanded', 'false');
+    _optionsBtn.setAttribute('aria-controls', _optionsPanel.id);
+    _optionsBtn.addEventListener('click', function () {
+      setOptionsOpen(_optionsPanel.getAttribute('data-collapsed') === 'true');
+    });
+    _chips.appendChild(_optionsBtn);
+    updateOptionsBtn();
     head.appendChild(_chips);
     _wrap.appendChild(head);
 
@@ -1549,6 +1786,7 @@
     // One details popover for event and station chips, positioned
     // against the timeline box.
     _pop = el('div', 'ef-pop');
+    _pop.id = 'ef-timeline-pop';
     _pop.setAttribute('role', 'tooltip');
     _pop.hidden = true;
     _wrap.appendChild(_pop);
@@ -1587,6 +1825,8 @@
   function destroy() {
     if (_ro) { _ro.disconnect(); _ro = null; }
     _host = _wrap = _chips = _peakChip = _nowChip = _allDayChip = _fitChip = _toggleHost = null;
+    _toggleGroup = _toggleSep = _optionsPanel = _optionsBtn = _popChip = null;
+    _touchStart = _brushTouch = null;
     _canvas = _ctx = _brush = _brushCanvas = _brushCtx = _brushSel = _hFrom = _hTo = null;
     _lanes = _scrubLine = _pop = _pinnedChip = _eventsHost = _eventScrub = null;
     _forecast = _cityConfig = _anim = null;
