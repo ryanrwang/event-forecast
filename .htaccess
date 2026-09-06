@@ -1,0 +1,11 @@
+# Always revalidate the page and its own scripts and styles. Without
+# this Apache sends only Last-Modified, and browsers then guess a
+# freshness lifetime (about a tenth of the file's age), so a phone could
+# keep a days-old app.js for hours after a deploy. "no-cache" still
+# lets the browser keep a copy; it just asks the server each time and
+# gets a cheap 304 when nothing changed.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css|svg)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
