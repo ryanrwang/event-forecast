@@ -85,6 +85,7 @@ Until M0 lands, the page renders a placeholder shell (`Forecast loading…`) —
 | `api/cities.php` | Configured cities + all attribution surfaces (TM + OSM/CARTO + per-city GTFS licenses). |
 | `api/status.php` | M6: per-city cron freshness surface (TM/GTFS last success, stale flags, zero-event sanity). |
 | `DEPLOY.md` | M6: post-deploy verification runbook. |
+| `.htaccess` | `Cache-Control: no-cache` for the page, scripts, styles and SVG, so a deploy shows on the next reload (browsers otherwise guess a freshness lifetime from Last-Modified and keep old scripts for hours). Deployed with the rest; never exclude it. |
 | `config/cities.json` | List of configured city ids. MVP: `["toronto"]`. |
 | `config/event_filters.json` | Global (all-city) exclusion rules for non-crowd TM listings: classification matches + name patterns. Operator-tunable. |
 | `config/<city>/city.json` | Per-city config: id, name, tz, bbox, TM city query, `transit` (subway line ids, streetcar route pattern, kinds to keep). |
