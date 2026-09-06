@@ -118,6 +118,9 @@
     pendingMonth: null,
     // Dates that came from the archive rather than the live window.
     archivedDates: {},
+    // Phone-only: whether the filter group is open behind its Filters
+    // chip. Session state, not persisted — a fresh visit starts closed.
+    filtersOpen: false,
     // 15-minute bucket index [0, 95] for the day timeline / scrubber.
     // null until a forecast is loaded; reset to the new day's peak
     // bucket on day-change per M3 spec.
@@ -533,11 +536,93 @@
     if (state.selectedDate) renderDetailForSelected();
   }
 
+  // ─────────── View filters ───────────
+
+  // How many filter settings are off their defaults: a type switched
+  // off, smaller venues switched on, ratings following the filters.
+  // Shown as a count on the phone's Filters chip so a collapsed group
+  // never hides that something is filtered.
+  function filterChangeCount() {
+    var n = 0;
+    TYPE_GROUPS.forEach(function (g) { if (state.typeFilter[g.id] === false) n++; });
+    if (state.smallVenues) n++;
+    if (state.verdictMode === 'filtered') n++;
+    return n;
+  }
+
+  // Say what the verdicts mean when a type chip hides something big, or
+  // when the switch re-buckets them. Hidden smaller venues alone don't
+  // earn the note — they barely move the verdict.
+  function filterNoteText() {
+    if (state.verdictMode === 'filtered' && viewFilterActive()) return 'Ratings count shown events only.';
+    if (typeFilterActive()) return 'Ratings still count hidden events.';
+    return '';
+  }
+
+  // Was `node` on the event's path? composedPath is fixed at dispatch,
+  // so this still works when a handler earlier on the path re-rendered
+  // the target out of the DOM (a filter chip click rebuilds the group).
+  function eventHits(evt, node) {
+    if (!node) return false;
+    var path = evt.composedPath ? evt.composedPath() : null;
+    if (path) return path.indexOf(node) >= 0;
+    return node.contains(evt.target);
+  }
+
+  // The Filters chip (phone only, see styles.css .controls), the
+  // dropdown it opens, and the note that repeats the group's caveat
+  // while the dropdown is closed. Outside click and Escape close it.
+  function renderFilterSummary() {
+    var btn = document.getElementById('event-filter-summary');
+    var note = document.getElementById('event-filter-note');
+    var host = document.getElementById('event-filter');
+    if (btn) {
+      if (btn.dataset.wired !== 'true') {
+        btn.dataset.wired = 'true';
+        btn.addEventListener('click', function () {
+          state.filtersOpen = !state.filtersOpen;
+          renderFilterSummary();
+        });
+        document.addEventListener('click', function (evt) {
+          if (!state.filtersOpen) return;
+          if (eventHits(evt, btn) || eventHits(evt, host)) return;
+          state.filtersOpen = false;
+          renderFilterSummary();
+        });
+        document.addEventListener('keydown', function (evt) {
+          if (evt.key !== 'Escape' || !state.filtersOpen) return;
+          state.filtersOpen = false;
+          renderFilterSummary();
+          btn.focus();
+        });
+      }
+      btn.hidden = false;
+      btn.textContent = '';
+      btn.appendChild(document.createTextNode('Filters'));
+      var n = filterChangeCount();
+      if (n > 0) {
+        btn.appendChild(el('span', 'chip__count', String(n)));
+        btn.appendChild(el('span', 'sr-only', ', ' + n + ' changed'));
+      }
+      var caret = el('span', 'chip__caret');
+      caret.setAttribute('aria-hidden', 'true');
+      btn.appendChild(caret);
+      btn.setAttribute('aria-expanded', state.filtersOpen ? 'true' : 'false');
+    }
+    if (host) host.setAttribute('data-collapsed', state.filtersOpen ? 'false' : 'true');
+    if (note) {
+      var text = state.filtersOpen ? '' : filterNoteText();
+      note.textContent = text;
+      note.hidden = !text;
+    }
+  }
+
   function renderTypeFilter() {
     var host = document.getElementById('event-filter');
     if (!host) return;
     host.innerHTML = '';
     host.hidden = false;
+    renderFilterSummary();
 
     TYPE_GROUPS.forEach(function (g) {
       var on = state.typeFilter[g.id] !== false;
@@ -559,22 +644,22 @@
     small.type = 'button';
     small.setAttribute('aria-pressed', state.smallVenues ? 'true' : 'false');
     small.setAttribute('data-group', 'small');
-    small.title = 'Venues under ' + SMALL_VENUE_CAP.toLocaleString('en-US') + ' seats';
+    var smallDesc = 'Venues under ' + SMALL_VENUE_CAP.toLocaleString('en-US') + ' seats';
+    small.title = smallDesc;
+    // The title is hover-only; readers get the same words this way.
+    var smallDescNode = el('span', 'sr-only', smallDesc);
+    smallDescNode.id = 'event-filter-small-desc';
+    small.setAttribute('aria-describedby', smallDescNode.id);
     small.addEventListener('click', function () {
       state.smallVenues = !state.smallVenues;
       saveJson(SMALL_VENUES_KEY, state.smallVenues);
       rerenderAll();
     });
     host.appendChild(small);
+    host.appendChild(smallDescNode);
 
-    // Say what the verdicts mean when a type chip hides something big,
-    // or when the switch below re-buckets them. Hidden smaller venues
-    // alone don't earn the note — they barely move the verdict.
-    if (state.verdictMode === 'filtered' && viewFilterActive()) {
-      host.appendChild(el('span', 'event-filter__note', 'Ratings count shown events only.'));
-    } else if (typeFilterActive()) {
-      host.appendChild(el('span', 'event-filter__note', 'Ratings still count hidden events.'));
-    }
+    var noteText = filterNoteText();
+    if (noteText) host.appendChild(el('span', 'event-filter__note', noteText));
 
     // Right side: opt-in switch that re-buckets day verdicts from only
     // the visible events.
@@ -1109,7 +1194,10 @@
 
     var header = el('div', 'forecast-detail__header');
     var left = el('div', 'forecast-detail__header-main');
-    var title = el('div', 'forecast-detail__title');
+    // Headings let a reader jump between the day, the timeline, the map
+    // and the event list; the visible layout says the same thing with
+    // position, so the two below the title are visually hidden.
+    var title = el('h2', 'forecast-detail__title');
     title.id = 'forecast-detail-title';
     left.appendChild(title);
     var driver = el('div', 'forecast-detail__driver');
@@ -1118,10 +1206,12 @@
     header.appendChild(left);
     host.appendChild(header);
 
+    host.appendChild(el('h3', 'sr-only', 'When it peaks'));
     var timelineHost = el('div', 'forecast-detail__timeline');
     timelineHost.id = 'timeline-host';
     host.appendChild(timelineHost);
 
+    host.appendChild(el('h3', 'sr-only', 'Where it lands'));
     var mapWrap = el('div', 'forecast-detail__map-wrap');
     var mapHost = el('div', 'forecast-detail__map');
     mapHost.id = 'map-canvas';
@@ -1572,7 +1662,7 @@
 
     host.innerHTML = '';
 
-    var head = el('div', 'rail__head');
+    var head = el('h3', 'rail__head');
     head.appendChild(el('span', 'rail__eyebrow', 'On at'));
     head.appendChild(el('span', 'rail__time', clockFromBucket(bucket)));
     host.appendChild(head);

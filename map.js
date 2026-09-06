@@ -461,10 +461,13 @@
         // timeline carry the "modeled, not measured" line in full.
         var wrap = el('div', 'ef-legend');
         wrap.setAttribute('role', 'note');
-        wrap.title =
+        var LEGEND_DETAIL =
           'Same colour scale every day: crowd modeled from event size, ' +
           'start time, and distance. Stations flagged from venue proximity ' +
           'and event timing. Not live crowd or transit data.';
+        // Hover gets the long wording; touch has no hover, so the (i)
+        // button below opens it as a line under the legend.
+        wrap.title = LEGEND_DETAIL;
 
         var heat = el('span', 'ef-legend__heat');
         heat.appendChild(el('span', 'ef-legend__end', 'Quiet'));
@@ -488,6 +491,22 @@
         wrap.appendChild(stationsRow);
 
         wrap.appendChild(el('span', 'ef-legend__note', 'Modeled, not measured'));
+
+        var detail = el('p', 'ef-legend__detail', LEGEND_DETAIL);
+        detail.id = 'ef-legend-detail';
+        detail.hidden = true;
+        var info = el('button', 'ef-legend__info', 'i');
+        info.type = 'button';
+        info.setAttribute('aria-label', 'About this legend');
+        info.setAttribute('aria-expanded', 'false');
+        info.setAttribute('aria-controls', detail.id);
+        info.addEventListener('click', function () {
+          var open = detail.hidden;
+          detail.hidden = !open;
+          info.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        wrap.appendChild(info);
+        wrap.appendChild(detail);
 
         // Block map drag/scroll while interacting with the legend.
         L.DomEvent.disableClickPropagation(wrap);
@@ -689,6 +708,14 @@
   // pinch. The +/− control, double-click zoom, and touch pinch are untouched.
   var ZOOM_HINT_MS = 1400;
 
+  // Touch screens (phones, tablets). Matches the CSS `(pointer: coarse)`
+  // rules so the map and the stylesheet agree on what a phone is.
+  function coarsePointer() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    } catch (_) { return false; }
+  }
+
   function zoomHintText() {
     var ua = navigator.userAgent || '';
     var mac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || ua);
@@ -707,6 +734,13 @@
     hostEl.appendChild(hint);
     var timer = null;
 
+    var show = function (text) {
+      hint.textContent = text;
+      hint.setAttribute('data-show', 'true');
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () { hint.removeAttribute('data-show'); }, ZOOM_HINT_MS);
+    };
+
     gateEl.addEventListener('wheel', function (e) {
       if (e.ctrlKey || e.metaKey) {
         // Leaflet zooms from here. Its handler preventDefaults, which also
@@ -715,10 +749,19 @@
         return;
       }
       e.stopPropagation();
-      hint.setAttribute('data-show', 'true');
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(function () { hint.removeAttribute('data-show'); }, ZOOM_HINT_MS);
+      show(zoomHintText());
     }, true);
+
+    // Touch: one-finger drag is off (see ensureMap), so a thumb scrolling
+    // down the page passes over the map instead of getting caught panning
+    // it — the same contract as an embedded Google map. Two fingers pan
+    // and pinch. Say so for a beat when one finger moves over the map.
+    if (coarsePointer()) {
+      hostEl.addEventListener('touchmove', function (e) {
+        if (e.touches.length !== 1) { hint.removeAttribute('data-show'); return; }
+        show('Use two fingers to move the map');
+      }, { passive: true });
+    }
   }
 
   // ─────────── Public API ───────────
@@ -728,9 +771,14 @@
     if (!hostEl) return null;
     options = options || {};
 
+    var coarse = coarsePointer();
     _map = L.map(hostEl, {
       zoomControl: true,
       attributionControl: true,
+      // One-finger drag stays off on touch screens so the page keeps
+      // scrolling past the map; pinch (touchZoom) still pans and zooms.
+      // See gateScrollZoom for the hint.
+      dragging: !coarse,
       worldCopyJump: false,
       // Keep the user inside the city. A 0.5° pad lets them roam a bit
       // without losing the basemap entirely.
@@ -740,6 +788,15 @@
       ] : null,
       maxBoundsViscosity: 0.6
     });
+
+    // Keep the Leaflet credit, drop its flag glyph: the shorter prefix
+    // lets the OSM + CARTO line fit one row on a 320px-tall phone map
+    // instead of two.
+    if (_map.attributionControl) {
+      _map.attributionControl.setPrefix(
+        '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>'
+      );
+    }
 
     _basemap = L.tileLayer(tileUrl(options.basemapKey), {
       attribution: TILE_ATTRIBUTION,

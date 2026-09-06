@@ -19,7 +19,7 @@
   <header class="app-header">
     <div class="app-header__brand">
       <span class="app-header__mark" aria-hidden="true"></span>
-      <span class="app-header__name">Event Forecast</span>
+      <h1 class="app-header__name">Event Forecast</h1>
     </div>
     <div class="app-header__city" id="city-selector" hidden>
       <!-- Multi-day forecast city selector. Hidden when only one city is configured. -->
@@ -32,19 +32,34 @@
          (via the hidden attribute) by default. -->
     <div class="status-banner" id="status-banner" role="status" aria-live="polite" hidden></div>
 
-    <!-- View filters: event-type chips, a "smaller venues" chip (off by
-         default), and the verdict-follows-filter switch. They apply to
-         everything below (strip, timeline, map, rail), so they sit
-         first. Populated by app.js once forecasts load; selection
-         persists in localStorage. A hidden event still counts toward
-         the day verdict unless the switch is on. -->
-    <div class="event-filter" id="event-filter" role="group" aria-label="Filter events" hidden></div>
+    <h2 class="sr-only">Outlook</h2>
 
-    <!-- Outlook view switch: 7-day strip or month calendar. Rendered by
-         app.js and hidden entirely until the archive has a month in it,
-         so a fresh install shows no switch and no empty grid. -->
-    <div class="outlook-switch" id="outlook-switch" role="group"
-         aria-label="Outlook view" hidden></div>
+    <!-- Toolbar: the outlook view switch and the view filters share one
+         row.
+
+         Outlook switch: 7-day strip or month calendar. Rendered by app.js
+         and hidden entirely until the archive has a month in it, so a
+         fresh install shows no switch and no empty grid.
+
+         View filters: event-type chips, a "smaller venues" chip (off by
+         default), and the verdict-follows-filter switch. They apply to
+         everything below (strip, timeline, map, rail). Populated by
+         app.js once forecasts load; selection persists in localStorage.
+         A hidden event still counts toward the day verdict unless the
+         switch is on. On phones the group sits behind the "Filters"
+         button (a count on it says how many settings are off default);
+         on wider screens the button is hidden and the group is always
+         open. The note repeats the group's own note when the group is
+         collapsed, so the verdict caveat never disappears with it. -->
+    <div class="controls" id="controls">
+      <div class="outlook-switch" id="outlook-switch" role="group"
+           aria-label="Outlook view" hidden></div>
+      <button class="chip controls__filters-btn" id="event-filter-summary" type="button"
+              aria-expanded="false" aria-controls="event-filter" hidden>Filters</button>
+      <div class="event-filter" id="event-filter" role="group" aria-label="Filter events"
+           data-collapsed="true" hidden></div>
+      <span class="event-filter__note controls__note" id="event-filter-note" hidden></span>
+    </div>
 
     <!-- 7-day outlook: one compact verdict pill per day. Today first.
          Selecting a pill drives the detail panel below. -->
@@ -88,6 +103,13 @@
     <small class="app-footer__disclaimer">
       Modeled estimate, not measured.
     </small>
+    <!-- Shared Clearful mark: back to the apps index. Same markup as the
+         other apps; the SVG lives at the site root, not in this repo. -->
+    <div class="app-footer__home">
+      <a href="/apps/" title="Back to Apps" class="rw-back-link">
+        <img src="/images/icon-rw.svg" alt="Back to Apps" class="rw-back-logo" width="24" height="24">
+      </a>
+    </div>
   </footer>
 
   <script src="tokens.js"></script>
