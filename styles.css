@@ -1242,8 +1242,10 @@ a:visited {
 }
 
 /* Back to /apps/: the shared Clearful mark on its own centred line at
-   the very bottom, same size, rest opacity and hover spin as the other
-   apps, expressed in this project's tokens. */
+   the very bottom, same size and rest opacity as the other apps,
+   expressed in this project's tokens. Its hover move is unique to this
+   app (see the register in the global CLAUDE.md): a surge, the mark
+   rising like a busyness spike on the timeline and settling back. */
 .app-footer__home {
   flex-basis: 100%;
   display: flex;
@@ -1274,13 +1276,14 @@ a:visited {
 @media (hover: hover) {
   .rw-back-link:hover .rw-back-logo {
     opacity: var(--opacity-75);
-    animation: rw-spin var(--duration-slower) var(--easing-standard);
+    animation: rw-surge var(--duration-slower) var(--easing-emphasized);
   }
 }
 
-@keyframes rw-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+@keyframes rw-surge {
+  0%   { transform: translateY(0); }
+  35%  { transform: translateY(calc(-1 * var(--spacing-sm))); }
+  100% { transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
