@@ -1,13 +1,13 @@
 {
     "description": "DO NOT DELETE THIS FILE. This file is used to keep track of which files have been synced in the most recent deployment. If you delete this file a resync will need to be done (which can take a while) - read more: https://github.com/SamKirkland/FTP-Deploy-Action",
     "version": "1.0.0",
-    "generatedTime": 1793926436626,
+    "generatedTime": 1793950078529,
     "data": [
         {
             "type": "file",
             "name": ".ftp-deploy-sync-state.json",
             "size": 1282,
-            "hash": "0afb896b74aa576fcb7f9163b2eb834fd5826bea77ffff6acd7f596b86f6ce93"
+            "hash": "01c81417ec58ea7acf85da04251e1b1c45434a59da10214011badee1d13e1146"
         },
         {
             "type": "folder",
@@ -28,8 +28,8 @@
         {
             "type": "file",
             "name": "toronto/2026-11.json",
-            "size": 80137,
-            "hash": "61684bf8b6eb1208f0fcca887ac4bfafe6f63a238000c0e5a0c0c4e3cea9e1e3"
+            "size": 94036,
+            "hash": "974fabcf3d94c66f963aacf11fbf912a506457e5a0787342ef84edc1a593b286"
         }
     ]
 }
