@@ -107,6 +107,23 @@
     ]
   },
   {
+    "station_id": "15065",
+    "station_name": "Coxwell Ave at Queen St East",
+    "kind": "streetcar",
+    "lat": 43.66634,
+    "lon": -79.316639,
+    "lines": [
+      "22",
+      "301",
+      "322",
+      "501",
+      "503"
+    ],
+    "venue_ids": [
+      "history"
+    ]
+  },
+  {
     "station_id": "2116",
     "station_name": "Dundas St East at Church St",
     "kind": "streetcar",
@@ -260,8 +277,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "massey-hall",
@@ -277,8 +293,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "meridian-hall",
@@ -294,8 +309,8 @@
     "lon": -79.391644,
     "lines": [
       "304",
-      "504",
-      "508"
+      "503",
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -312,8 +327,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "meridian-hall"
@@ -327,8 +341,8 @@
     "lon": -79.389714,
     "lines": [
       "304",
-      "504",
-      "508"
+      "503",
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -344,8 +358,8 @@
     "lon": -79.39201,
     "lines": [
       "304",
-      "504",
-      "508"
+      "503",
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -361,8 +375,8 @@
     "lon": -79.385957,
     "lines": [
       "304",
-      "504",
-      "508"
+      "503",
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre",
@@ -377,8 +391,8 @@
     "lon": -79.395053,
     "lines": [
       "304",
-      "504",
-      "508"
+      "503",
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre"
@@ -393,8 +407,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "massey-hall",
@@ -410,8 +423,7 @@
     "lines": [
       "304",
       "503",
-      "504",
-      "508"
+      "504"
     ],
     "venue_ids": [
       "roy-thomson-hall"
@@ -475,41 +487,11 @@
     ]
   },
   {
-    "station_id": "3041",
-    "station_name": "Queen St East at Church St",
-    "kind": "streetcar",
-    "lat": 43.653269,
-    "lon": -79.37552,
-    "lines": [
-      "301"
-    ],
-    "venue_ids": [
-      "ed-mirvish-theatre",
-      "massey-hall",
-      "meridian-hall"
-    ]
-  },
-  {
     "station_id": "3045",
     "station_name": "Queen St East at Coxwell Ave",
     "kind": "streetcar",
     "lat": 43.666427,
     "lon": -79.316446,
-    "lines": [
-      "301",
-      "501",
-      "503"
-    ],
-    "venue_ids": [
-      "history"
-    ]
-  },
-  {
-    "station_id": "4557",
-    "station_name": "Queen St East at Emdaabiimok Ave",
-    "kind": "streetcar",
-    "lat": 43.666193,
-    "lon": -79.316789,
     "lines": [
       "301",
       "501",
@@ -602,7 +584,9 @@
     "lon": -79.396836,
     "lines": [
       "301",
-      "501"
+      "304",
+      "501",
+      "504"
     ],
     "venue_ids": [
       "princess-of-wales-theatre"
@@ -748,6 +732,7 @@
     "lat": 43.650603,
     "lon": -79.38422,
     "lines": [
+      "301",
       "501"
     ],
     "venue_ids": [
@@ -792,7 +777,9 @@
     "lat": 43.645834,
     "lon": -79.395159,
     "lines": [
+      "304",
       "310",
+      "504",
       "510"
     ],
     "venue_ids": [
@@ -806,7 +793,9 @@
     "lat": 43.648699,
     "lon": -79.396359,
     "lines": [
+      "304",
       "310",
+      "504",
       "510"
     ],
     "venue_ids": [
@@ -834,7 +823,9 @@
     "lat": 43.6476,
     "lon": -79.395827,
     "lines": [
+      "304",
       "310",
+      "504",
       "510"
     ],
     "venue_ids": [
@@ -909,7 +900,8 @@
     "lat": 43.648231,
     "lon": -79.383573,
     "lines": [
-      "503"
+      "301",
+      "501"
     ],
     "venue_ids": [
       "roy-thomson-hall"
